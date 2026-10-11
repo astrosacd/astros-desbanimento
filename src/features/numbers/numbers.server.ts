@@ -2,6 +2,7 @@ import { getCookie, setResponseHeader } from '@tanstack/react-start/server';
 import { request } from '../admin/auth.server';
 import { listSchema } from './validation';
 import { z } from 'zod';
+import { fetchNumberRows } from './transport.server';
 const rowSchema = z.object({ id: z.number().int(), field_4773: z.string(), field_4741: z.string().nullish(), field_4827: z.string().nullish(), field_4828: z.string().nullish(), field_4831: z.object({ value: z.string() }).nullish() });
 const responseSchema = z.object({ count: z.number().int().nonnegative(), results: z.array(rowSchema).max(25) });
 export async function listOwnNumbers(input: unknown) {
@@ -22,7 +23,7 @@ export async function listOwnNumbers(input: unknown) {
  url.searchParams.set('page', String(page));
  url.searchParams.set('size', '25');
  try {
-  const result = await fetch(url.toString(), { headers: { Authorization: `Token ${token}` }, redirect: 'error', signal: AbortSignal.timeout(30000) });
+  const result = await fetchNumberRows(url, token);
   if (!result.ok) {
    const code = result.status;
    console.error('[numbers] provider HTTP', code);
