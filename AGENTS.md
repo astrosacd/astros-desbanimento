@@ -10,6 +10,6 @@
 <!-- LOVABLE:END -->
 
 ## Architecture
-- Keep V2 exclusively frontend-demo: pure rules in the demo model, shared provider for hydrated local persistence, and independent TanStack content routes; this prevents real service calls and centralizes simulation invariants.
+- Keep client routes frontend-demo: pure rules in the demo model, shared provider for hydrated local persistence, and independent TanStack content routes; this prevents real service calls and centralizes simulation invariants.
 - Store currency as integer cents and derive indicators from demo records/movements; this avoids rounding errors and inconsistent dashboard totals.
-- Authentication screens validate only transient form state and never persist passwords or assert authenticated sessions; no backend exists in this demo.
+- Client authentication screens remain demo-only. The separately authorized /admin area uses Supabase Auth on the server, HttpOnly cookies, and painel_de_desbanimento.tipo_usuario keyed by the authenticated UUID. Every administrative server handler must call requireAdmin. Never authorize from localStorage, user-editable metadata or email alone.
