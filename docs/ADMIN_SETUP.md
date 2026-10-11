@@ -12,9 +12,9 @@ set tipo_usuario = 'admin'
 where id = 'UUID-DO-USUARIO';
 ```
 
-4. Configure no servidor do projeto as variáveis `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` (ou `SUPABASE_ANON_KEY`). Use somente a chave pública; não use `service_role`. Sem essas variáveis a tela bloqueia o login.
+4. Configure no servidor do projeto as variáveis `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` (ou `SUPABASE_ANON_KEY`). Use somente a chave pública; não use `service_role`. O projeto já possui a URL e a chave pública fornecidas pelo proprietário como configuração padrão. Essas variáveis permitem substituir a conexão. Uma URL ou chave vazia bloqueia o login.
 5. Acesse `/admin` com email e senha do Auth. Teste também um cliente: o login administrativo deve ser recusado. Revogar o tipo `admin` bloqueia a próxima verificação da sessão. A sessão expira em até uma hora e exige novo login.
 
 O script restringe a leitura dos perfis a seu titular ou administradores. Escritas diretas pelo cliente ficam indisponíveis. Antes de integrar o painel do cliente ao banco, acrescente apenas as permissões necessárias; nunca permita alterar `tipo_usuario`, `id` ou saldo pelo cliente. Funções futuras de gestão devem chamar `requireAdmin()` no servidor e usar políticas apropriadas no banco.
 
-A autenticação real depende da aplicação desse script e da configuração do ambiente. Os dados atuais das rotas de cliente continuam sendo demonstração.
+A conexão pública já está configurada. A autorização real depende da aplicação desse script e de um usuário do Auth com perfil admin. Os dados atuais das rotas de cliente continuam sendo demonstração.

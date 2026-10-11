@@ -4,8 +4,9 @@ const COOKIE = 'astros_admin_session';
 export type AdminIdentity = { id: string; name: string; email: string };
 export type AdminSession = { configured: boolean; admin: AdminIdentity | null; error?: string };
 function config() {
-  const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  // Public project identifiers; server environment values can override this connection.
+  const url = (process.env.SUPABASE_URL ?? 'https://tevljvidqbvrcgzqypwf.supabase.co').replace(/\/$/, '');
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? 'sb_publishable_wvwHQDOVefSPivb227u1Iw_lH5qEM_j';
   if (!url || !key) return null;
   if (!url.startsWith('https://')) throw new Error('Conexão administrativa indisponível.');
   return { url, key };
