@@ -12,4 +12,4 @@
 ## Architecture
 - Keep client routes frontend-demo: pure rules in the demo model, shared provider for hydrated local persistence, and independent TanStack content routes; this prevents real service calls and centralizes simulation invariants.
 - Store currency as integer cents and derive indicators from demo records/movements; this avoids rounding errors and inconsistent dashboard totals.
-- Client authentication screens remain demo-only. The separately authorized /admin area uses Supabase Auth on the server, HttpOnly cookies, and painel_de_desbanimento.tipo_usuario keyed by the authenticated UUID. Every administrative server handler must call requireAdmin. Never authorize from localStorage, user-editable metadata or email alone.
+- Client entrance now uses real Supabase Auth with server cookies; client operational data remains demo-only until separately integrated. The separately authorized /admin area uses Supabase Auth on the server, HttpOnly cookies, and painel_de_desbanimento.tipo_usuario keyed by the authenticated UUID. Every administrative server handler must call requireAdmin. Never authorize from localStorage, user-editable metadata or email alone.

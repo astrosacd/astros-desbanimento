@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
+  redirect,
   Link,
   createRootRouteWithContext,
   useRouter,
@@ -11,6 +12,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { getClientSession } from '@/features/auth/actions';
 import { DemoProvider } from "@/features/demo/store";
 import { AppShell } from "@/features/demo/shell";
 import { Toaster } from "sonner";
@@ -78,6 +80,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    const publicPaths = ['/login', '/cadastro', '/recuperar-senha', '/reset-password', '/termos'];
+    if (publicPaths.includes(location.pathname) || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) return { client: null };
+    const client = await getClientSession();
+    if (!client) throw redirect({ to: '/login' });
+    return { client };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -121,13 +130,13 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-  const isAdmin = useRouterState({ select: state => state.location.pathname === "/admin" || state.location.pathname.startsWith("/admin/") });
+  const { queryClient, client } = Route.useRouteContext();
+  const isAdmin = useRouterState({ select: state => ["/login", "/cadastro", "/recuperar-senha", "/reset-password", "/termos", "/admin"].includes(state.location.pathname) || state.location.pathname.startsWith("/admin/") });
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {isAdmin ? <Outlet/> : <DemoProvider><AppShell><Outlet /></AppShell><Toaster theme="dark" position="bottom-right" richColors /></DemoProvider>}
+      {isAdmin ? <Outlet/> : <DemoProvider><AppShell identity={client}><Outlet /></AppShell><Toaster theme="dark" position="bottom-right" richColors /></DemoProvider>}
     </QueryClientProvider>
   );
 }

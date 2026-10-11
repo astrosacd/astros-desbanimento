@@ -5,14 +5,14 @@ export type AdminIdentity = { id: string; name: string; email: string };
 export type AdminSession = { configured: boolean; admin: AdminIdentity | null; error?: string };
 function config() {
   // Public project identifiers; server environment values can override this connection.
-  const url = (process.env.SUPABASE_URL ?? 'https://tevljvidqbvrcgzqypwf.supabase.co').replace(/\/$/, '');
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? 'sb_publishable_wvwHQDOVefSPivb227u1Iw_lH5qEM_j';
+  const url = (process.env['SUPABASE_URL'] ?? 'https://tevljvidqbvrcgzqypwf.supabase.co').replace(/\/$/, '');
+  const key = process.env['SUPABASE_PUBLISHABLE_KEY'] ?? process.env['SUPABASE_ANON_KEY'] ?? 'sb_publishable_wvwHQDOVefSPivb227u1Iw_lH5qEM_j';
   if (!url || !key) return null;
   if (!url.startsWith('https://')) throw new Error('Conexão administrativa indisponível.');
   return { url, key };
 }
 function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
-async function request(path: string, token?: string, init: RequestInit = {}) {
+export async function request(path: string, token?: string, init: RequestInit = {}) {
   const c = config();
   if (!c) throw new Error('O acesso administrativo ainda não foi conectado ao Supabase.');
   return fetch(`${c.url}${path}`, { ...init, headers: { apikey: c.key, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...init.headers }, cache: 'no-store', signal: AbortSignal.timeout(12000) });

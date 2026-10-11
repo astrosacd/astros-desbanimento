@@ -313,3 +313,18 @@ button,a[role=button],.nav-link { touch-action: manipulation; }
 .admin-email { display: block; margin-top: 16px; font-size: 12px; color: #79E5E6; overflow-wrap: anywhere; }
 @media(max-width:850px) { .admin-shell { grid-template-columns: minmax(0,1fr); } .admin-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 20px; } .admin-sidebar nav { display: flex; flex-wrap: wrap; gap: 8px; } .admin-role { margin: 16px 0; } .admin-sidebar .admin-back { margin-top: 8px; } .admin-content { padding: 24px 16px; } }
 @media(max-width:400px) { .admin-login-card { padding: 24px 20px; } .admin-welcome,.admin-settings { padding: 22px; } .admin-header h1 { font-size: 24px; } }
+.client-entrance { display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,480px); gap:clamp(32px,7vw,110px); padding:clamp(24px,6vw,88px); align-items:center; }
+.entrance-story { max-width:570px; justify-self:center; }
+.entrance-story .eyebrow { display:block; margin-top:72px; }
+.entrance-story h1 { font-size:clamp(36px,4.5vw,62px); line-height:1.12; letter-spacing:-.04em; margin:22px 0; }
+.entrance-story p { color:var(--muted-foreground); max-width:400px; line-height:1.8; }
+.entrance-story .admin-login-foot { justify-content:flex-start; margin-top:36px; }
+.entrance-card { width:100%; max-width:480px; }
+.entrance-card h2 { font-size:28px; letter-spacing:-.035em; margin:12px 0; }
+.entrance-mobile-brand { display:none; }
+.entrance-forgot { display:block; text-align:right; font-size:12px; margin-top:15px; color:var(--primary); }
+.entrance-links { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:24px; font-size:13px; }
+.entrance-links a { color:var(--primary); }
+.entrance-bottom { display:flex; justify-content:center; flex-wrap:wrap; gap:20px; font-size:11px; margin-top:28px; color:var(--muted-foreground); }
+.entrance-notice { margin-top:20px; font-size:13px; line-height:1.6; }
+@media(max-width:800px) { .client-entrance { grid-template-columns:minmax(0,1fr); padding:24px 16px; } .entrance-story { display:none; } .entrance-card { justify-self:center; } .entrance-mobile-brand { display:block; margin-bottom:32px; } }

@@ -18,3 +18,13 @@ where id = 'UUID-DO-USUARIO';
 O script restringe a leitura dos perfis a seu titular ou administradores. Escritas diretas pelo cliente ficam indisponíveis. Antes de integrar o painel do cliente ao banco, acrescente apenas as permissões necessárias; nunca permita alterar `tipo_usuario`, `id` ou saldo pelo cliente. Funções futuras de gestão devem chamar `requireAdmin()` no servidor e usar políticas apropriadas no banco.
 
 A conexão pública já está configurada. A autorização real depende da aplicação desse script e de um usuário do Auth com perfil admin. Os dados atuais das rotas de cliente continuam sendo demonstração.
+
+## Entrada de clientes
+
+As telas `/login`, `/cadastro`, `/recuperar-senha` e `/reset-password` agora usam Supabase Auth. O cadastro pede nome completo, e-mail, WhatsApp e senha. Nome e WhatsApp são enviados como metadados; o trigger do script acima cria o perfil em `painel_de_desbanimento` sempre como `cliente`. Se o script não foi aplicado, o Auth pode criar uma conta sem o perfil: aplique o script antes de usar o cadastro.
+
+Em Supabase Authentication > URL Configuration, configure Site URL com o endereço do painel e inclua em Redirect URLs os endereços exatos de `/login` e `/reset-password` no domínio da aplicação (incluindo o domínio de preview quando for testar). A confirmação e a recuperação dependem do serviço de e-mail do Supabase; configure SMTP para envio aos clientes reais. Use o template padrão com ConfirmationURL; não use um template antigo do n8n com tokens diferentes. Os links retornam à aplicação pelo fluxo implicit do Auth.
+
+Uma tentativa de cadastro com e-mail existente nunca substitui os dados ou a senha do usuário. Quando o Supabase oculta a existência de uma conta, a resposta orienta confirmar o e-mail ou entrar/recuperar a senha. A recuperação usa mensagem neutra e também oferece criar conta.
+
+O painel de cliente exige uma sessão verificada pelo servidor e inclui Sair da conta. A sessão dura até uma hora. Os dados de solicitações, carteira e perfil operacional continuam demonstrativos; não representam o cliente autenticado nesta etapa.
