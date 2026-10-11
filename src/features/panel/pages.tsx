@@ -1,10 +1,11 @@
-import { Inbox, Clock3 } from 'lucide-react';
+import { NumbersList } from '../numbers/list';
+import { Inbox } from 'lucide-react';
 import { PageHeading } from '../panel/heading';
 export function EmptyPanel({ title, description }: { title: string; description: string }) {
  return <section className="table-section"><div className="empty-state"><Inbox/><h3>{title}</h3><p className="mt-3 text-sm text-muted-foreground max-w-lg mx-auto">{description}</p></div></section>;
 }
 function PendingPage({ title, description }: { title: string; description: string }) { return <><PageHeading title={title} subtitle="Acompanhe os serviços da sua conta."/><EmptyPanel title="Em preparação" description={description}/></>; }
-export function RequestsPage() { return <PendingPage title="Solicitações" description="Seu histórico aparecerá aqui quando o serviço de solicitações estiver conectado."/>; }
+export function RequestsPage() { return <><PageHeading title="Solicitações" subtitle="Acompanhe os números vinculados à sua conta."/><NumbersList/></>; }
 export function NewRequestPage() { return <PendingPage title="Nova solicitação" description="O envio de solicitações estará disponível após a configuração do serviço."/>; }
 export function WalletPage() { return <PendingPage title="Carteira e recargas" description="Saldo, recargas e movimentações estarão disponíveis após a conexão da carteira."/>; }
 export function ApiPage() { return <PendingPage title="API" description="As configurações da API estarão disponíveis após a ativação da integração."/>; }

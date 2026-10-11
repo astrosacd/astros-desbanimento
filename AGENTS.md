@@ -10,6 +10,6 @@
 <!-- LOVABLE:END -->
 
 ## Architecture
-- Keep client routes frontend-demo: pure rules in the demo model, shared provider for hydrated local persistence, and independent TanStack content routes; this prevents real service calls and centralizes simulation invariants.
-- Store currency as integer cents and derive indicators from demo records/movements; this avoids rounding errors and inconsistent dashboard totals.
-- Client entrance now uses real Supabase Auth with server cookies; client operational data remains demo-only until separately integrated. The separately authorized /admin area uses Supabase Auth on the server, HttpOnly cookies, and painel_de_desbanimento.tipo_usuario keyed by the authenticated UUID. Every administrative server handler must call requireAdmin. Never authorize from localStorage, user-editable metadata or email alone.
+- Client entrance uses real Supabase Auth with HttpOnly server cookies. Operational numbers are read from Baserow table 511, exclusively filtered by the server-verified, confirmed account email. Independently validate every returned row's ownership and return only client-visible fields. Keep BASEROW_API_TOKEN server-only. No operational writes are enabled yet.
+- The /admin area uses Supabase Auth on the server and painel_de_desbanimento.tipo_usuario keyed by authenticated UUID. Every administrative handler must call requireAdmin. Never authorize from localStorage or user-editable metadata.
+- Legacy demo modules are unused by operational pages. Never reintroduce simulated records or balances into client routes.
