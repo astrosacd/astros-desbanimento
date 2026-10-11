@@ -22,7 +22,7 @@ export async function listOwnNumbers(input: unknown) {
  url.searchParams.set('page', String(page));
  url.searchParams.set('size', '25');
  try {
-  const result = await fetch(url, { headers: { Authorization: `Token ${token}` }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30000) });
+  const result = await fetch(url.toString(), { headers: { Authorization: `Token ${token}` }, redirect: 'error', signal: AbortSignal.timeout(30000) });
   if (!result.ok) {
    const code = result.status;
    console.error('[numbers] provider HTTP', code);
@@ -37,6 +37,7 @@ export async function listOwnNumbers(input: unknown) {
  } catch (error) {
   const cause = error instanceof Error ? (error as Error & { cause?: { code?: string } }).cause?.code : undefined;
   const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : '';
+  const detail = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
   let code = 'N06';
   let message = 'Não foi possível estabelecer conexão com o servidor. Tente novamente ou entre em contato com o suporte.';
   if (error instanceof z.ZodError) { code = 'N04'; message = 'O servidor retornou dados em um formato inesperado. Entre em contato com o suporte.'; }
@@ -44,6 +45,10 @@ export async function listOwnNumbers(input: unknown) {
   else if (name === 'TimeoutError' || name === 'AbortError' || cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT') { code = 'N07'; message = 'O servidor demorou para responder. Tente atualizar em alguns instantes.'; }
   else if (cause === 'ENOTFOUND' || cause === 'EAI_AGAIN') { code = 'N09'; message = 'Não foi possível localizar o servidor do serviço. Entre em contato com o suporte.'; }
   else if (cause && ['CERT_HAS_EXPIRED', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ERR_TLS_CERT_ALTNAME_INVALID'].includes(cause)) { code = 'N08'; message = 'A conexão segura com o servidor falhou. Entre em contato com o suporte.'; }
+  if (code === 'N06' && /header|ByteString|character|argument/i.test(detail)) { code = 'N12'; message = 'O servidor não conseguiu preparar a conexão. Verifique a credencial da integração com o suporte.'; }
+  else if (code === 'N06' && /redirect/i.test(detail)) { code = 'N10'; message = 'O endereço do serviço redirecionou a consulta. Entre em contato com o suporte.'; }
+  else if (code === 'N06' && /cache|not implemented|unsupported/i.test(detail)) { code = 'N13'; message = 'O servidor encontrou uma incompatibilidade na conexão. Entre em contato com o suporte.'; }
+  else if (code === 'N06' && /fetch failed|network|connection|socket/i.test(detail)) { code = 'N14'; message = 'A conexão entre o painel e o serviço falhou. Tente novamente ou entre em contato com o suporte.'; }
   console.error('[numbers] consultation failed', code);
   return { error: `${message} (${code})` };
  }
