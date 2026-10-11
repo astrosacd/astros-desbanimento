@@ -1,0 +1,14 @@
+import { describe, it, expect } from 'vitest';
+import { COST, createSeed, balance, addRequest, addRecharge, validateRequest, validateNumber, normalizeNumber, exportCsv } from './model';
+describe('Regras da demonstração Astros', () => {
+ it('preserva custo de referência R$3,97', () => expect(COST).toBe(397));
+ it('debita somente saldo demo e cria em andamento', () => { const s = createSeed(); const next = addRequest(s, '11912345678', 'WhatsApp Business', 'TEST', '2026-10-11T14:00:00Z'); expect(balance(next)).toBe(balance(s) - 397); expect(next.requests[0].status).toBe('Em andamento'); expect(next.requests[0].number).toBe('+5511912345678'); });
+ it('impede duplicata de número em andamento, inclusive com outro tipo', () => expect(validateRequest(createSeed(), '(11) 99876-1048', 'WhatsApp Messenger')).toContain('já possui'));
+ it('impede saldo insuficiente', () => { const s = createSeed(); s.movements = [{ id: 'X', label: 'teste', value: 396, date: '2026-10-11' }]; expect(() => addRequest(s, '11912345678', 'WhatsApp Business', 'X', '2026-10-11')).toThrow('insuficiente'); });
+ it('rebanimento exige número registrado', () => expect(validateRequest(createSeed(), '11912345678', 'Rebanimento')).toContain('já registrado'));
+ it('permite rebanimento para número registrado sem pedido em andamento', () => expect(validateRequest(createSeed(), '21987651047', 'Rebanimento')).toBe(''));
+ it('valida formato nacional com DDD e celular ou fixo', () => { expect(validateNumber('11912345678', 'WhatsApp Business')).toBe(''); expect(validateNumber('1132345678', 'WhatsApp Business')).toBe(''); expect(validateNumber('123', 'WhatsApp Business')).not.toBe(''); expect(validateNumber('11812345678', 'WhatsApp Business')).not.toBe(''); });
+ it('internacional exige + e entre 8 e 15 dígitos', () => { expect(validateNumber('+351 912345678', 'WhatsApp Business (Internacional)')).toBe(''); expect(normalizeNumber('+351 912345678', 'WhatsApp Business (Internacional)')).toBe('+351912345678'); expect(validateNumber('351912345678', 'WhatsApp Business (Internacional)')).not.toBe(''); expect(validateNumber('+1234567', 'WhatsApp Business (Internacional)')).not.toBe(''); expect(validateNumber('+1234567890123456', 'WhatsApp Business (Internacional)')).not.toBe(''); });
+ it('recarga simulada acrescenta valor e valida limites', () => { const s = createSeed(); expect(balance(addRecharge(s, 2500, 'R', '2026-10-11'))).toBe(balance(s)+2500); expect(() => addRecharge(s, 0, 'R', '2026-10-11')).toThrow(); expect(() => addRecharge(s, 100001, 'R', '2026-10-11')).toThrow(); });
+ it('CSV exporta registros filtrados sem fórmulas executáveis', () => { const csv = exportCsv(createSeed().requests.slice(0, 1)); expect(csv).toContain('AST-1048'); expect(csv).not.toContain('AST-1047'); expect(csv).toContain('3,97'); });
+});
