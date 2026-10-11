@@ -1,5 +1,6 @@
 import { getCookie, setCookie, deleteCookie, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { request } from '../admin/auth.server';
+import { customMail, customMailEnabled } from './custom-mail.server';
 const COOKIE = 'astros_client_session';
 export type ClientIdentity = { id: string; email: string; name: string };
 function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
@@ -24,6 +25,7 @@ export async function login(data: { email: string; password: string }) {
 }
 export async function signup(data: { name: string; email: string; whatsapp: string; password: string }) {
  noCache();
+ if (customMailEnabled()) { await customMail({ type: 'signup', ...data }); return { signedIn: false }; }
  const r = await request(`/auth/v1/signup?redirect_to=${encodeURIComponent(origin() + '/login')}`, undefined, { method: 'POST', body: JSON.stringify({ email: data.email, password: data.password, data: { nome: data.name, whatsapp: data.whatsapp } }) });
  if (!r.ok) {
   const e = await r.json().catch(() => ({}));
@@ -38,6 +40,7 @@ export async function signup(data: { name: string; email: string; whatsapp: stri
 }
 export async function recover(email: string) {
  noCache();
+ if (customMailEnabled()) return customMail({ type: 'recovery', email });
  const r = await request(`/auth/v1/recover?redirect_to=${encodeURIComponent(origin() + '/reset-password')}`, undefined, { method: 'POST', body: JSON.stringify({ email }) });
  if (!r.ok) throw new Error('Não foi possível solicitar a recuperação agora. Aguarde alguns minutos e tente novamente.');
  return { success: true };
