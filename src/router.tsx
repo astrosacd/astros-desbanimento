@@ -9,7 +9,11 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    // Warm visible navigation before the first click. These routes have no server loaders.
+    defaultPreload: 'viewport',
+    defaultPreloadStaleTime: 60_000,
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 0,
   });
 
   return router;
