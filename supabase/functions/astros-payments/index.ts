@@ -57,23 +57,25 @@ Deno.serve(async req=>{
    if(profile.tipo_usuario!=='admin')return json({error:'Acesso administrativo não autorizado.'},403);
    let config=await settings();
    if(action==='save-settings'){
-    const input=z.object({accessToken:z.string().trim().max(1024),webhookSecret:z.string().trim().max(1024),enabled:z.boolean(),liveMode:z.boolean(),servicePriceCents:z.number().int().min(0).max(1000000)}).strict().parse(data);
+    const input=z.object({accessToken:z.string().trim().max(1024),webhookSecret:z.string().trim().max(1024),enabled:z.boolean(),liveMode:z.boolean(),servicePriceCents:z.number().int().min(0).max(1000000),minimumEnabled:z.boolean(),minimumRechargeCents:z.number().int().min(0).max(1000000)}).strict().parse(data);
+    if(input.minimumEnabled&&input.minimumRechargeCents<1)throw Error('Informe um mínimo maior que zero ou escolha sem mínimo.');
     const access=input.accessToken||config.access_token;const secret=input.webhookSecret||config.webhook_secret;
     if(input.enabled&&(!access||!secret))throw Error('Informe Access Token e chave secreta do webhook antes de ativar.');
     let collector=config.collector_id;
-    if(access){const account=await mp('/users/me',access);collector=String(account.id);}
+    if(access&&(input.accessToken||!collector)){const account=await mp('/users/me',access);collector=String(account.id);}
     if(config.collector_id&&collector!==config.collector_id){const {count}=await db.from('astros_payment_orders').select('id',{head:true,count:'exact'});if(count)throw Error('Esta carteira já possui pagamentos vinculados. Não é possível trocar a conta recebedora por aqui.');}
     if(input.enabled&&input.liveMode!==!access.startsWith('TEST-'))throw Error('O ambiente selecionado não corresponde ao Access Token.');
     if((access!==config.access_token||input.liveMode!==config.live_mode)&&config.enabled)throw Error('Desative os pagamentos antes de trocar a credencial ou o ambiente.');
-    const {error}=await db.from('astros_payment_settings').update({access_token:access,webhook_secret:secret,collector_id:collector,enabled:input.enabled,live_mode:input.liveMode,service_price_cents:input.servicePriceCents,updated_at:new Date().toISOString()}).eq('id',true);
+    const {error}=await db.from('astros_payment_settings').update({access_token:access,webhook_secret:secret,collector_id:collector,enabled:input.enabled,live_mode:input.liveMode,service_price_cents:input.servicePriceCents,minimum_enabled:input.minimumEnabled,minimum_recharge_cents:input.minimumRechargeCents,updated_at:new Date().toISOString()}).eq('id',true);
     if(error)throw Error('Não foi possível salvar as configurações.');config=await settings();
    }
-   return json({enabled:config.enabled,liveMode:config.live_mode,hasAccessToken:!!config.access_token,hasWebhookSecret:!!config.webhook_secret,servicePriceCents:Number(config.service_price_cents),webhookUrl:notify});
+   return json({enabled:config.enabled,liveMode:config.live_mode,hasAccessToken:!!config.access_token,hasWebhookSecret:!!config.webhook_secret,servicePriceCents:Number(config.service_price_cents),minimumEnabled:config.minimum_enabled,minimumRechargeCents:Number(config.minimum_recharge_cents),webhookUrl:notify});
   }
   if(action==='create'){
-   const input=z.object({amountCents:z.number().int().min(500).max(1000000),method:z.enum(['pix','card']),requestId:z.string().uuid(),cpf:z.string().regex(/^\d{11}$/).optional()}).strict().parse(data);
+   const input=z.object({amountCents:z.number().int().min(1).max(1000000),method:z.enum(['pix','card']),requestId:z.string().uuid(),cpf:z.string().regex(/^\d{11}$/).optional()}).strict().parse(data);
    if(input.method==='pix'&&!input.cpf)throw Error('Informe o CPF do pagador para gerar o Pix.');
    const config=await settings();if(!config.enabled||!config.access_token)throw Error('As recargas ainda não estão disponíveis.');
+   if(config.minimum_enabled&&input.amountCents<Number(config.minimum_recharge_cents))throw Error(`A recarga mínima é de R$ ${(Number(config.minimum_recharge_cents)/100).toFixed(2).replace('.',',')}.`);
    const {count}=await db.from('astros_payment_orders').select('id',{count:'exact',head:true}).eq('user_id',user.id).gte('created_at',new Date(Date.now()-300000).toISOString()).neq('id',input.requestId);
    if((count||0)>=10)throw Error('Aguarde alguns minutos antes de gerar outra recarga.');
    const {error:insert}=await db.from('astros_payment_orders').upsert({id:input.requestId,user_id:user.id,amount_cents:input.amountCents,method:input.method,live_mode:config.live_mode},{onConflict:'id',ignoreDuplicates:true});

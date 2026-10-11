@@ -16,7 +16,10 @@ Cadastre somente na aplicação do Mercado Pago usada pela Astros o webhook most
 ## 4. Verificação
 Após configurar as notificações, habilite as recargas e faça um teste. Confira a geração do Pix, copia e cola, link de cartão, confirmação, saldo e histórico. O cliente pode reabrir uma recarga ao retornar do Mercado Pago e usar Verificar pagamento. Um retorno aprovado no navegador nunca é prova de pagamento: o servidor consulta a API oficial antes de alterar o saldo.
 
-Créditos e estornos são transacionais e idempotentes. O valor da recarga é creditado integralmente; eventuais tarifas do Mercado Pago não são descontadas automaticamente do saldo do cliente. Cada recarga permitida vai de R$ 5 a R$ 10.000.
+Créditos e estornos são transacionais e idempotentes. O valor da recarga é creditado integralmente; eventuais tarifas do Mercado Pago não são descontadas automaticamente do saldo do cliente. O mínimo de recarga é configurável no admin, incluindo a opção sem mínimo definido pela Astros. Pagamentos precisam ter valor positivo e respeitar os limites do meio de pagamento; o limite superior do painel é R$ 10.000.
 
 ## Contratação de serviços
 A taxa configurada e o débito atômico de saldo estão preparados. O botão de contratar ainda não debita nem reativa um número: é necessário conectar a execução efetiva do serviço ao Baserow, incluindo compensação em caso de falha, antes de liberar essa etapa. Nunca desconte saldo apenas por clicar no botão ou sem registrar o serviço correspondente.
+
+## Atualização da taxa global e mínimo opcional
+Se o SQL inicial já foi executado, rode apenas `supabase/migrations/20261011_payment_prices.sql`. Depois substitua o código da Edge Function `astros-payments` pelo `index.ts` atualizado e publique novamente, mantendo a verificação JWT legada desligada. Os valores públicos não incluem credenciais. As telas dos clientes atualizam a taxa ao abrir e a cada 30 segundos enquanto estiverem visíveis. A contratação efetiva consulta a taxa do admin no servidor, rejeitando alteração de preço entre a exibição e a confirmação.

@@ -36,3 +36,14 @@ export async function wallet() {
  const orders: Array<{id:string;method:string;status:string;amount_cents:number;qr_code:string|null;qr_base64:string|null;checkout_url:string|null;created_at:string}>=ordersResponse.ok?await ordersResponse.json():[];
  return { orders, balanceCents:Math.round(Number(rows[0].recarga ?? 0)*100), movements };
 }
+
+export async function prices() {
+ setResponseHeader('Cache-Control','private, no-store');
+ const token=getCookie('astros_client_session');
+ if(!token)throw new Error('Sua sessão expirou. Entre novamente.');
+ const r=await request('/rest/v1/rpc/astros_payment_prices',token,{method:'POST',body:'{}'});
+ if(!r.ok)throw new Error('Não foi possível consultar os valores do serviço.');
+ const data=await r.json();
+ if(!data||!Number.isSafeInteger(data.servicePriceCents)||typeof data.minimumEnabled!=='boolean'||!Number.isSafeInteger(data.minimumRechargeCents))throw new Error('Os valores do serviço ainda não estão disponíveis.');
+ return data as {servicePriceCents:number;minimumEnabled:boolean;minimumRechargeCents:number};
+}

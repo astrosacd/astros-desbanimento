@@ -6,3 +6,5 @@ export const createRecharge = createServerFn({ method: 'POST' }).inputValidator(
 export const checkRecharge = createServerFn({ method: 'POST' }).inputValidator(z.object({ orderId: z.string().uuid() }).strict()).handler(async ({ data }) => (await import('./server')).clientCall('check', data));
 export const getPaymentSettings = createServerFn({ method: 'GET' }).handler(async () => (await import('./server')).adminCall('settings'));
 export const savePaymentSettings = createServerFn({ method: 'POST' }).inputValidator(settingsSchema).handler(async ({ data }) => (await import('./server')).adminCall('save-settings', data));
+
+export const getPaymentPrices = createServerFn({ method: 'GET' }).handler(async () => (await import('./server')).prices());
