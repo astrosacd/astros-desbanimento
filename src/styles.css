@@ -328,3 +328,31 @@ button,a[role=button],.nav-link { touch-action: manipulation; }
 .entrance-bottom { display:flex; justify-content:center; flex-wrap:wrap; gap:20px; font-size:11px; margin-top:28px; color:var(--muted-foreground); }
 .entrance-notice { margin-top:20px; font-size:13px; line-height:1.6; }
 @media(max-width:800px) { .client-entrance { grid-template-columns:minmax(0,1fr); padding:24px 16px; } .entrance-story { display:none; } .entrance-card { justify-self:center; } .entrance-mobile-brand { display:block; margin-bottom:32px; } }
+/* Refined public entrance */
+.client-entrance { grid-template-columns:minmax(0,1fr) minmax(0,430px); gap:clamp(40px,6vw,88px); padding:56px max(24px,calc((100vw - 1080px)/2)); background:radial-gradient(ellipse at 15% 30%,#0b253044,transparent 55%),#050b14; min-height:100svh; }
+.entrance-story { width:100%; max-width:480px; justify-self:start; }
+.entrance-story .brand-logo { width:220px; height:48px; }
+.entrance-story .eyebrow { margin-top:64px; font-size:10px; letter-spacing:.16em; }
+.entrance-story h1 { font-size:clamp(38px,4.7vw,62px); font-weight:750; line-height:1.09; margin:24px 0; }
+.entrance-story h1 span { color:#65e5df; }
+.entrance-story > p { max-width:350px; font-size:14px; line-height:1.85; }
+.entrance-highlights { display:grid; gap:18px; margin-top:35px; padding-top:28px; border-top:1px solid #1c2b38; max-width:350px; }
+.entrance-highlights > div { display:flex; gap:13px; align-items:center; color:#a9b7c7; font-size:12px; line-height:1.6; }
+.entrance-highlights svg { flex-shrink:0; color:#5ed7d8; }
+.entrance-signature { margin-top:54px; font-size:10px; color:#93a1b3; letter-spacing:.02em; }
+.entrance-signature span { display:block; font-size:9px; margin-top:6px; color:#63768b; }
+.entrance-card { max-width:430px; padding:36px; border-radius:20px; background:linear-gradient(160deg,#0e1a2a,#091320); border:1px solid #233447; box-shadow:0 24px 80px #0004; text-align:left; }
+.entrance-card > .eyebrow { font-size:10px; letter-spacing:.12em; }
+.entrance-card h2 { font-size:28px; font-weight:700; margin:16px 0 10px; }
+.entrance-card > p { font-size:13px; line-height:1.7; margin-bottom:28px; }
+.entrance-card .field-label { font-size:12px; margin-top:20px; margin-bottom:9px; }
+.entrance-card .field { min-height:48px; font-size:14px; background:#070f1c; border-radius:10px; border-color:#243246; }
+.entrance-card .field::placeholder { color:#64778c; font-size:13px; }
+.entrance-card .field:focus-visible { outline:2px solid #00c9d2; outline-offset:2px; }
+.entrance-card button[type=submit] { min-height:48px; border-radius:10px; margin-top:26px; font-size:13px; justify-content:center; gap:14px; }
+.entrance-links { font-size:12px; margin-top:25px; padding-top:24px; border-top:1px solid #233447; }
+.entrance-bottom { align-items:center; font-size:10px; gap:8px; margin-top:24px; color:#8194aa; }
+.entrance-bottom a:hover { color:#65e5df; }
+.entrance-forgot { font-size:11px; }
+@media(max-width:800px) { .client-entrance { grid-template-columns:minmax(0,1fr); padding:32px 18px; gap:0; } .entrance-card { padding:30px 26px; max-width:450px; } .entrance-mobile-brand { margin-bottom:30px; } .entrance-card h2 { font-size:26px; } }
+@media(max-width:380px) { .client-entrance { padding:20px 12px; } .entrance-card { padding:26px 20px; } .entrance-card h2 { font-size:24px; } }
