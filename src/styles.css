@@ -221,7 +221,7 @@ td { padding: 17px 14px; }
 
 /* Integrate the original dark artwork with the shell, preserving its proportions. */
 .brand-logo { width: 184px; height: 40px; min-height: 40px; margin: 0 auto 8px; isolation: auto; }
-.brand-logo img { mix-blend-mode: screen; }
+.brand-logo img { mix-blend-mode: lighten; }
 .brand-logo-compact { width: 34px; height: 28px; min-height: 28px; margin: 0 auto; }
 .sidebar.mobile .brand-logo { width: 184px; }
 .sidebar.mobile .brand-logo-compact { width: 34px; }
