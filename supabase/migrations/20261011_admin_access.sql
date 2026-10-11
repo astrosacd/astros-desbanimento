@@ -4,6 +4,8 @@ begin;
 alter table public.painel_de_desbanimento alter column tipo_usuario set default 'cliente';
 alter table public.painel_de_desbanimento alter column tipo_usuario set not null;
 alter table public.painel_de_desbanimento alter column senha_hash drop not null;
+-- CPF/CNPJ não é solicitado na entrada e pode ser preenchido em uma etapa futura.
+alter table public.painel_de_desbanimento alter column cpfcnpj drop not null;
 alter table public.painel_de_desbanimento add constraint astros_tipo_usuario_check check (tipo_usuario in ('admin', 'cliente'));
 alter table public.painel_de_desbanimento add constraint astros_auth_user_fk foreign key (id) references auth.users(id) on delete cascade;
 
@@ -20,7 +22,7 @@ language plpgsql security definer set search_path = '' as $$
 begin
  insert into public.painel_de_desbanimento (id, tipo_usuario, nome, email, cpfcnpj, whatsapp, data_do_cadastro, recarga)
  values (new.id, 'cliente', coalesce(new.raw_user_meta_data->>'nome', ''), new.email,
- coalesce(new.raw_user_meta_data->>'cpfcnpj', ''), coalesce(new.raw_user_meta_data->>'whatsapp', ''), now(), 0);
+ null, coalesce(new.raw_user_meta_data->>'whatsapp', ''), now(), 0);
  return new;
 end;
 $$;

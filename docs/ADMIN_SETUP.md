@@ -28,3 +28,5 @@ Em Supabase Authentication > URL Configuration, configure Site URL com o endere�
 Uma tentativa de cadastro com e-mail existente nunca substitui os dados ou a senha do usuário. Quando o Supabase oculta a existência de uma conta, a resposta orienta confirmar o e-mail ou entrar/recuperar a senha. A recuperação usa mensagem neutra e também oferece criar conta.
 
 O painel de cliente exige uma sessão verificada pelo servidor e inclui Sair da conta. A sessão dura até uma hora. Os dados de solicitações, carteira e perfil operacional continuam demonstrativos; não representam o cliente autenticado nesta etapa.
+
+O cadastro não pede CPF/CNPJ: o perfil inicia esse campo como NULL, permitindo preenchimento posterior e evitando colisões de valores vazios em restrições únicas. Se já aplicou a migração administrativa anterior, execute apenas `supabase/migrations/20261011_client_signup.sql` para atualizar essa regra. Se ainda não aplicou nenhuma, use a migração administrativa atualizada uma única vez.
