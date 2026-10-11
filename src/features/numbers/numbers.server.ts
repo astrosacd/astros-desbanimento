@@ -14,26 +14,37 @@ export async function listOwnNumbers(input: unknown) {
  const user = await auth.json();
  const email = typeof user.email === 'string' ? user.email.trim().toLowerCase() : '';
  if (!user.id || !email || !user.email_confirmed_at) throw new Error('Confirme seu e-mail e entre novamente.');
- const token = process.env['BASEROW_API_TOKEN'];
+ const token = process.env['BASEROW_API_TOKEN']?.trim();
+ if (token && /[\r\n]/.test(token)) return { error: 'A conexão está com uma credencial mal formatada. Entre em contato com o suporte. (N12)' };
  if (!token) throw new Error('A consulta ainda não está configurada. Entre em contato com o suporte.');
  const url = new URL('https://baserow.astroscomunicacaodigital.com/api/database/rows/table/511/');
  url.searchParams.set('filter__field_4773__equal', email);
  url.searchParams.set('page', String(page));
  url.searchParams.set('size', '25');
  try {
-  const result = await fetch(url, { headers: { Authorization: `Token ${token}` }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(12000) });
+  const result = await fetch(url, { headers: { Authorization: `Token ${token}` }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30000) });
   if (!result.ok) {
    const code = result.status;
    console.error('[numbers] provider HTTP', code);
    return { error: code === 401 || code === 403 ? 'A conexão com o serviço não está autorizada. Entre em contato com o suporte. (N01)' : code === 400 ? 'O servidor recusou a consulta. Entre em contato com o suporte. (N02)' : 'O serviço está indisponível no momento. Tente atualizar em alguns instantes. (N03)' };
   }
-  const data = responseSchema.parse(await result.json());
+  let payload: unknown;
+  try { payload = await result.json(); } catch { return { error: 'O servidor retornou uma resposta inválida. Tente novamente. (N11)' }; }
+  const data = responseSchema.parse(payload);
   // Independently enforce ownership even if a provider ignores the filter.
   if (data.results.some(row => row.field_4773.trim().toLowerCase() !== email)) throw new Error('ownership');
   return { count: data.count, page, pageSize: 25, rows: data.results.map(row => ({ id: row.id, number: row.field_4741 || '', registeredAt: row.field_4827 || '', consultedAt: row.field_4828 || '', status: row.field_4831?.value || 'Sem status' })) };
  } catch (error) {
-  const code = error instanceof z.ZodError ? 'N04' : error instanceof Error && error.message === 'ownership' ? 'N05' : 'N06';
+  const cause = error instanceof Error ? (error as Error & { cause?: { code?: string } }).cause?.code : undefined;
+  const name = error instanceof Error ? error.name : '';
+  let code = 'N06';
+  let message = 'Não foi possível estabelecer conexão com o servidor. Tente novamente ou entre em contato com o suporte.';
+  if (error instanceof z.ZodError) { code = 'N04'; message = 'O servidor retornou dados em um formato inesperado. Entre em contato com o suporte.'; }
+  else if (error instanceof Error && error.message === 'ownership') { code = 'N05'; message = 'Não foi possível validar os registros da sua conta. Entre em contato com o suporte.'; }
+  else if (name === 'TimeoutError' || name === 'AbortError' || cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT') { code = 'N07'; message = 'O servidor demorou para responder. Tente atualizar em alguns instantes.'; }
+  else if (cause === 'ENOTFOUND' || cause === 'EAI_AGAIN') { code = 'N09'; message = 'Não foi possível localizar o servidor do serviço. Entre em contato com o suporte.'; }
+  else if (cause && ['CERT_HAS_EXPIRED', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ERR_TLS_CERT_ALTNAME_INVALID'].includes(cause)) { code = 'N08'; message = 'A conexão segura com o servidor falhou. Entre em contato com o suporte.'; }
   console.error('[numbers] consultation failed', code);
-  return { error: `Não foi possível conectar ao serviço ou validar a resposta. Tente atualizar em alguns instantes. (${code})` };
+  return { error: `${message} (${code})` };
  }
 }

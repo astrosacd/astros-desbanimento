@@ -15,3 +15,7 @@ describe('own numbers', () => {
 
 it('returns an empty list only after a successful consultation', async () => { mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ count: 0, results: [] }) }); expect(await listOwnNumbers({ page: 1 })).toEqual({ count: 0, page: 1, pageSize: 25, rows: [] }); });
 it('reports authorization failure separately from an empty list', async () => { mocks.fetch.mockResolvedValue({ ok: false, status: 401 }); expect(await listOwnNumbers({ page: 1 })).toMatchObject({ error: expect.stringContaining('N01') }); });
+
+it('strips accidental edge whitespace from the private credential', async () => { vi.stubEnv('BASEROW_API_TOKEN', '  private-token\n'); mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ count: 0, results: [] }) }); await listOwnNumbers({ page: 1 }); expect(mocks.fetch.mock.calls[0]![1].headers.Authorization).toBe('Token private-token'); });
+it('identifies a timeout separately', async () => { mocks.fetch.mockRejectedValue(new DOMException('timeout', 'TimeoutError')); expect(await listOwnNumbers({ page: 1 })).toMatchObject({ error: expect.stringContaining('N07') }); });
+it('identifies non-JSON responses separately', async () => { mocks.fetch.mockResolvedValue({ ok: true, json: async () => { throw new SyntaxError('html'); } }); expect(await listOwnNumbers({ page: 1 })).toMatchObject({ error: expect.stringContaining('N11') }); });
