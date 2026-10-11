@@ -20,13 +20,20 @@ export async function listOwnNumbers(input: unknown) {
  url.searchParams.set('filter__field_4773__equal', email);
  url.searchParams.set('page', String(page));
  url.searchParams.set('size', '25');
- url.searchParams.set('order_by', '-id');
  try {
   const result = await fetch(url, { headers: { Authorization: `Token ${token}` }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(12000) });
-  if (!result.ok) throw new Error('provider');
+  if (!result.ok) {
+   const code = result.status;
+   console.error('[numbers] provider HTTP', code);
+   return { error: code === 401 || code === 403 ? 'A conexão com o serviço não está autorizada. Entre em contato com o suporte. (N01)' : code === 400 ? 'O servidor recusou a consulta. Entre em contato com o suporte. (N02)' : 'O serviço está indisponível no momento. Tente atualizar em alguns instantes. (N03)' };
+  }
   const data = responseSchema.parse(await result.json());
   // Independently enforce ownership even if a provider ignores the filter.
   if (data.results.some(row => row.field_4773.trim().toLowerCase() !== email)) throw new Error('ownership');
   return { count: data.count, page, pageSize: 25, rows: data.results.map(row => ({ id: row.id, number: row.field_4741 || '', registeredAt: row.field_4827 || '', consultedAt: row.field_4828 || '', status: row.field_4831?.value || 'Sem status' })) };
- } catch { throw new Error('Não foi possível consultar seus números agora. Tente atualizar em alguns instantes.'); }
+ } catch (error) {
+  const code = error instanceof z.ZodError ? 'N04' : error instanceof Error && error.message === 'ownership' ? 'N05' : 'N06';
+  console.error('[numbers] consultation failed', code);
+  return { error: `Não foi possível conectar ao serviço ou validar a resposta. Tente atualizar em alguns instantes. (${code})` };
+ }
 }
