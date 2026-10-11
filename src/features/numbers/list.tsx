@@ -1,14 +1,32 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouteContext } from '@tanstack/react-router';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { listNumbers } from './actions';
+import { listNumbers, exportNumbers } from './actions';
 export function NumbersList() {
  const { client } = useRouteContext({ from: '__root__' });
  const [page, setPage] = useState(1);
+ const [exporting, setExporting] = useState(false);
+ const [exportMessage, setExportMessage] = useState('');
+ async function downloadNumbers() {
+  if (exporting) return;
+  setExporting(true); setExportMessage('');
+  try {
+   const result = await exportNumbers();
+   if ('error' in result) { setExportMessage(result.error || 'Não foi possível exportar.'); return; }
+   if (!result.numbers.length) { setExportMessage('Você ainda não tem números para exportar.'); return; }
+   const url = URL.createObjectURL(new Blob([result.numbers.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8' }));
+   const anchor = document.createElement('a'); anchor.href = url; anchor.download = `astros-numeros-${new Date().toISOString().slice(0, 10)}.txt`;
+   document.body.appendChild(anchor); anchor.click(); anchor.remove();
+   setTimeout(() => URL.revokeObjectURL(url), 1000);
+   setExportMessage(`${result.numbers.length} números exportados.`);
+  } catch { setExportMessage('Não foi possível exportar os números agora. Tente novamente.'); }
+  finally { setExporting(false); }
+ }
  const query = useQuery({ queryKey: ['own-numbers', client?.id, page], queryFn: () => listNumbers({ data: { page } }), enabled: !!client, staleTime: 15000, retry: false });
- return <section className="table-section p-4 sm:p-6"><div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-semibold text-lg">Seus números</h2><p className="text-sm text-muted-foreground">{query.data && !('error' in query.data) ? `${query.data.count} registros vinculados à sua conta` : 'Acompanhe o andamento das solicitações.'}</p></div><Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => query.refetch()}><RefreshCw className={query.isFetching ? 'animate-spin' : ''}/>{query.isFetching ? 'Consultando…' : 'Atualizar'}</Button></div>
+ return <section className="table-section p-4 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3 mb-5"><div><h2 className="font-semibold text-lg">Seus números</h2><p className="text-sm text-muted-foreground">{query.data && !('error' in query.data) ? `${query.data.count} registros vinculados à sua conta` : 'Acompanhe o andamento das solicitações.'}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={downloadNumbers} disabled={exporting || query.isFetching || !query.data || 'error' in query.data || query.data.count === 0}><Download/>{exporting ? 'Exportando…' : 'Exportar números'}</Button><Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => query.refetch()}><RefreshCw className={query.isFetching ? 'animate-spin' : ''}/>{query.isFetching ? 'Consultando…' : 'Atualizar'}</Button></div></div>
+ {exportMessage && <p role="status" className="mb-4 text-sm text-muted-foreground">{exportMessage}</p>}
  {query.isFetching && !query.isPending && <p role="status" className="mb-4 text-sm text-muted-foreground">Fazendo uma nova consulta ao servidor…</p>}
  {query.dataUpdatedAt > 0 && <p className="mb-4 text-xs text-muted-foreground">Última tentativa: {new Date(query.dataUpdatedAt).toLocaleTimeString('pt-BR')}</p>}
  {query.isPending ? <p role="status" className="py-10 text-center text-muted-foreground">Consultando seus números…</p> : query.isError ? <p role="alert" className="py-8 text-center text-destructive">{query.error.message}</p> : query.data && 'error' in query.data ? <p role="alert" className="py-8 text-center text-destructive">{query.data.error}</p> : !query.data?.rows.length ? <p className="py-10 text-center text-muted-foreground">Você ainda não tem números cadastrados.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm text-left"><thead><tr className="border-b text-muted-foreground"><th className="p-3">Número</th><th className="p-3">Status</th><th className="p-3">Cadastro</th><th className="p-3">Última consulta</th></tr></thead><tbody>{query.data.rows.map(row => <tr key={row.id} className="border-b"><td className="p-3 font-medium whitespace-pre-wrap">{row.number || '—'}</td><td className="p-3"><span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs font-medium">{row.status}</span></td><td className="p-3">{row.registeredAt || '—'}</td><td className="p-3">{row.consultedAt || '—'}</td></tr>)}</tbody></table></div>}
