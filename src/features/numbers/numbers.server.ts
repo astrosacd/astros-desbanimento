@@ -14,7 +14,7 @@ export async function listOwnNumbers(input: unknown) {
  const user = await auth.json();
  const email = typeof user.email === 'string' ? user.email.trim().toLowerCase() : '';
  if (!user.id || !email || !user.email_confirmed_at) throw new Error('Confirme seu e-mail e entre novamente.');
- const token = process.env.BASEROW_API_TOKEN;
+ const token = process.env['BASEROW_API_TOKEN'];
  if (!token) throw new Error('A consulta ainda não está configurada. Entre em contato com o suporte.');
  const url = new URL('https://baserow.astroscomunicacaodigital.com/api/database/rows/table/511/');
  url.searchParams.set('filter__field_4773__equal', email);
