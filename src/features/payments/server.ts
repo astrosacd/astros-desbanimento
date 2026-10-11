@@ -1,0 +1,38 @@
+import { getCookie, setResponseHeader } from '@tanstack/react-start/server';
+import { requireAdmin, request } from '../admin/auth.server';
+const base = 'https://tevljvidqbvrcgzqypwf.supabase.co';
+async function edge(action: string, token: string, data: unknown = {}) {
+ setResponseHeader('Cache-Control','private, no-store');
+ const r = await fetch(`${base}/functions/v1/astros-payments`, { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}`, apikey:'sb_publishable_wvwHQDOVefSPivb227u1Iw_lH5qEM_j' }, body:JSON.stringify({ action, data }), signal:AbortSignal.timeout(40000) });
+ const result = await r.json().catch(() => ({}));
+ if (!r.ok) throw new Error(result.error || 'O serviço de pagamento ainda não está disponível.');
+ return result;
+}
+export async function clientCall(action: string, data: unknown) {
+ const token = getCookie('astros_client_session');
+ if (!token) throw new Error('Sua sessão expirou. Entre novamente.');
+ return edge(action, token, data);
+}
+export async function adminCall(action: string, data?: unknown) {
+ await requireAdmin();
+ return edge(action, getCookie('astros_admin_session')!, data);
+}
+export async function wallet() {
+ setResponseHeader('Cache-Control','private, no-store');
+ const token=getCookie('astros_client_session');
+ if (!token) throw new Error('Sua sessão expirou. Entre novamente.');
+ const auth=await request('/auth/v1/user',token);
+ if (!auth.ok) throw new Error('Sua sessão expirou. Entre novamente.');
+ const user=await auth.json();
+ if (!user.id) throw new Error('Conta não encontrada.');
+ const p=await request(`/rest/v1/painel_de_desbanimento?id=eq.${encodeURIComponent(user.id)}&select=recarga&limit=1`,token);
+ if (!p.ok) throw new Error('Não foi possível consultar o saldo.');
+ const rows=await p.json();
+ if (!rows[0] || !Number.isFinite(Number(rows[0].recarga ?? 0))) throw new Error('Não foi possível consultar o saldo.');
+ let movements: Array<{id:string;amount_cents:number;kind:string;created_at:string}> = [];
+ const m=await request(`/rest/v1/astros_wallet_movements?user_id=eq.${encodeURIComponent(user.id)}&select=id,amount_cents,kind,created_at&order=created_at.desc&limit=30`,token);
+ if (m.ok) movements=await m.json();
+ const ordersResponse=await request(`/rest/v1/astros_payment_orders?user_id=eq.${encodeURIComponent(user.id)}&select=id,method,status,amount_cents,qr_code,qr_base64,checkout_url,created_at&order=created_at.desc&limit=20`,token);
+ const orders: Array<{id:string;method:string;status:string;amount_cents:number;qr_code:string|null;qr_base64:string|null;checkout_url:string|null;created_at:string}>=ordersResponse.ok?await ordersResponse.json():[];
+ return { orders, balanceCents:Math.round(Number(rows[0].recarga ?? 0)*100), movements };
+}

@@ -1,0 +1,3 @@
+import { z } from 'zod';
+export const rechargeSchema = z.object({ amountCents: z.number().int().min(500).max(1000000), method: z.enum(['pix','card']), requestId: z.string().uuid(), cpf: z.string().regex(/^\d{11}$/).optional() }).strict();
+export const settingsSchema = z.object({ accessToken: z.string().trim().max(1024), webhookSecret: z.string().trim().max(1024), enabled: z.boolean(), liveMode: z.boolean(), servicePriceCents: z.number().int().min(0).max(1000000) }).strict();
