@@ -10,7 +10,9 @@ const navigation = [
  { to: '/', label: 'Visão geral', icon: LayoutDashboard }, { to: '/nova-solicitacao', label: 'Nova solicitação', icon: Plus }, { to: '/solicitacoes', label: 'Solicitações', icon: ClipboardList }, { to: '/carteira', label: 'Carteira / Recargas', icon: Wallet }, { to: '/api', label: 'API', icon: Code2 }, { to: '/perfil', label: 'Perfil', icon: UserRound },
 ] as const;
 const titles: Record<string,string> = { '/': 'Visão geral', '/nova-solicitacao': 'Nova solicitação', '/solicitacoes': 'Solicitações', '/carteira': 'Carteira / Recargas', '/api': 'API', '/perfil': 'Perfil', '/suporte': 'Suporte', '/termos': 'Termos de uso', '/login': 'Login demonstrativo', '/cadastro': 'Cadastro demonstrativo', '/recuperar-senha': 'Recuperação de senha', '/reset-password': 'Redefinir senha', '/admin': 'Administração demo' };
-export function Wordmark({ compact = false }: { compact?: boolean }) { return <div><div className="wordmark"><svg className="brand-symbol" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 30 28H2L16 3Zm0 9-7 13h14l-7-13Z" fill="currentColor" /></svg>{!compact && <span>ASTROS<span className="text-[9px] align-top ml-1">®</span></span>}</div>{!compact && <div className="brand-sub">Ecossistema de crescimento digital</div>}</div>; }
+export function Wordmark({ compact = false }: { compact?: boolean }) {
+ return <div className={`brand-logo ${compact ? 'brand-logo-compact' : ''}`}><img src={compact ? '/brand/astros-symbol.png' : '/brand/astros-logo.png'} alt="Astros — Ecossistema de Crescimento Digital" /></div>;
+}
 export function DemoBadge() { return <span className="demo-badge"><FlaskConical size={11} />Demonstração</span>; }
 export function AppShell({ children }: { children: ReactNode }) {
  const { state, ready, storageError, restore } = useDemo();

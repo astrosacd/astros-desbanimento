@@ -18,12 +18,13 @@
 }
 :root {
  color-scheme: dark;
- --background: oklch(0.125 0.026 259); --foreground: oklch(0.96 0.007 250);
- --card: oklch(0.191 0.033 257); --secondary: oklch(0.23 0.032 254);
- --primary: oklch(0.8 0.138 205); --primary-foreground: oklch(0.145 0.034 234);
+ --background: #020711; --foreground: oklch(0.96 0.007 250);
+ --card: #0B1423; --secondary: oklch(0.23 0.032 254);
+ --primary: #00D7E8; --primary-foreground: oklch(0.145 0.034 234);
  --muted-foreground: oklch(0.68 0.026 253); --accent: oklch(0.29 0.04 249);
- --border: oklch(0.29 0.031 256); --electric: oklch(0.64 0.19 256);
+ --border: oklch(0.29 0.031 256); --electric: #0055FF;
  --success: oklch(0.76 0.145 166); --warning: oklch(0.8 0.13 83); --destructive: oklch(0.72 0.16 24);
+ --brand-green: #00F05A; --brand-gradient: linear-gradient(125deg, var(--brand-green), var(--primary) 48%, var(--electric));
  --hero-scrim: linear-gradient(90deg, var(--card) 0%, color-mix(in oklab, var(--card) 95%, transparent) 35%, transparent 100%);
  --shadow-dialog: 0 24px 80px color-mix(in oklab, var(--background) 80%, transparent);
 }
@@ -38,9 +39,11 @@
 .shell { display: grid; grid-template-columns: 244px minmax(0,1fr); min-height: 100vh; }
 .shell.collapsed { grid-template-columns: 78px minmax(0,1fr); }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: color-mix(in oklab, var(--background) 88%, var(--card)); padding: 30px 17px 18px; }
-.wordmark { font-weight: 800; font-size: 27px; display: flex; align-items: center; gap: 11px; }
-.brand-symbol { width: 28px; height: 28px; color: var(--primary); flex-shrink: 0; }
-.brand-sub { font-size: 9px; color: var(--muted-foreground); margin: 7px 0 0 40px; text-transform: uppercase; }
+/* Original supplied artwork: display its central logo without changing the asset. */
+.brand-logo { position: relative; width: 100%; max-width: 210px; aspect-ratio: 5.5; overflow: hidden; margin: 4px auto 0; }
+.brand-logo img { position: absolute; width: 118.4%; max-width: none; left: -9.6%; top: 50%; transform: translateY(-50%); }
+.brand-logo-compact { width: 38px; aspect-ratio: 1.35; }
+.brand-logo-compact img { width: 223%; left: -61%; top: 50%; transform: translateY(-52%); }
 .nav-caption { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted-foreground); margin: 38px 13px 13px; }
 .nav-link { display: flex; gap: 12px; align-items: center; padding: 13px 14px; font-size: 12px; border-radius: 6px; margin-bottom: 5px; color: var(--muted-foreground); transition: background .15s, color .15s; min-height: 44px; }
 .nav-link svg { width: 18px; height: 18px; flex-shrink: 0; }
@@ -149,3 +152,10 @@ pre { padding: 20px; overflow-x: auto; color: var(--primary); font-size: 12px; l
 @media (max-width:850px) { .shell,.shell.collapsed { grid-template-columns: minmax(0,1fr); } .sidebar.desktop { display: none; } .mobile-menu { display: inline-flex; } .topbar { height: 72px; padding: 0 20px; } .content { padding: 24px 20px; } .breadcrumb-home { display: none; } .account-area { gap: 8px; } .page-heading h1 { font-size: 24px; } .section-split { grid-template-columns: minmax(0,1fr) 230px; } .sidebar.mobile { height: 100%; border: 0; padding: 20px 0; } }
 @media (max-width:600px) { .content { padding: 23px 16px; } .topbar { padding: 0 12px; } .breadcrumb { gap: 5px; font-size: 11px; } .account-area { gap: 2px; } .account-name { display: none; } .demo-badge { font-size: 9px; padding: 4px 6px; } .page-heading { grid-template-columns: minmax(0,1fr); gap: 13px; } .page-heading h1 { font-size: 22px; } .page-heading .heading-date { display: none; } .hero-band { padding: 24px 20px; min-height: 225px; } .hero-copy { max-width: 100%; } .hero-copy h2 { font-size: 21px; } .hero-band img { opacity: .23; object-position: right; } .hero-tag { display: none; } .hero-copy p { max-width: 280px; } .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; } .metric { padding: 15px; } .metric-top { font-size: 10px; } .metric-value { font-size: 26px; } .metric-foot { font-size: 9px; } .section-split { grid-template-columns: minmax(0,1fr); } .activity-summary { border-left: 0; border-top: 1px solid var(--border); padding: 22px 0 0; } .table-tools { flex-direction: column; } .search-field { width: 100%; } .table-tools select { width: 100%; } .section-heading { flex-wrap: wrap; } .form-layout { grid-template-columns: minmax(0,1fr); } .summary-box { border-left: 0; border-top: 1px solid var(--border); padding: 22px 0; } .page-footer { grid-template-columns: minmax(0,1fr); } .quick-values { grid-template-columns: repeat(2,1fr); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Astros signature spectrum, reserved for brand and primary action accents. */
+.bg-primary { background: var(--brand-gradient); color: #020711; font-weight: 700; }
+.bg-primary:hover { filter: brightness(1.08); }
+.hero-band { border-top: 2px solid var(--primary); }
+.metric-icon { background: color-mix(in srgb, var(--primary) 10%, var(--card)); }
+.bar-fill:not(.success):not(.error) { background: var(--brand-gradient); }
