@@ -3,7 +3,7 @@ import { useRouter } from '@tanstack/react-router';
 import { LockKeyhole, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { PageHeading } from '../demo/requests';
+import { PageHeading } from '../panel/heading';
 import { updateClientProfile } from './actions';
 import { profileSchema } from './validation';
 export function ProfilePage({ identity }: { identity: { name: string; email: string } }) {

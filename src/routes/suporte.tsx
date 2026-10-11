@@ -1,4 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SupportPage } from "@/features/demo/pages";
+import { SupportPage } from "@/features/panel/pages";
 import { pageHead } from "@/features/demo/meta";
-export const Route = createFileRoute("/suporte")({ head: () => pageHead("Suporte", "Dúvidas frequentes e formulário de contato demonstrativo sem envio real."), component: SupportPage });
+export const Route = createFileRoute("/suporte")({ head: () => pageHead("Painel Astros", "Serviços e informações da sua conta."), component: SupportPage });

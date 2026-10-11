@@ -13,7 +13,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { getClientSession } from '@/features/auth/actions';
-import { DemoProvider } from "@/features/demo/store";
+
 import { AppShell } from "@/features/demo/shell";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
@@ -92,10 +92,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ASTROS • Painel de Desbanimento V2" },
-      { name: "description", content: "Gestão demonstrativa de solicitações de revisão, sem garantia de aprovação." },
+      { name: "description", content: "Painel Astros para gestão e acompanhamento de solicitações." },
       { name: "author", content: "Astros Comunicação Digital" },
       { property: "og:title", content: "ASTROS • Painel de Desbanimento V2" },
-      { property: "og:description", content: "Gestão demonstrativa de solicitações de revisão, sem garantia de aprovação." },
+      { property: "og:description", content: "Painel Astros para gestão e acompanhamento de solicitações." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       
@@ -136,7 +136,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {isAdmin ? <Outlet/> : <DemoProvider><AppShell identity={client}><Outlet /></AppShell><Toaster theme="dark" position="bottom-right" richColors /></DemoProvider>}
+      {isAdmin ? <Outlet/> : <><AppShell identity={client}><Outlet /></AppShell><Toaster theme="dark" position="bottom-right" richColors /></>}
     </QueryClientProvider>
   );
 }
