@@ -36,7 +36,7 @@ export async function listOwnNumbers(input: unknown) {
   return { count: data.count, page, pageSize: 25, rows: data.results.map(row => ({ id: row.id, number: row.field_4741 || '', registeredAt: row.field_4827 || '', consultedAt: row.field_4828 || '', status: row.field_4831?.value || 'Sem status' })) };
  } catch (error) {
   const cause = error instanceof Error ? (error as Error & { cause?: { code?: string } }).cause?.code : undefined;
-  const name = error instanceof Error ? error.name : '';
+  const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : '';
   let code = 'N06';
   let message = 'Não foi possível estabelecer conexão com o servidor. Tente novamente ou entre em contato com o suporte.';
   if (error instanceof z.ZodError) { code = 'N04'; message = 'O servidor retornou dados em um formato inesperado. Entre em contato com o suporte.'; }
