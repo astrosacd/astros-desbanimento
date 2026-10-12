@@ -99,18 +99,19 @@ Deno.serve(async req=>{
    return json(old.result||{success:false,state:old.state,message:'Este envio está em andamento ou aguardando conferência. Consulte o histórico ou o suporte.'});
   }
   const [{data:profile,error:profileError},{data:config,error:configError}]=await Promise.all([
-   db.from('painel_de_desbanimento').select('id,nome').eq('id',user.id).single(),
+   db.from('painel_de_desbanimento').select('id,nome,recarga').eq('id',user.id).single(),
    db.from('astros_payment_settings').select('service_price_cents').eq('id',true).single(),
   ]);
   if(profileError||!profile)throw Error('Conta não encontrada.');
   if(configError)throw Error('Não foi possível consultar a taxa do serviço.');
   const plan=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   context={success:true,number:input.number,kind:plan.kind,costCents:plan.costCents,targetStatus:plan.targetStatus};
+  if(plan.costCents>0&&(!Number.isFinite(Number(profile.recarga??0))||Math.round(Number(profile.recarga??0)*100)<plan.costCents))throw Error(`Saldo insuficiente para enviar este número. A taxa é ${new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(plan.costCents/100)}. Adicione saldo para continuar.`);
   if(input.action==='quote')return json({...context,state:'quoted',message:plan.costCents?'Confira a taxa antes de confirmar.':'Este reenvio não desconta saldo.'});
   if(input.expectedCents!==plan.costCents)throw Error('O valor ou a situação do número mudou. Consulte novamente antes de confirmar.');
   const {data:reservation,error:reserveError}=await db.rpc('astros_start_service',{request_id:requestId,client_id:user.id,phone:input.number,service_kind:plan.kind,expected_cents:plan.costCents,target:plan.targetStatus});
   // An unknown RPC outcome must never proceed to Baserow or use a new reference.
-  if(reserveError)return json({success:false,message:String(reserveError.message||'').includes('Saldo insuficiente')?'Saldo insuficiente. Adicione saldo antes de confirmar.':String(reserveError.message||'').includes('Taxa não configurada')?'A taxa do serviço ainda não foi configurada.':'Não foi possível confirmar a reserva. Confira o saldo e o histórico antes de tentar novamente com a mesma referência.'});
+  if(reserveError)return json({success:false,message:String(reserveError.message||'').includes('Saldo insuficiente')?'Saldo insuficiente. Adicione saldo para continuar.':String(reserveError.message||'').includes('Taxa não configurada')?'A taxa do serviço ainda não foi configurada.':'Não foi possível confirmar a reserva. Confira o saldo e o histórico antes de tentar novamente com a mesma referência.'});
   if(!reservation?.execute)return json(reservation||{success:false,message:'Não foi possível confirmar a reserva.'});
   reserved=true;
   // Recheck after locking/reserving, before performing any external write.
@@ -141,6 +142,6 @@ Deno.serve(async req=>{
    await db.rpc('astros_finish_service',{request_id:requestId,final_state:'review',response}).catch(()=>undefined);
    return json(response);
   }
-  return json({success:false,message:error instanceof z.ZodError?'Dados da solicitação inválidos.':error instanceof Error&&/^(Este país|Selecione|Confira o número|Este número|O status|A taxa|O envio|O controle|Conta não|Não foi possível consultar|O valor|Referência|A base|O Baserow|O endereço)/.test(error.message)?error.message:'Não foi possível consultar o serviço. Tente novamente em alguns instantes.'},400);
+  return json({success:false,message:error instanceof z.ZodError?'Dados da solicitação inválidos.':error instanceof Error&&/^(Saldo insuficiente|Este país|Selecione|Confira o número|Este número|O status|A taxa|O envio|O controle|Conta não|Não foi possível consultar|O valor|Referência|A base|O Baserow|O endereço)/.test(error.message)?error.message:'Não foi possível consultar o serviço. Tente novamente em alguns instantes.'},400);
  }
 });

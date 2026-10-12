@@ -15,3 +15,5 @@
 - Legacy demo modules are unused by operational pages. Never reintroduce simulated records or balances into client routes.
 
 - Route layouts and breadcrumb titles must follow the presented route matches (useMatches), never the requested location while navigation is pending. Public entrance/admin pages must never be rendered inside the client sidebar layout during login/logout transitions.
+
+- Submission UI uses one Enviar número action: authenticated quote and submit run automatically with the same request UUID. Paid submissions need live Supabase balance >= configured fee; insufficient funds show recharge CTA and block before writes. Free resends remain possible at zero balance. Keep the atomic SQL balance guard and never rely on a cached client wallet to authorize a debit.

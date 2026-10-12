@@ -32,7 +32,7 @@ Não altere SMTP, URL geral de autenticação, outras funções ou outros projet
 
 ## 4. Publicação e teste
 
-A versão do GitHub já aponta diretamente à função Supabase. Publique a versão atual no Lovable após a função estar ativa. Faça primeiro a consulta de taxa, que não escreve nem desconta saldo, com um número de teste. Só confirme o envio após revisar o valor e o status.
+A versão do GitHub já aponta diretamente à função Supabase. Publique a versão atual no Lovable após a função estar ativa. O cliente agora usa apenas **Enviar número**. Esse clique consulta a situação e o saldo no servidor e, se permitido, conclui automaticamente o envio. A taxa atual aparece junto ao saldo. Para um teste real, use uma conta/número de teste e saiba que um envio pago com saldo suficiente grava no Baserow e desconta a taxa; não há um segundo botão de confirmação.
 
 Regras:
 
@@ -70,3 +70,7 @@ A lista padrão vem da biblioteca e permanece disponível. A lista personalizada
 Execute `supabase/migrations/20261012_unique_ddis.sql`. O formulário e o servidor rejeitam qualquer DDI já presente na lista padrão da biblioteca, além de DDIs adicionais já cadastrados. Na edição, o próprio registro é excluído da consulta de duplicidade. O Supabase aplica índice único nos DDIs adicionais para barrar gravações concorrentes e uma restrição contra os DDIs padrão (lista extraída de libphonenumber-js 1.13.15).
 
 Registros antigos com DDI padrão são preservados, podem ser consultados/excluídos, mas não podem ser salvos novamente com um DDI padrão. A migração não exclui dados automaticamente. Se houver dois registros adicionais antigos com o mesmo DDI, o índice único não será criado: exclua a duplicata pelo admin e execute novamente. Mudanças futuras nos DDIs padrão da biblioteca exigem atualizar a restrição SQL correspondente.
+
+## Saldo e envio automático
+
+Atualize a Edge Function com o arquivo de deploy atual. Não é necessário SQL adicional para esse ajuste. O painel faz quote + submit automaticamente, com o mesmo UUID, em um clique. A função classifica primeiro para identificar se a solicitação é paga ou gratuita. Para uma paga, verifica `recarga` contra a taxa vigente; saldo insuficiente bloqueia antes da reserva ou gravação e aparece com botão para `/carteira`. Para reenvios gratuitos, saldo zero é suficiente. O RPC `astros_start_service` continua conferindo e bloqueando atomicamente o saldo na reserva, inclusive se ele mudar entre consulta e envio. Falhas não são repetidas automaticamente; a referência permanece disponível para uma tentativa segura ou conferência. O botão fica bloqueado enquanto a operação está em andamento.
