@@ -47,3 +47,19 @@ export async function prices() {
  if(!data||!Number.isSafeInteger(data.servicePriceCents)||typeof data.minimumEnabled!=='boolean'||!Number.isSafeInteger(data.minimumRechargeCents))throw new Error('Os valores do serviço ainda não estão disponíveis.');
  return data as {servicePriceCents:number;minimumEnabled:boolean;minimumRechargeCents:number};
 }
+export async function adminPrices(){await requireAdmin();return readAdminPrices();}
+async function readAdminPrices(){
+ setResponseHeader('Cache-Control','private, no-store');
+ const r=await request('/rest/v1/rpc/astros_payment_prices',getCookie('astros_admin_session'),{method:'POST',body:'{}'});
+ if(!r.ok)throw new Error('Execute o SQL complementar de valores e avisos no Supabase.');
+ const data=await r.json();return (await import('./validation')).pricesSchema.parse(data);
+}
+export async function savePrices(input:unknown){
+ await requireAdmin();setResponseHeader('Cache-Control','private, no-store');
+ const data=(await import('./validation')).pricesSchema.parse(input);
+ const r=await request('/rest/v1/rpc/astros_save_prices',getCookie('astros_admin_session'),{method:'POST',body:JSON.stringify({price_cents:data.servicePriceCents,minimum_on:data.minimumEnabled,minimum_cents:data.minimumRechargeCents})});
+ if(!r.ok)throw new Error('Não foi possível salvar os valores. Execute o SQL complementar de valores e avisos.');
+ const saved=(await import('./validation')).pricesSchema.parse(await r.json());
+ if(saved.servicePriceCents!==data.servicePriceCents||saved.minimumEnabled!==data.minimumEnabled||saved.minimumRechargeCents!==data.minimumRechargeCents)throw new Error('Os valores não foram confirmados. Atualize e tente novamente.');
+ return saved;
+}

@@ -1,0 +1,11 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const mock=vi.hoisted(()=>({requireAdmin:vi.fn(),request:vi.fn()}));
+vi.mock('../admin/auth.server',()=>mock);
+vi.mock('@tanstack/react-start/server',()=>({getCookie:()=> 'session',setResponseHeader:vi.fn()}));
+import { readNotice, saveNotice } from './server';
+import { noticeSchema } from './validation';
+beforeEach(()=>vi.resetAllMocks());
+it('rejects client mutations before querying the database',async()=>{mock.requireAdmin.mockRejectedValue(new Error('Sem acesso'));await expect(saveNotice({})).rejects.toThrow('acesso');expect(mock.request).not.toHaveBeenCalled();});
+it('returns only enabled notices to client sessions',async()=>{mock.request.mockResolvedValue({ok:true,json:async()=>[]});expect(await readNotice()).toBeNull();expect(mock.request.mock.calls[0]![0]).toContain('enabled=eq.true');});
+it('blocks executable links and incomplete call-to-action buttons',()=>{const base={title:'Atualização',body:'Texto',buttonLabel:'Ver',buttonUrl:'javascript:alert(1)',enabled:true};expect(noticeSchema.safeParse(base).success).toBe(false);expect(noticeSchema.safeParse({...base,buttonUrl:''}).success).toBe(false);expect(noticeSchema.safeParse({...base,buttonUrl:'https://example.com'}).success).toBe(true);});
+it('saves escaped plain text fields and generates a new notice version',async()=>{mock.requireAdmin.mockResolvedValue({id:'admin'});mock.request.mockResolvedValue({ok:true,json:async()=>[{}]});const result=await saveNotice({title:'Atualização',body:'<b>Texto</b>',buttonLabel:'',buttonUrl:'',enabled:true});const payload=JSON.parse(mock.request.mock.calls[0]![2].body);expect(payload.body).toBe('<b>Texto</b>');expect(payload.version).toBe(result.version);expect(payload.enabled).toBe(true);});
