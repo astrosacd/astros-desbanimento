@@ -7,6 +7,8 @@ import {receiptMatches,reconciliationDecision,jobResponse,type ServiceJob} from 
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 const BASE='https://baserow.astroscomunicacaodigital.com';
 const PATH='/api/database/rows/table/511/';
+const countryNames=new Intl.DisplayNames(['pt-BR'],{type:'region'});
+function countryObservation(country:string,custom?:{name?:string}){if(country==='BR')return 'nacional';const name=country.startsWith('custom:')?custom?.name:countryNames.of(country);if(!name?.trim())throw Error('Não foi possível identificar o país selecionado.');return `internacional - ${name.trim()}`;}
 const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().regex(/^([A-Z]{2}|custom:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i).default('BR'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict();
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 // GET redirects may only add/remove the endpoint's trailing slash. Never redirect writes.
@@ -82,7 +84,7 @@ Deno.serve(async req=>{
   }
   const raw=schema.parse(body);let custom;
   if(raw.country.startsWith('custom:')){
-   const {data,error}=await db.from('astros_custom_countries').select('id,ddi').eq('id',raw.country.slice(7)).maybeSingle();
+   const {data,error}=await db.from('astros_custom_countries').select('id,name,ddi').eq('id',raw.country.slice(7)).maybeSingle();
    if(error||!data)throw Error('Este país adicional não está disponível. Atualize a lista e selecione outro país.');custom=data;
   }
   const input={...raw,number:canonicalPhone(raw.number,raw.country,custom)};requestId=input.requestId;
@@ -112,7 +114,7 @@ Deno.serve(async req=>{
   job={id:requestId,user_id:user.id,number:input.number,kind:plan.kind,amount_cents:plan.costCents,target_status:plan.targetStatus,state:'processing',protocol_version:2,remote_phase:'prepared',remote_intent:intent,lease_key:reservation.leaseKey,check_attempts:0};
   stage='baserow-recheck';const fresh=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   if(fresh.row?.id!==plan.row?.id||fresh.row?.field_4831?.value!==plan.row?.field_4831?.value||fresh.kind!==plan.kind)return json(await finishJob(job,'failed'));
-  const observations=plan.kind==='resend'?String(fresh.row?.field_4784||''):(input.country==='BR'?'nacional':'internacional');
+  const observations=plan.kind==='resend'?String(fresh.row?.field_4784||''):countryObservation(input.country,custom);
   const stamp=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Fortaleza',dateStyle:'short',timeStyle:'medium'}).format(new Date());
   const fields={field_4784:observations,field_4831:plan.kind==='resend'?2520:2521,[marker]:requestId};
   const {data:dispatch,error:dispatchError}=await db.rpc('astros_dispatch_service',{request_id:requestId,lease:job.lease_key});

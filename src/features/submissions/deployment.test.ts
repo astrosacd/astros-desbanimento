@@ -5,3 +5,5 @@ it('keeps the manual Supabase deployment identical to the tested function and co
 it("keeps the fresh manual deployment download synchronized",()=>{expect(readFileSync("supabase/astros-submit-number-com-pais-e-saldo.ts","utf8")).toBe(readFileSync("supabase/astros-submit-number.deploy.ts","utf8"));});
 
 it("keeps the automatic reconciliation deployment synchronized",()=>{expect(readFileSync("supabase/astros-submit-number-automatico.ts","utf8")).toBe(readFileSync("supabase/astros-submit-number.deploy.ts","utf8"));});
+
+it('keeps the country-observation deployment synchronized',()=>{expect(readFileSync('supabase/astros-submit-number-com-pais-nas-observacoes.ts','utf8')).toBe(readFileSync('supabase/astros-submit-number.deploy.ts','utf8'));});
