@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/brand/astros-symbol.png", type: "image/png" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;650;700;750;800&display=swap" },
+      { rel: "preload", href: "/fonts/manrope.woff", as: "font", type: "font/woff", crossOrigin: "anonymous" },
     ],
   }),
   shellComponent: RootShell,

@@ -1,9 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Local font preloading plus optional display prevents late font swaps. */
+@font-face {
+ font-family: 'Manrope'; font-style: normal; font-weight: 200 800;
+ font-display: optional; src: url('/fonts/manrope.woff') format('woff');
+}
 @custom-variant dark (&:is(.dark *));
 @theme inline {
- --font-sans: 'Manrope', sans-serif;
- --font-display: 'Manrope', sans-serif;
+ --font-sans: 'Manrope', Arial, sans-serif;
+ --font-display: 'Manrope', Arial, sans-serif;
  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 8px;
  --color-background: var(--background); --color-foreground: var(--foreground);
  --color-card: var(--card); --color-card-foreground: var(--foreground);
@@ -365,3 +370,5 @@ button,a[role=button],.nav-link { touch-action: manipulation; }
 .admin-action-card:focus-visible,.admin-nav-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 @media(min-width:851px) { .admin-sidebar { position: sticky; top: 0; height: 100dvh; overflow-y: auto; } }
 @media(max-width:850px) { .admin-nav-button { width: auto; flex: 1 1 150px; } .admin-sidebar-account { display:none; } }
+
+.hero-copy h2 { overflow-wrap: normal; word-break: normal; min-height: 2.3em; }
