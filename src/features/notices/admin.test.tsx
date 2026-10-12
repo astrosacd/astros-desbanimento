@@ -1,13 +1,13 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-const mocks=vi.hoisted(()=>({getAdminNotice:vi.fn(),updateNotice:vi.fn(),uploadImage:vi.fn()}));
+const mocks=vi.hoisted(()=>({getAdminNotices:vi.fn(),setNoticeStatus:vi.fn(),updateNotice:vi.fn(),uploadImage:vi.fn()}));
 vi.mock('./actions',()=>mocks);
 import { NoticeSettings } from './admin';
 beforeEach(()=>{cleanup();vi.resetAllMocks();});
 it('clears the form after a successful save and reloads saved fields only when Edit is clicked',async()=>{
- let saved={title:'Aviso antigo',body:'Mensagem antiga',buttonLabel:'',buttonUrl:'',imageUrl:'',enabled:true,version:'old'};
- mocks.getAdminNotice.mockImplementation(async()=>saved);
+ let saved={title:'Aviso antigo',body:'Mensagem antiga',buttonLabel:'',buttonUrl:'',imageUrl:'',enabled:true,version:'old',id:'00000000-0000-4000-8000-000000000001',status:'published',publishedAt:'2026-10-11T12:00:00Z',createdAt:'2026-10-11T12:00:00Z'};
+ mocks.getAdminNotices.mockImplementation(async()=>({rows:[saved],page:1,total:1,pageSize:20}));
  mocks.updateNotice.mockImplementation(async({data})=>{saved={...data,version:'new'};return {version:'new'};});
  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><NoticeSettings adminId="admin"/></QueryClientProvider>);
  await screen.findByText('Aviso antigo');
