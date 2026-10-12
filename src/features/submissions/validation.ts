@@ -1,0 +1,2 @@
+import { z } from 'zod';
+export const submissionSchema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/).transform(v=>v.replace(/\D/g,'')).transform(v=>v.startsWith('55')&&[12,13].includes(v.length)?v.slice(2):v).refine(v=>/^\d{10,11}$/.test(v),'Informe um número brasileiro com DDD.'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict();

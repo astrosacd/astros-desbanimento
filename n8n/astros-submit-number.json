@@ -1,0 +1,1036 @@
+{
+  "name": "Astros - Solicitações do painel (Supabase + Baserow)",
+  "nodes": [
+    {
+      "id": "28917773-0c71-44e8-86c8-7b020666318c",
+      "name": "Webhook Astros",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "astros-painel-solicitacao",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Astros - Autorização do painel"
+        }
+      },
+      "webhookId": "4077d61c-5dff-4a64-baa0-090229c35ce4"
+    },
+    {
+      "id": "d1a125e2-0c63-40a7-a8c2-caa8f6b2d28e",
+      "name": "Validar sessão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "url": "https://tevljvidqbvrcgzqypwf.supabase.co/auth/v1/user",
+        "options": {
+          "timeout": 60000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_wvwHQDOVefSPivb227u1Iw_lH5qEM_j"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Webhook Astros').first().json.body.sessionToken }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a4f97ee3-bc77-48a4-a2ae-45d7aecf87bb",
+      "name": "Consultar perfil",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "url": "=https://tevljvidqbvrcgzqypwf.supabase.co/rest/v1/painel_de_desbanimento?id=eq.{{ $('Validar sessão').first().json.id }}&select=id,nome,recarga&limit=1",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Astros - Servidor"
+        }
+      }
+    },
+    {
+      "id": "45438327-0776-42eb-aaa8-ad35944a0d6f",
+      "name": "Consultar taxa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "url": "https://tevljvidqbvrcgzqypwf.supabase.co/rest/v1/astros_payment_settings?id=eq.true&select=service_price_cents&limit=1",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Astros - Servidor"
+        }
+      }
+    },
+    {
+      "id": "5f26774e-be36-4015-804d-d6f970274f1a",
+      "name": "Consultar referência",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "url": "=https://tevljvidqbvrcgzqypwf.supabase.co/rest/v1/astros_service_jobs?id=eq.{{ $('Webhook Astros').first().json.body.requestId }}&select=id,user_id,number,state,result&limit=1",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Astros - Servidor"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "databaseId": 97,
+        "tableId": 511,
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "0309cacf-4bb5-423c-a01f-023f05369cac",
+      "name": "Consultar números",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "credentials": {
+        "baserowApi": {
+          "id": "v0ulNt7eJgQ3EuPm",
+          "name": "Baserow account"
+        }
+      }
+    },
+    {
+      "id": "d06ff1f9-5825-49c5-99b2-fed98a33e076",
+      "name": "Classificar solicitação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const b=$('Webhook Astros').first().json.body;\nconst user=$('Validar sessão').first().json;\nconst records=name=>$(name).all().flatMap(i=>Array.isArray(i.json)?i.json:[i.json]);\nconst error=message=>[{json:{route:'error',success:false,message}}];\nconst normalize=value=>{let n=String(value||'').replace(/\\D/g,'');return n.startsWith('55')&&[12,13].includes(n.length)?n.slice(2):n;};\nconst number=normalize(b.number);\nif(!user.id||!user.email_confirmed_at)return error('Confirme seu e-mail e entre novamente.');\nif(!['quote','submit'].includes(b.action)||!/^\\d{10,11}$/.test(number)||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.requestId||''))return error('Confira os dados da solicitação.');\nconst profile=records('Consultar perfil').find(p=>p.id===user.id);\nif(!profile)return error('Conta não encontrada.');\nconst previous=records('Consultar referência').find(p=>p.id===b.requestId);\nif(previous){if(previous.user_id!==user.id||previous.number!==number)return error('Referência divergente.');return [{json:{route:'error',...(previous.result||{success:false,state:previous.state,message:'Esta referência já está em processamento ou aguardando conferência. Não crie outro envio.'})}}];}\nconst matches=records('Consultar números').filter(r=>r.id&&normalize(r.numero)===number);\nif(matches.length>1)return error('Há mais de um registro deste número. Entre em contato com o suporte.');\nconst row=matches[0];\nif(row&&String(row.email||'').trim().toLowerCase()!==String(user.email).trim().toLowerCase())return error('Este número não está vinculado à sua conta. Entre em contato com o suporte.');\nconst current=row?.excluido_da_base?.value;\nif(row&&!['EXCLUIDO','ANÁLISE NEGADA','DESBANIMENTO OK','EM ANÁLISE PELA META','REEDESBANIMENTO'].includes(current))return error('O status deste número precisa ser conferido pelo suporte.');\nconst kind=!row?'new':current==='EXCLUIDO'?'renew':'resend';\nconst price=Number(records('Consultar taxa')[0]?.service_price_cents);\nconst costCents=kind==='resend'?0:price;\nif(!Number.isSafeInteger(costCents)||costCents<0||(kind!=='resend'&&costCents===0))return error('A taxa do serviço ainda não está configurada.');\nconst targetStatus=kind==='resend'?'REEDESBANIMENTO':'EM ANÁLISE PELA META';\nif(b.action==='submit'&&b.expectedCents!==costCents)return error('O valor ou a situação do número mudou. Consulte novamente antes de confirmar.');\nconst stamp=$now.setZone('America/Fortaleza').toFormat('dd/MM/yyyy HH:mm');\nconst observations=(row?.observacoes?row.observacoes+'\\n':'')+`Painel Astros - ${stamp} - ${kind} [ASTROS:${b.requestId}]`;\nreturn [{json:{route:b.action==='quote'?'quote':'submit',success:true,state:'quoted',number,kind,targetStatus,costCents,userId:user.id,email:user.email,nome:profile.nome,rowId:row?.id||null,observations,stamp,message:costCents===0?'Reenvio sem nova cobrança.':'A taxa será descontada do saldo ao confirmar.'}}];"
+      }
+    },
+    {
+      "id": "3de735d4-dcdf-4161-a82b-663eae7fbeef",
+      "name": "Tipo de chamada",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "quote",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d70efd36-8fb7-4501-a094-12089d24c2ec"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "quote"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0b192015-e2d8-4dcd-90a9-34a504ac066a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "submit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9fb96d00-fa26-4880-8759-09dfc27ca4c9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "eea7e04c-ff39-4ed5-95c1-50b697d9bf43",
+      "name": "Reservar solicitação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "url": "https://tevljvidqbvrcgzqypwf.supabase.co/rest/v1/rpc/astros_start_service",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({request_id:$('Webhook Astros').first().json.body.requestId,client_id:$json.userId,phone:$json.number,service_kind:$json.kind,expected_cents:$json.costCents,target:$json.targetStatus}) }}"
+      },
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Astros - Servidor"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "75f0bb07-5104-4c11-992f-22805c022394",
+      "name": "Checar reserva",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const j=$input.first().json;if(j.execute===true)return [{json:{...j,route:'execute'}}];return [{json:{route:'reply',success:!!j.success,state:j.state||'review',message:j.message||'Não foi possível confirmar a reserva. Confira o histórico antes de repetir.',...(!j.error?j:{})}}];"
+      }
+    },
+    {
+      "id": "d9c7122a-f175-45b5-a531-17f8f112b8fb",
+      "name": "Executar ou responder",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2400,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "execute",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ef84119f-cb49-4378-a038-8d99e7b131d6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "execute"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c6359fa5-c969-409a-be60-1ae6c26405a2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "305607c5-c4ad-467a-8999-5076c12c5533",
+      "name": "Criar ou atualizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{route:$('Classificar solicitação').first().json.rowId?'update':'create'}}];"
+      }
+    },
+    {
+      "id": "73df4c4e-a190-4400-ad34-ed17f1fec231",
+      "name": "Registro do número",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2880,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4e92e749-a219-44af-9d0c-dac750e937ef"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "43edae3f-d526-4f00-8ca0-96aa2053e621"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "update"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "databaseId": 97,
+        "tableId": 511,
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 4831,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.targetStatus }}"
+            },
+            {
+              "fieldId": 4784,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.observations }}"
+            },
+            {
+              "fieldId": 4740,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.nome }}"
+            },
+            {
+              "fieldId": 4741,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.number }}"
+            },
+            {
+              "fieldId": 4773,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.email }}"
+            },
+            {
+              "fieldId": 4827,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.stamp }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        0
+      ],
+      "id": "22500686-ce94-4a2c-ab46-b39dbaaa408f",
+      "name": "Criar número",
+      "retryOnFail": true,
+      "credentials": {
+        "baserowApi": {
+          "id": "v0ulNt7eJgQ3EuPm",
+          "name": "Baserow account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": 97,
+        "tableId": 511,
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 4831,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.targetStatus }}"
+            },
+            {
+              "fieldId": 4784,
+              "fieldValue": "={{ $('Classificar solicitação').first().json.observations }}"
+            }
+          ]
+        },
+        "rowId": "={{ $('Classificar solicitação').first().json.rowId }}"
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        0
+      ],
+      "id": "de1bd266-3020-4b3d-bb5e-78e5bd829540",
+      "name": "Atualizar número",
+      "retryOnFail": true,
+      "credentials": {
+        "baserowApi": {
+          "id": "v0ulNt7eJgQ3EuPm",
+          "name": "Baserow account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "5a94ca05-bbf2-4a88-a71f-e30e29bcd6a5",
+      "name": "Conferir gravação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$input.first().json;const c=$('Classificar solicitação').first().json;const n=v=>{let d=String(v||'').replace(/\\D/g,'');return d.startsWith('55')&&[12,13].includes(d.length)?d.slice(2):d;};if(r.id&&n(r.numero)===c.number&&String(r.email||'').trim().toLowerCase()===c.email.trim().toLowerCase()&&r.excluido_da_base?.value===c.targetStatus)return [{json:{route:'log',...r}}];return [{json:{route:'review',success:false,state:'review',message:'Não foi possível confirmar a gravação. A solicitação está em conferência; não envie novamente.'}}];"
+      }
+    },
+    {
+      "id": "9cecc84a-fd10-40e9-851d-c049c8426f43",
+      "name": "Gravação confirmada",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        3840,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "log",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a58fe9b5-c781-400c-bf17-a77c1d6672ef"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "log"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "be8fe1f4-6fa6-48f6-b12d-2b955ab07828"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "review"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "SELECIONE_A_PLANILHA_EXISTENTE",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "SELECIONE_A_ABA_EXISTENTE",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nome": "={{ $('Classificar solicitação').first().json.nome }}",
+            "Numero": "={{ $('Classificar solicitação').first().json.number }}",
+            "Observações": "={{ $('Classificar solicitação').first().json.observations }}",
+            "Numero Solicitante": "Painel de Desbanimento",
+            "Data da Solicitação": "={{ $('Classificar solicitação').first().json.stamp }}",
+            "Status": "={{ $('Classificar solicitação').first().json.targetStatus }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nome",
+              "displayName": "Nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Numero",
+              "displayName": "Numero",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Observações",
+              "displayName": "Observações",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data da Solicitação",
+              "displayName": "Data da Solicitação",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Numero Solicitante",
+              "displayName": "Numero Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cf25b1cf-5033-4368-a334-3d576ac7f28d",
+      "name": "Registrar na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4080,
+        0
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gTZz9F22Fuo8cVJo",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "3289abdc-30aa-49d2-847b-39b1c0fd46c4",
+      "name": "Resultado do processamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c=$('Classificar solicitação').first().json;const j=$input.first().json;const failed=j.error||j.state==='review';return [{json:{finalState:failed?'review':'completed',response:{success:!failed,state:failed?'review':'completed',number:c.number,kind:c.kind,costCents:c.costCents,targetStatus:c.targetStatus,message:failed?'Solicitação em conferência. Não envie novamente; entre em contato com o suporte.':'Número enviado com sucesso.'}}}];"
+      }
+    },
+    {
+      "id": "72c27398-f0a8-4914-8d62-e850fe0dea34",
+      "name": "Finalizar solicitação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        0
+      ],
+      "parameters": {
+        "url": "https://tevljvidqbvrcgzqypwf.supabase.co/rest/v1/rpc/astros_finish_service",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({request_id:$('Webhook Astros').first().json.body.requestId,final_state:$json.finalState,response:$json.response}) }}"
+      },
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Astros - Servidor"
+        }
+      }
+    },
+    {
+      "id": "758af028-59b7-4922-aa49-28fb840addb4",
+      "name": "Resposta segura",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const j=$input.first().json;return [{json:{success:!!j.success,state:j.state||'error',number:j.number||'',kind:j.kind||'',costCents:j.costCents||0,targetStatus:j.targetStatus||'',message:j.message||'Não foi possível concluir.'}}];"
+      }
+    },
+    {
+      "id": "1493fd2e-c4d6-4744-8274-151b1dd4fd1c",
+      "name": "Responder ao painel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        5040,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Astros": {
+      "main": [
+        [
+          {
+            "node": "Validar sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar sessão": {
+      "main": [
+        [
+          {
+            "node": "Consultar perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar perfil": {
+      "main": [
+        [
+          {
+            "node": "Consultar taxa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar taxa": {
+      "main": [
+        [
+          {
+            "node": "Consultar referência",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar referência": {
+      "main": [
+        [
+          {
+            "node": "Consultar números",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar números": {
+      "main": [
+        [
+          {
+            "node": "Classificar solicitação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classificar solicitação": {
+      "main": [
+        [
+          {
+            "node": "Tipo de chamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de chamada": {
+      "main": [
+        [
+          {
+            "node": "Resposta segura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reservar solicitação",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta segura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reservar solicitação": {
+      "main": [
+        [
+          {
+            "node": "Checar reserva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checar reserva": {
+      "main": [
+        [
+          {
+            "node": "Executar ou responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar ou responder": {
+      "main": [
+        [
+          {
+            "node": "Criar ou atualizar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta segura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar ou atualizar": {
+      "main": [
+        [
+          {
+            "node": "Registro do número",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registro do número": {
+      "main": [
+        [
+          {
+            "node": "Criar número",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Atualizar número",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar número": {
+      "main": [
+        [
+          {
+            "node": "Conferir gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar número": {
+      "main": [
+        [
+          {
+            "node": "Conferir gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir gravação": {
+      "main": [
+        [
+          {
+            "node": "Gravação confirmada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravação confirmada": {
+      "main": [
+        [
+          {
+            "node": "Registrar na planilha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado do processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar na planilha": {
+      "main": [
+        [
+          {
+            "node": "Resultado do processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado do processamento": {
+      "main": [
+        [
+          {
+            "node": "Finalizar solicitação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalizar solicitação": {
+      "main": [
+        [
+          {
+            "node": "Resposta segura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta segura": {
+      "main": [
+        [
+          {
+            "node": "Responder ao painel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

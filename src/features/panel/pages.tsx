@@ -1,3 +1,4 @@
+import { SubmissionHistory } from '../submissions/history';
 import { ServicePrice } from '../payments/service-price';
 import { useSearch } from '@tanstack/react-router';
 import { NumbersList } from '../numbers/list';
@@ -7,7 +8,7 @@ export function EmptyPanel({ title, description }: { title: string; description:
  return <section className="table-section"><div className="empty-state"><Inbox/><h3>{title}</h3><p className="mt-3 text-sm text-muted-foreground max-w-lg mx-auto">{description}</p></div></section>;
 }
 function PendingPage({ title, description }: { title: string; description: string }) { return <><PageHeading title={title} subtitle="Acompanhe os serviços da sua conta."/><EmptyPanel title="Em preparação" description={description}/></>; }
-export function RequestsPage() { return <><PageHeading title="Solicitações" subtitle="Acompanhe os números vinculados à sua conta."/><NumbersList/></>; }
+export function RequestsPage() { return <><PageHeading title="Solicitações" subtitle="Acompanhe os números vinculados à sua conta."/><SubmissionHistory/><NumbersList/></>; }
 export function NewRequestPage() {
  const { numero } = useSearch({ from: '/nova-solicitacao' });
  if (!numero) return <><PageHeading title="Nova solicitação" subtitle="Desbanimento permanente de número."/><ServicePrice/><EmptyPanel title="Em preparação" description="A contratação estará disponível após a conexão do envio ao serviço."/></>;
