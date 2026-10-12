@@ -55,3 +55,12 @@ A reserva/debito é transacional no Supabase e usa a referência UUID para imped
 Se a situação mudar antes da gravação, a solicitação é encerrada como falha e a taxa é devolvida uma vez. Falhas de rede ou respostas incertas após reserva ficam em `review` ou `processing`, bloqueando novo envio para o número. Nunca repetimos uma gravação automaticamente ou estornamos um envio potencialmente concluído. O cliente deve consultar o histórico e o suporte deve conferir o número completo, proprietário, status e histórico no Baserow antes de finalizar/estornar pelo RPC administrativo `astros_finish_service`. Não chamar esse RPC com credenciais do navegador.
 
 A ativação e testes reais dependem do deploy manual e do token com permissões. Os testes locais não enviam números reais nem movimentam saldo real.
+
+## Países adicionais pelo admin
+
+1. Execute `supabase/migrations/20261012_custom_countries.sql` no projeto Supabase atual. A tabela armazena somente os países adicionais e não altera Auth, pagamentos ou perfis.
+2. Atualize `astros-submit-number` com **todo** o arquivo atual `supabase/astros-submit-number.deploy.ts`. O token já salvo continua sendo usado.
+3. No `/admin`, abra **Países e DDIs**. Cadastre nome e DDI sem +. O DDI deve ter 1 a 3 dígitos; Brasil continua na opção padrão e não pode ter um alias adicional com +55.
+4. O cliente busca país ou DDI no seletor. Países adicionais aparecem na próxima consulta (atualização automática a cada 30 segundos). Cadastros adicionados podem ser editados ou excluídos com confirmação dentro do painel. Excluir apaga o registro da tabela, sem apagar envios anteriores.
+
+A lista padrão vem da biblioteca e permanece disponível. A lista personalizada é lida somente por usuários autenticados e escrita apenas por admin, com checagem no servidor e RLS no Supabase. O cliente envia apenas o ID do país adicional; a Edge Function consulta o DDI atual no banco antes de validar/reservar. País removido ou DDI alterado incompatível impede o envio antes da cobrança. Países adicionais não conhecidos pela biblioteca são validados pelo formato internacional (DDI, prefixo e comprimento até 15 dígitos); o cadastro não verifica uma conta WhatsApp ou a atribuição oficial de um DDI. Confira o DDI antes de cadastrar.

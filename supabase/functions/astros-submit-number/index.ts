@@ -5,7 +5,7 @@ import { canonicalPhone } from './phone.ts';
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 const BASE='https://baserow.astroscomunicacaodigital.com';
 const PATH='/api/database/rows/table/511/';
-const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().length(2).default('BR'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict().transform((data,ctx)=>{try{return {...data,number:canonicalPhone(data.number,data.country)};}catch{ctx.addIssue({code:z.ZodIssueCode.custom,message:'Confira o número e o país selecionado.'});return z.NEVER;}});
+const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().regex(/^([A-Z]{2}|custom:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i).default('BR'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict();
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 // GET redirects may only add/remove the endpoint's trailing slash. Never redirect writes.
 async function baserow(path:string,body?:unknown,method='GET'){
@@ -45,7 +45,13 @@ Deno.serve(async req=>{
   const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
   const {data:{user},error:authError}=await db.auth.getUser(token);
   if(authError||!user?.email||!user.email_confirmed_at)return json({success:false,message:'Sua sessão expirou ou o e-mail não foi confirmado.'},401);
-  const input=schema.parse(await req.json());requestId=input.requestId;
+  const raw=schema.parse(await req.json());let custom;
+  if(raw.country.startsWith('custom:')){
+   const {data,error}=await db.from('astros_custom_countries').select('id,ddi').eq('id',raw.country.slice(7)).maybeSingle();
+   if(error||!data)throw Error('Este país adicional não está disponível. Atualize a lista e selecione outro país.');
+   custom=data;
+  }
+  const input={...raw,number:canonicalPhone(raw.number,raw.country,custom)};requestId=input.requestId;
   const {data:old,error:oldError}=await db.from('astros_service_jobs').select('user_id,number,state,result').eq('id',requestId).maybeSingle();
   if(oldError)throw Error('O controle de solicitações ainda não está disponível.');
   if(old){
@@ -95,6 +101,6 @@ Deno.serve(async req=>{
    await db.rpc('astros_finish_service',{request_id:requestId,final_state:'review',response}).catch(()=>undefined);
    return json(response);
   }
-  return json({success:false,message:error instanceof z.ZodError?'Dados da solicitação inválidos.':error instanceof Error&&/^(Este número|O status|A taxa|O envio|O controle|Conta não|Não foi possível consultar|O valor|Referência|A base|O Baserow|O endereço)/.test(error.message)?error.message:'Não foi possível consultar o serviço. Tente novamente em alguns instantes.'},400);
+  return json({success:false,message:error instanceof z.ZodError?'Dados da solicitação inválidos.':error instanceof Error&&/^(Este país|Selecione|Confira o número|Este número|O status|A taxa|O envio|O controle|Conta não|Não foi possível consultar|O valor|Referência|A base|O Baserow|O endereço)/.test(error.message)?error.message:'Não foi possível consultar o serviço. Tente novamente em alguns instantes.'},400);
  }
 });

@@ -1,0 +1,12 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const mock=vi.hoisted(()=>({getCookie:vi.fn(),request:vi.fn(),requireAdmin:vi.fn()}));
+vi.mock('@tanstack/react-start/server',()=>({getCookie:mock.getCookie,setResponseHeader:vi.fn()}));
+vi.mock('../admin/auth.server',()=>({request:mock.request,requireAdmin:mock.requireAdmin}));
+import {saveCountry,deleteCountry,listCountries} from './server';
+const id='00000000-0000-4000-8000-000000000009';
+beforeEach(()=>{vi.resetAllMocks();mock.getCookie.mockReturnValue('admin-token');mock.requireAdmin.mockResolvedValue({id:'admin'});mock.request.mockResolvedValue({ok:true,json:async()=>[{id,name:'País adicional',ddi:'351'}]});});
+it.each([()=>saveCountry({name:'Outro país',ddi:'351'}),()=>deleteCountry(id),()=>listCountries(true)])('blocks non-admin access before reading or changing country configuration',async fn=>{mock.requireAdmin.mockRejectedValue(Error('Acesso não autorizado'));await expect(fn()).rejects.toThrow('não autorizado');expect(mock.request).not.toHaveBeenCalled();});
+it('saves only validated fields with the admin JWT',async()=>{await saveCountry({id,name:'Outro país',ddi:'351'});expect(mock.request).toHaveBeenCalledWith('/rest/v1/astros_custom_countries?id=eq.'+id,'admin-token',expect.objectContaining({method:'PATCH',body:expect.any(String)}));expect(JSON.parse(mock.request.mock.calls[0]![2].body)).toMatchObject({name:'Outro país',ddi:'351'});});
+it('deletes the Supabase record and verifies that one country was removed',async()=>{await deleteCountry(id);expect(mock.request).toHaveBeenCalledWith('/rest/v1/astros_custom_countries?id=eq.'+id,'admin-token',expect.objectContaining({method:'DELETE'}));mock.request.mockResolvedValue({ok:true,json:async()=>[]});await expect(deleteCountry(id)).rejects.toThrow('excluir');});
+it('checks the client session before returning additional countries',async()=>{mock.request.mockResolvedValue({ok:false});await expect(listCountries()).rejects.toThrow('sessão');expect(mock.request).toHaveBeenCalledTimes(1);});
+it('rejects invalid DDIs, Brazil aliases and identity overrides',async()=>{for(const data of [{name:'País',ddi:'55'},{name:'País',ddi:'00351'},{name:'País',ddi:'351',tipo_usuario:'admin'}])await expect(saveCountry(data)).rejects.toThrow();expect(mock.request).not.toHaveBeenCalled();});

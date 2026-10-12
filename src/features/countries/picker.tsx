@@ -1,0 +1,10 @@
+import {useState} from 'react';
+import {Check,ChevronsUpDown} from 'lucide-react';
+import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
+import {Command,CommandInput,CommandList,CommandEmpty,CommandGroup,CommandItem} from '@/components/ui/command';
+export type CountryOption={code:string;name:string;ddi:string};
+const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+export function CountryPicker({countries,value,onChange,disabled}:{countries:CountryOption[];value:string;onChange:(v:string)=>void;disabled:boolean}){
+ const [open,setOpen]=useState(false);const selected=countries.find(c=>c.code===value);
+ return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><button type="button" id="submission-country" role="combobox" aria-expanded={open} aria-label="País / DDI" disabled={disabled} className="field flex items-center justify-between gap-2 text-left"><span className="truncate">{selected?`${selected.name} (+${selected.ddi})`:'Selecione o país'}</span><ChevronsUpDown className="size-4 shrink-0 text-muted-foreground"/></button></PopoverTrigger><PopoverContent side="bottom" align="start" sideOffset={8} collisionPadding={16} className="p-0 w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-32px)] overflow-hidden"><Command filter={(value,search)=>fold(value).includes(fold(search))?1:0}><CommandInput aria-label="Buscar país ou DDI" placeholder="Buscar país ou DDI…"/><CommandList className="max-h-[min(260px,calc(var(--radix-popover-content-available-height)-56px))] overflow-y-auto overscroll-contain"><CommandEmpty>Nenhum país encontrado.</CommandEmpty><CommandGroup>{countries.map(c=><CommandItem key={c.code} value={`${c.name} +${c.ddi} ${c.code}`} onSelect={()=>{onChange(c.code);setOpen(false);}} className="py-3 gap-2 cursor-pointer"><span className="min-w-0 flex-1 break-words">{c.name} <span className="text-muted-foreground">(+{c.ddi})</span></span>{value===c.code&&<Check className="size-4 shrink-0 text-primary"/>}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover>;
+}
