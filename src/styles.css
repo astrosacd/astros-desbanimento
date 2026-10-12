@@ -477,3 +477,26 @@ tbody tr:hover { background: var(--secondary); }
 .field { background: #0C1522; border-color: #43566E; }
 @container(max-width:780px) { .settings-form { grid-template-columns: minmax(0,1fr); gap: 20px; } }
 @media(max-width:650px) { .settings-form { grid-template-columns: minmax(0,1fr); gap: 20px; } .settings-form > button { width: 100%; } }
+
+/* Focused account entrance: clear identity, restrained surfaces, consistent form. */
+.client-entrance { align-items: center; gap: clamp(32px,7vw,100px); padding-block: clamp(32px,6vh,72px); background: radial-gradient(ellipse at 12% 42%,#12323D55,transparent 55%),#080E18; }
+.entrance-story { padding: 20px 0; }
+.entrance-story .brand-logo { width: 240px; max-width: 100%; height: auto; }
+.entrance-story .eyebrow { margin-top: 56px; color: var(--primary); }
+.entrance-story h1 { font-size: clamp(40px,4.8vw,64px); line-height: 1.08; letter-spacing: -.045em; margin: 22px 0 26px; }
+.entrance-story h1 span { color: #7BE5E9; }
+.entrance-story > p { max-width: 370px; font-size: 15px; line-height: 1.8; color: #B4C2D1; }
+.entrance-signature { margin-top: 42px; padding-top: 24px; border-top: 1px solid #2A3B4D; max-width: 370px; font-size: 11px; }
+.entrance-signature span { font-size: 10px; }
+.entrance-card { background: #121D2B; padding: 36px; border: 1px solid #34475B; border-radius: 24px; box-shadow: 0 20px 56px #0003; }
+.entrance-card h2 { letter-spacing: -.035em; font-size: 30px; line-height: 1.2; }
+.entrance-card > p { color: #B4C2D1; }
+.entrance-card .field-label { color: #E3EBF4; font-weight: 600; }
+.entrance-card .field { background: #0C1522; border-color: #43566E; min-height: 50px; font-size: 15px; border-radius: 12px; }
+.entrance-card .field::placeholder { color: #9CACBF; font-size: 14px; }
+.entrance-card button[type=submit] { min-height: 50px; border-radius: 12px; font-size: 14px; }
+.entrance-links { border-color: #34475B; padding-top: 22px; }
+.entrance-bottom { color: #A3B4C8; font-size: 11px; line-height: 1.6; }
+.entrance-forgot { font-size: 12px; }
+@media(max-width:800px) { .client-entrance { padding: 32px 18px; } .entrance-card { padding: 30px 26px; width: 100%; } .entrance-mobile-brand .brand-logo { max-width: 220px; } }
+@media(max-width:380px) { .client-entrance { padding: 20px 12px; } .entrance-card { padding: 26px 20px; border-radius: 18px; } .entrance-card h2 { font-size: 26px; } }
