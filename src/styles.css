@@ -23,11 +23,11 @@
 }
 :root {
  color-scheme: dark;
- --background: #020711; --foreground: #EDF3FA;
- --card: #101C2C; --secondary: #17263A;
- --primary: #00D7E8; --primary-foreground: #02111A;
- --muted-foreground: #A9B8CC; --accent: #20334B;
- --border: #304259; --electric: #0055FF;
+ --background: #080E18; --foreground: #F0F4FA;
+ --card: #121D2B; --secondary: #1B2A3C;
+ --primary: #36D7E4; --primary-foreground: #02111A;
+ --muted-foreground: #B1BFD0; --accent: #25374B;
+ --border: #33465C; --electric: #0055FF;
  --success: #69D9AE; --warning: #F2C879; --destructive: #FF8C9B;
  --brand-green: #00F05A; --brand-gradient: linear-gradient(125deg, var(--brand-green), var(--primary) 48%, var(--electric));
  --hero-scrim: linear-gradient(90deg, var(--card) 0%, color-mix(in oklab, var(--card) 95%, transparent) 35%, transparent 100%);
@@ -166,7 +166,7 @@ pre { padding: 20px; overflow-x: auto; color: var(--primary); font-size: 12px; l
 .bar-fill:not(.success):not(.error) { background: var(--primary); }
 
 /* Refined dashboard layout and fixed, non-shrinking original brand artwork. */
-:root { --border: #304259; --muted-foreground: #A9B8CC; }
+:root { --border: #33465C; --muted-foreground: #A9B8CC; }
 .shell { grid-template-columns: 248px minmax(0,1fr); }
 .sidebar { padding: 30px 18px 20px; overflow-y: auto; background: #050B16; }
 .brand-logo { flex: 0 0 auto; height: 44px; min-height: 44px; aspect-ratio: auto; width: 208px; }
@@ -453,7 +453,7 @@ tbody tr:hover { background: var(--secondary); }
 @container (max-width:800px) { .support-layout { grid-template-columns: minmax(0,1fr); } .support-side { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:600px) { .support-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-side { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-heading { gap: 12px; } .support-heading h2 { font-size: 18px; } .support-contact-form button[type=submit] { width: 100%; } }
 
-.payment-settings-layout { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; align-items: start; }
+.payment-settings-layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
 .payment-settings-layout > .admin-settings { margin-bottom: 0; min-width: 0; }
 .settings-card-heading { display: flex; align-items: flex-start; gap: 14px; }
 .settings-card-heading > div { min-width: 0; }
@@ -465,3 +465,15 @@ tbody tr:hover { background: var(--secondary); }
 .payment-settings-column { display: grid; gap: 24px; align-content: start; min-width: 0; }
 .payment-settings-column > .admin-settings { margin-bottom: 0; }
 @media(max-width:650px) { .payment-settings-column { gap: 16px; } }
+
+/* Settings flow without uneven columns; shared desktop/mobile field rhythm. */
+.settings-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 28px; align-items: start; }
+.settings-form > :not(label), .settings-form > label:has(input[type="checkbox"]) { grid-column: 1 / -1; }
+.settings-form > button { justify-self: start; }
+.admin-settings { border-color: var(--border); }
+.settings-icon { background: #17313D; border: 1px solid #285261; }
+.sidebar, .admin-sidebar { background: #0B1320; }
+.nav-link[data-status=active], .admin-nav-button[data-status="active"] { background: #16333D; color: #95EFF1; box-shadow: inset 3px 0 var(--primary); }
+.field { background: #0C1522; border-color: #43566E; }
+@container(max-width:780px) { .settings-form { grid-template-columns: minmax(0,1fr); gap: 20px; } }
+@media(max-width:650px) { .settings-form { grid-template-columns: minmax(0,1fr); gap: 20px; } .settings-form > button { width: 100%; } }

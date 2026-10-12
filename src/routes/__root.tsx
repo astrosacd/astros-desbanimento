@@ -89,10 +89,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ASTROS • Painel de Desbanimento V2" },
+      { title: "ASTROS • Painel de Desbanimento V5" },
       { name: "description", content: "Painel Astros para gestão e acompanhamento de solicitações." },
       { name: "author", content: "Astros Comunicação Digital" },
-      { property: "og:title", content: "ASTROS • Painel de Desbanimento V2" },
+      { property: "og:title", content: "ASTROS • Painel de Desbanimento V5" },
       { property: "og:description", content: "Painel Astros para gestão e acompanhamento de solicitações." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
