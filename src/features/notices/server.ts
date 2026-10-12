@@ -44,3 +44,4 @@ export async function uploadNoticeImage(input:unknown){
  if(!r.ok)throw new Error('Não foi possível enviar a imagem. Confira se o SQL de imagens foi executado.');
  return {url:`https://tevljvidqbvrcgzqypwf.supabase.co/storage/v1/object/public/astros-notices/${path}`};
 }
+export async function deleteNotice(id:string){const session=await token(true);const r=await request('/rest/v1/rpc/astros_delete_notice',session,{method:'POST',body:JSON.stringify({notice_id:id})});if(!r.ok||await r.json()!==true)throw new Error('Não foi possível excluir. Execute o SQL de exclusão de comunicados.');return {success:true};}
