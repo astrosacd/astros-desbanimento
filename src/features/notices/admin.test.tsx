@@ -1,0 +1,23 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+const mocks=vi.hoisted(()=>({getAdminNotice:vi.fn(),updateNotice:vi.fn(),uploadImage:vi.fn()}));
+vi.mock('./actions',()=>mocks);
+import { NoticeSettings } from './admin';
+beforeEach(()=>{cleanup();vi.resetAllMocks();});
+it('clears the form after a successful save and reloads saved fields only when Edit is clicked',async()=>{
+ let saved={title:'Aviso antigo',body:'Mensagem antiga',buttonLabel:'',buttonUrl:'',imageUrl:'',enabled:true,version:'old'};
+ mocks.getAdminNotice.mockImplementation(async()=>saved);
+ mocks.updateNotice.mockImplementation(async({data})=>{saved={...data,version:'new'};return {version:'new'};});
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><NoticeSettings adminId="admin"/></QueryClientProvider>);
+ await screen.findByText('Aviso antigo');
+ expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('');
+ fireEvent.change(screen.getByLabelText('Título'),{target:{value:'Novo aviso'}});
+ fireEvent.change(screen.getByLabelText('Mensagem'),{target:{value:'Nova mensagem'}});
+ fireEvent.click(screen.getByRole('button',{name:'Salvar comunicado'}));
+ await waitFor(()=>expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe(''));
+ expect(mocks.updateNotice).toHaveBeenCalledTimes(1);
+ await screen.findByText('Novo aviso');
+ fireEvent.click(screen.getByRole('button',{name:'Editar'}));
+ expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Novo aviso');
+});
