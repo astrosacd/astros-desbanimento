@@ -1,0 +1,9 @@
+import { expect, it } from 'vitest';
+import { classify, retiredSim } from '../../../supabase/functions/astros-submit-number/core';
+const old = {id: 1, field_4741:'85999999999',field_4773:'old@example.com',field_4784:'Nota: SIM não aprovisionado',field_4831:{value:'EXCLUIDO'}};
+it('recognizes the phrase within observations, ignoring accents, case and extra spaces',()=>{expect(retiredSim('nota SIM  NÃO APROVISIONADO.')).toBe(true);expect(retiredSim('não aprovisionado')).toBe(false);});
+it('blocks the former account even when its balance would cover a fee',()=>{expect(()=>classify([old],'85999999999','OLD@example.com',5000)).toThrow('não está mais disponível');});
+it('creates a charged new row for another email without selecting or modifying the historical row',()=>{const before=structuredClone(old);expect(classify([old],'85999999999','new@example.com',5000)).toEqual({row:undefined,kind:'new',costCents:5000,targetStatus:'EM ANÁLISE PELA META'});expect(old).toEqual(before);});
+it.each(['DESBANIMENTO OK','EM ANÁLISE PELA META','ANÁLISE NEGADA','REEDESBANIMENTO'])('resends the new owners active row free: %s',status=>{const active={...old,id:2,field_4773:'new@example.com',field_4784:'nacional',field_4831:{value:status}};expect(classify([old,active],'85999999999','new@example.com',5000)).toMatchObject({row:active,kind:'resend',costCents:0});});
+it('charges again for the new owners excluded row',()=>{const active={...old,id:2,field_4773:'new@example.com',field_4784:'nacional'};expect(classify([old,active],'85999999999','new@example.com',5000)).toMatchObject({row:active,kind:'renew',costCents:5000});});
+it('still blocks a different active owner and duplicate active rows',()=>{const active={...old,id:2,field_4784:'nacional'};expect(()=>classify([old,active],'85999999999','new@example.com',5000)).toThrow('não está vinculado');expect(()=>classify([active,{...active,id:3}],'85999999999','old@example.com',5000)).toThrow('conferência');});

@@ -10,5 +10,5 @@ for declaration,filename in [
  contents=(base/filename).read_text().replace("import type {Row} from './core.ts';\n",'').replace("import {normalize,type Row} from './core.ts';\n",'')
  source=source.replace(declaration,contents)
 source='// Arquivo único para colar no editor Supabase. Gerado a partir de functions/astros-submit-number.\n'+source
-for filename in ['astros-submit-number.deploy.ts','astros-submit-number-com-pais-e-saldo.ts','astros-submit-number-automatico.ts','astros-submit-number-com-pais-nas-observacoes.ts']:
+for filename in ['astros-submit-number-sim-nao-aprovisionado.ts','astros-submit-number.deploy.ts','astros-submit-number-com-pais-e-saldo.ts','astros-submit-number-automatico.ts','astros-submit-number-com-pais-nas-observacoes.ts']:
  (root/'supabase'/filename).write_text(source)

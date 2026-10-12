@@ -7,3 +7,4 @@ it("keeps the fresh manual deployment download synchronized",()=>{expect(readFil
 it("keeps the automatic reconciliation deployment synchronized",()=>{expect(readFileSync("supabase/astros-submit-number-automatico.ts","utf8")).toBe(readFileSync("supabase/astros-submit-number.deploy.ts","utf8"));});
 
 it('keeps the country-observation deployment synchronized',()=>{expect(readFileSync('supabase/astros-submit-number-com-pais-nas-observacoes.ts','utf8')).toBe(readFileSync('supabase/astros-submit-number.deploy.ts','utf8'));});
+it('keeps retired SIM deployment synchronized',()=>{expect(readFileSync('supabase/astros-submit-number-sim-nao-aprovisionado.ts','utf8')).toBe(readFileSync('supabase/astros-submit-number.deploy.ts','utf8'));});

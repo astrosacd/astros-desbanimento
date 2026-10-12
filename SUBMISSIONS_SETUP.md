@@ -107,3 +107,8 @@ Na investigação de 12/10, as capturas do Supabase mostravam apenas o diagnóst
 ## País nas observações (atualização atual)
 
 Atualize a função existente astros-submit-number com TODO o arquivo supabase/astros-submit-number-com-pais-nas-observacoes.ts. Não é necessário SQL adicional. Para números novos e renovações de EXCLUIDO, Brasil grava nacional; internacionais gravam internacional - <nome do país selecionado>, por exemplo internacional - Canadá. Países padrão usam o nome em português obtido do ISO selecionado; países adicionais usam o nome atual cadastrado no Supabase, nunca um texto fornecido pelo navegador. Não deduzir o país só pelo DDI compartilhado. Reenvios gratuitos preservam a observação anterior. Registros antigos não são alterados retroativamente. O recibo UUID permanece somente na coluna separada de rastreamento.
+
+## SIM não aprovisionado
+Observações contendo essa frase (ignorando maiúsculas, acentos e espaços repetidos) tornam a linha histórica: preservada no Baserow, oculta na lista, total e exportação do cliente. O mesmo e-mail não pode reenviar esse número. Outro e-mail confirmado pode criar uma nova linha, pagando a taxa vigente; a linha histórica não é modificada. Após isso, a linha ativa segue as regras normais, inclusive EXCLUIDO pago e reenvios gratuitos. Linhas ativas de outra conta continuam bloqueando; múltiplas linhas ativas exigem suporte.
+
+Atualize a função existente `astros-submit-number` com todo o conteúdo de `supabase/astros-submit-number-sim-nao-aprovisionado.ts` e clique Deploy updates. Não é necessário SQL novo. A publicação do painel cuida da ocultação; o deploy da função ativa a nova regra de envio.
