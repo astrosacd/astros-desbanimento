@@ -15,7 +15,7 @@ function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
 export async function request(path: string, token?: string, init: RequestInit = {}) {
   const c = config();
   if (!c) throw new Error('O acesso administrativo ainda não foi conectado ao Supabase.');
-  return fetch(`${c.url}${path}`, { ...init, headers: { apikey: c.key, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...init.headers }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
+  return fetch(`${c.url}${path}`, { ...init, headers: { apikey: c.key, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...init.headers }, cache: 'no-store', signal: init.signal ?? AbortSignal.timeout(12000) });
 }
 export async function identityForToken(token: string): Promise<AdminIdentity | null> {
   const userResponse = await request('/auth/v1/user', token);

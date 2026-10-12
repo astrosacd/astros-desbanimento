@@ -1,10 +1,11 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const mock=vi.hoisted(()=>({getCookie:vi.fn(),request:vi.fn(),fetch:vi.fn()}));
+const mock=vi.hoisted(()=>({getCookie:vi.fn(),request:vi.fn()}));
 vi.mock('@tanstack/react-start/server',()=>({getCookie:mock.getCookie,setResponseHeader:vi.fn()}));
 vi.mock('../admin/auth.server',()=>({request:mock.request}));
 import { send } from './server';
 const input={number:'85999999999',requestId:'00000000-0000-4000-8000-000000000001',action:'quote'};
-beforeEach(()=>{vi.resetAllMocks();vi.stubGlobal('fetch',mock.fetch);vi.stubEnv('ASTROS_SUBMISSION_WEBHOOK_URL','https://n8n.example/webhook/astros');vi.stubEnv('ASTROS_SUBMISSION_WEBHOOK_SECRET','a'.repeat(48));mock.getCookie.mockReturnValue('user-session');mock.request.mockResolvedValue({ok:true,json:async()=>({id:'own',email_confirmed_at:'yes'})});});
+beforeEach(()=>{vi.resetAllMocks();mock.getCookie.mockReturnValue('user-session');mock.request.mockResolvedValue({ok:true,json:async()=>({id:'own',email_confirmed_at:'yes'})});});
 it('rejects browser-supplied identity overrides',async()=>{await expect(send({...input,email:'other@example.com'})).rejects.toThrow();expect(mock.request).not.toHaveBeenCalled();});
-it('requires a verified session before contacting the workflow',async()=>{mock.request.mockResolvedValue({ok:false});await expect(send(input)).rejects.toThrow('sessão');expect(mock.fetch).not.toHaveBeenCalled();});
-it('passes the user session only server-to-server and filters the returned payload',async()=>{mock.fetch.mockResolvedValue({ok:true,json:async()=>({success:true,state:'quoted',number:'85999999999',kind:'new',costCents:900,targetStatus:'EM ANÁLISE PELA META',message:'Confirme',secret:'private'})});const result=await send(input);expect(JSON.stringify(result)).not.toContain('private');expect(JSON.parse(mock.fetch.mock.calls[0]![1].body).sessionToken).toBe('user-session');});
+it('requires a verified session before contacting Supabase submissions',async()=>{mock.request.mockResolvedValue({ok:false});await expect(send(input)).rejects.toThrow('sessão');expect(mock.request).toHaveBeenCalledTimes(1);});
+it('calls Supabase directly with the authenticated token and filters returned fields',async()=>{mock.request.mockResolvedValueOnce({ok:true,json:async()=>({id:'own',email_confirmed_at:'yes'})}).mockResolvedValueOnce({ok:true,json:async()=>({success:true,state:'quoted',number:'85999999999',kind:'new',costCents:900,targetStatus:'EM ANÁLISE PELA META',message:'Confirme',secret:'private'})});const result=await send(input);expect(JSON.stringify(result)).not.toContain('private');const [path,token,init]=mock.request.mock.calls[1]!;expect(path).toBe('/functions/v1/astros-submit-number');expect(token).toBe('user-session');expect(JSON.parse(init.body)).toEqual(input);});
+it('shows the Supabase business error instead of a generic connection error',async()=>{mock.request.mockResolvedValueOnce({ok:true,json:async()=>({id:'own',email_confirmed_at:'yes'})}).mockResolvedValueOnce({ok:false,json:async()=>({success:false,message:'Saldo insuficiente'})});await expect(send(input)).rejects.toThrow('Saldo insuficiente');});

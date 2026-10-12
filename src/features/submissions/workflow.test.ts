@@ -1,16 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
-const workflow=JSON.parse(readFileSync('n8n/astros-submit-number.json','utf8'));
-const source=workflow.nodes.find((n:any)=>n.name==='Classificar solicitação').parameters.jsCode;
-function classify(status?:string,otherEmail=false,extraBody:Record<string,unknown>={},duplicates=false){
- const row={id:7,numero:'85999999999 - ok',email:otherEmail?'other@example.com':'own@example.com',excluido_da_base:{value:status},observacoes:''};
- const data:Record<string,unknown[]>={'Webhook Astros':[{body:{number:'+55 (85) 99999-9999',requestId:'00000000-0000-4000-8000-000000000001',action:'quote',...extraBody}}],'Validar sessão':[{id:'own',email:'own@example.com',email_confirmed_at:'yes'}],'Consultar perfil':[{id:'own',nome:'Maria Costa',recarga:50}],'Consultar taxa':[{service_price_cents:900}],'Consultar referência':[],'Consultar números':status?[row,...(duplicates?[row]:[])]:[]};
- const $=(name:string)=>({first:()=>({json:data[name]![0]}),all:()=>data[name]!.map(json=>({json}))});
- return new Function('$','$now',source)($,{setZone:()=>({toFormat:()=> '12/10/2026 00:00'})})[0].json;
-}
-it('charges a new number and sends it to Meta analysis',()=>expect(classify()).toMatchObject({kind:'new',costCents:900,targetStatus:'EM ANÁLISE PELA META',number:'85999999999'}));
-it('charges EXCLUIDO again and sends it to Meta analysis',()=>expect(classify('EXCLUIDO')).toMatchObject({kind:'renew',costCents:900,targetStatus:'EM ANÁLISE PELA META'}));
-it.each(['ANÁLISE NEGADA','DESBANIMENTO OK','EM ANÁLISE PELA META','REEDESBANIMENTO'])('resends %s without another charge',status=>expect(classify(status)).toMatchObject({kind:'resend',costCents:0,targetStatus:'REEDESBANIMENTO'}));
-it('blocks another account’s number and ambiguous duplicates',()=>{expect(classify('EXCLUIDO',true).route).toBe('error');expect(classify('EXCLUIDO',false,{},true).route).toBe('error');});
-it('rejects a changed fee before reserving any balance',()=>expect(classify('EXCLUIDO',false,{action:'submit',expectedCents:800}).route).toBe('error'));
-it('does not activate the imported workflow before credentials are configured',()=>expect(workflow.active).toBe(false));
+import { classify,confirmed } from '../../../supabase/functions/astros-submit-number/core';
+const row=(status:string,email='own@example.com')=>({id:7,field_4741:'85999999999 - ok',field_4773:email,field_4831:{value:status},field_4784:'[ASTROS:reference]'});
+const run=(status?:string)=>classify(status?[row(status)]:[],'85999999999','own@example.com',900);
+it('charges a new number and sends it to Meta analysis',()=>expect(run()).toMatchObject({kind:'new',costCents:900,targetStatus:'EM ANÁLISE PELA META'}));
+it('charges EXCLUIDO again and sends it to Meta analysis',()=>expect(run('EXCLUIDO')).toMatchObject({kind:'renew',costCents:900,targetStatus:'EM ANÁLISE PELA META'}));
+it.each(['ANÁLISE NEGADA','DESBANIMENTO OK','EM ANÁLISE PELA META','REEDESBANIMENTO'])('resends %s without another charge',status=>expect(run(status)).toMatchObject({kind:'resend',costCents:0,targetStatus:'REEDESBANIMENTO'}));
+it('blocks another account, missing ownership and ambiguous duplicates',()=>{for(const rows of [[row('EXCLUIDO','other@example.com')],[row('EXCLUIDO','')],[row('EXCLUIDO'),row('EXCLUIDO')]])expect(()=>classify(rows,'85999999999','own@example.com',900)).toThrow();});
+it('requires a valid configured fee only for paid submissions',()=>{expect(()=>classify([],'85999999999','own@example.com',0)).toThrow();expect(classify([row('ANÁLISE NEGADA')],'85999999999','own@example.com',0).costCents).toBe(0);});
+it('requires ownership, number, status and request marker on write verification',()=>{expect(confirmed(row('REEDESBANIMENTO'),'85999999999','own@example.com','REEDESBANIMENTO','[ASTROS:reference]')).toBe(true);expect(confirmed(row('REEDESBANIMENTO'),'85999999999','own@example.com','REEDESBANIMENTO','[ASTROS:different]')).toBe(false);});
