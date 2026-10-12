@@ -5,7 +5,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -14,8 +13,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { getClientSession } from '@/features/auth/actions';
 
-import { AppShell } from "@/features/demo/shell";
-import { Toaster } from "sonner";
+import { ClientRouteFrame } from "@/features/panel/route-frame";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -131,12 +129,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient, client } = Route.useRouteContext();
-  const isAdmin = useRouterState({ select: state => ["/login", "/cadastro", "/recuperar-senha", "/reset-password", "/termos", "/admin"].includes(state.location.pathname) || state.location.pathname.startsWith("/admin/") });
+
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {isAdmin ? <Outlet/> : <><AppShell identity={client}><Outlet /></AppShell><Toaster theme="dark" position="bottom-right" richColors /></>}
+      <ClientRouteFrame identity={client}/>
     </QueryClientProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { ClientNotice } from '../notices/client';
 import { useState, type ReactNode } from 'react';
-import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import { Link, useRouter, useMatches } from '@tanstack/react-router';
 import { LayoutDashboard, Plus, ClipboardList, Wallet, Code2, UserRound, Headphones, ChevronRight, ChevronDown, PanelLeftClose, PanelLeftOpen, Menu, LogIn, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -23,7 +23,7 @@ export function AppShell({ children, identity }: { children: ReactNode; identity
  const [logoutBusy, setLogoutBusy] = useState(false);
  async function signOut() { setLogoutBusy(true); try { await logoutClient(); await router.invalidate(); await router.navigate({ to: '/login' }); } finally { setLogoutBusy(false); } }
  const [collapsed, setCollapsed] = useState(false); const [mobile, setMobile] = useState(false);
- const pathname = useRouterState({ select: s => s.location.pathname });
+ const pathname = useMatches({ select: matches => matches.at(-1)?.pathname || '/' });
  const title = titles[pathname] || 'ASTROS V2';
  const accountName = identity?.name || 'Cliente';
  const initials = accountName.split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
