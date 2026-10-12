@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-const mocks=vi.hoisted(()=>({getAdminNotices:vi.fn(),setNoticeStatus:vi.fn(),updateNotice:vi.fn(),uploadImage:vi.fn()}));
+const mocks=vi.hoisted(()=>({getAdminNotices:vi.fn(),setNoticeStatus:vi.fn(),removeNotice:vi.fn(),updateNotice:vi.fn(),uploadImage:vi.fn()}));
 vi.mock('./actions',()=>mocks);
 import { NoticeSettings } from './admin';
 beforeEach(()=>{cleanup();vi.resetAllMocks();});
@@ -20,4 +20,15 @@ it('clears the form after a successful save and reloads saved fields only when E
  await screen.findByText('Novo aviso');
  fireEvent.click(screen.getByRole('button',{name:'Editar'}));
  expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Novo aviso');
+});
+
+it('requires the in-panel confirmation and leaves the notice intact on Cancel',async()=>{
+ const notice={id:'00000000-0000-4000-8000-000000000001',title:'Teste',body:'Mensagem',buttonUrl:'',buttonLabel:'',imageUrl:'',enabled:true,version:'v',status:'published',createdAt:'2026-10-11T12:00:00Z',publishedAt:'2026-10-11T12:00:00Z'};
+ mocks.getAdminNotices.mockResolvedValue({rows:[notice],total:1,page:1,pageSize:20});mocks.removeNotice.mockResolvedValue({success:true});
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><NoticeSettings adminId="admin"/></QueryClientProvider>);
+ await screen.findByText('Teste');fireEvent.click(screen.getByRole('button',{name:'Excluir'}));
+ expect(screen.getByRole('alertdialog')).toBeTruthy();expect(mocks.removeNotice).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Cancelar'}));expect(mocks.removeNotice).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Excluir'}));fireEvent.click(screen.getByRole('button',{name:'Excluir comunicado'}));
+ await waitFor(()=>expect(mocks.removeNotice).toHaveBeenCalledWith({data:{id:notice.id}}));
 });
