@@ -452,3 +452,12 @@ tbody tr:hover { background: var(--secondary); }
 .support-link { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; font-size: 12px; color: var(--primary); min-height: 44px; }
 @container (max-width:800px) { .support-layout { grid-template-columns: minmax(0,1fr); } .support-side { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:600px) { .support-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-side { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-heading { gap: 12px; } .support-heading h2 { font-size: 18px; } .support-contact-form button[type=submit] { width: 100%; } }
+
+.payment-settings-layout { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; align-items: start; }
+.payment-settings-layout > .admin-settings { margin-bottom: 0; min-width: 0; }
+.settings-card-heading { display: flex; align-items: flex-start; gap: 14px; }
+.settings-card-heading > div { min-width: 0; }
+.settings-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--secondary); color: var(--primary); flex-shrink: 0; }
+.settings-webhook { grid-column: 1/-1; }
+@container(max-width:780px) { .payment-settings-layout { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:650px) { .payment-settings-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .settings-card-heading { gap: 12px; } .settings-card-heading h2 { font-size: 17px; } }

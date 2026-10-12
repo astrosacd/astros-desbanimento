@@ -1,0 +1,9 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+const api=vi.hoisted(()=>({saveIntegration:vi.fn(),savePrices:vi.fn()}));
+vi.mock('./actions',()=>({getPaymentSettings:vi.fn(),getAdminPrices:vi.fn(),savePaymentSettings:api.saveIntegration,saveAdminPrices:api.savePrices}));
+vi.mock('@tanstack/react-query',()=>({useQuery:({queryKey}:any)=>({data:queryKey[0]==='admin-prices'?{servicePriceCents:500,minimumEnabled:true,minimumRechargeCents:1000}:{enabled:true,liveMode:false,hasAccessToken:true,hasWebhookSecret:true,webhookUrl:'https://example.com/webhook'},isPending:false,isError:false,refetch:async()=>({isError:false})})}));
+import {PaymentSettings} from './admin-settings';
+beforeEach(()=>{cleanup();vi.resetAllMocks();api.saveIntegration.mockResolvedValue({});api.savePrices.mockResolvedValue({});});
+it('saves the price/minimum independently without resubmitting credentials',async()=>{render(<PaymentSettings/>);fireEvent.change(screen.getByLabelText(/Taxa por desbanimento permanente/),{target:{value:'7,50'}});fireEvent.click(screen.getByRole('button',{name:'Salvar taxa e mínimo'}));await waitFor(()=>expect(api.savePrices).toHaveBeenCalledWith({data:{servicePriceCents:750,minimumEnabled:true,minimumRechargeCents:1000}}));expect(api.saveIntegration).not.toHaveBeenCalled();});
+it('saving integration preserves persisted pricing instead of applying unsaved price edits',async()=>{render(<PaymentSettings/>);fireEvent.change(screen.getByLabelText(/Taxa por desbanimento permanente/),{target:{value:'99,99'}});fireEvent.click(screen.getByRole('button',{name:'Salvar integração do Mercado Pago'}));await waitFor(()=>expect(api.saveIntegration).toHaveBeenCalledWith({data:{accessToken:'',webhookSecret:'',enabled:true,liveMode:false,servicePriceCents:500,minimumEnabled:true,minimumRechargeCents:1000}}));expect(api.savePrices).not.toHaveBeenCalled();});
