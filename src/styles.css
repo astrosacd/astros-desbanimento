@@ -500,3 +500,26 @@ tbody tr:hover { background: var(--secondary); }
 .entrance-forgot { font-size: 12px; }
 @media(max-width:800px) { .client-entrance { padding: 32px 18px; } .entrance-card { padding: 30px 26px; width: 100%; } .entrance-mobile-brand .brand-logo { max-width: 220px; } }
 @media(max-width:380px) { .client-entrance { padding: 20px 12px; } .entrance-card { padding: 26px 20px; border-radius: 18px; } .entrance-card h2 { font-size: 26px; } }
+
+/* Overview puts live numbers before explanatory content. */
+.overview-top { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(0,1fr); gap: 22px; align-items: stretch; margin-bottom: 20px; }
+.overview-welcome { padding: 28px 32px; border: 1px solid #335565; border-radius: 18px; background: linear-gradient(115deg,#142B36,#121D2B 78%); min-width: 0; }
+.overview-welcome .eyebrow { font-size: 10px; letter-spacing: .14em; color: #83E3E9; }
+.overview-welcome h2 { font-size: clamp(25px,2.5vw,34px); line-height: 1.18; letter-spacing: -.04em; font-weight: 700; margin: 14px 0; }
+.overview-welcome p { max-width: 440px; color: var(--muted-foreground); line-height: 1.75; font-size: 13px; margin-bottom: 22px; }
+.overview-welcome a { min-height: 46px; gap: 10px; border-radius: 10px; }
+.overview-wallet { min-width: 0; }
+.overview-wallet > section { margin-top: 0; height: 100%; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 24px; background: var(--card); }
+.overview-wallet strong { display: block; font-size: clamp(26px,2.6vw,36px); letter-spacing: -.035em; margin: 10px 0; overflow-wrap: anywhere; }
+.overview-wallet a { min-height: 46px; border-radius: 10px; }
+.overview-shortcuts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; margin-bottom: 28px; }
+.overview-shortcut { display: flex; align-items: center; gap: 16px; padding: 20px 22px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); min-width: 0; transition: background .15s,border-color .15s; }
+.overview-shortcut:hover { background: var(--secondary); border-color: #52738A; }
+.overview-shortcut:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.overview-shortcut-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #17313D; color: #81E3E9; flex-shrink: 0; }
+.overview-shortcut > div { min-width: 0; flex: 1; }
+.overview-shortcut > svg { color: var(--muted-foreground); flex-shrink: 0; }
+.overview-shortcut h2 { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.overview-shortcut p { color: var(--muted-foreground); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+@container(max-width:780px) { .overview-top { grid-template-columns: minmax(0,1fr); } .overview-wallet > section { flex-direction: row; align-items: center; flex-wrap: wrap; height: auto; } }
+@media(max-width:650px) { .overview-top,.overview-shortcuts { grid-template-columns: minmax(0,1fr); gap: 14px; } .overview-welcome,.overview-wallet > section { padding: 22px; } .overview-welcome a { width: 100%; justify-content: center; } .overview-wallet > section { height: auto; } .overview-wallet a { width: 100%; } .overview-shortcut { padding: 18px; gap: 12px; } }
