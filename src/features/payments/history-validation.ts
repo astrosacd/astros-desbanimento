@@ -1,0 +1,3 @@
+import { z } from 'zod';
+const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{const d=new Date(`${v}T00:00:00Z`);return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;},'Data inválida.');
+export const historySchema=z.object({page:z.number().int().min(1).max(100000).default(1),email:z.string().trim().max(254).regex(/^[a-zA-Z0-9@._+ -]*$/).default(''),status:z.enum(['all','approved','pending','in_process','rejected','cancelled','refunded','charged_back','creating','test_approved','test_pending']).default('all'),method:z.enum(['all','pix','card']).default('all'),from:date.optional(),until:date.optional()}).strict().refine(v=>!v.from||!v.until||v.from<=v.until,'A data inicial deve ser anterior à final.');

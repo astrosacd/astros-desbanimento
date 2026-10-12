@@ -356,3 +356,12 @@ button,a[role=button],.nav-link { touch-action: manipulation; }
 .entrance-forgot { font-size:11px; }
 @media(max-width:800px) { .client-entrance { grid-template-columns:minmax(0,1fr); padding:32px 18px; gap:0; } .entrance-card { padding:30px 26px; max-width:450px; } .entrance-mobile-brand { margin-bottom:30px; } .entrance-card h2 { font-size:26px; } }
 @media(max-width:380px) { .client-entrance { padding:20px 12px; } .entrance-card { padding:26px 20px; } .entrance-card h2 { font-size:24px; } }
+
+.admin-nav-button { width: 100%; text-align: left; cursor: pointer; border: 0; }
+.admin-nav-button[data-status="active"] { background: rgba(0,215,232,.1); color: var(--primary); }
+.admin-sidebar-account { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.admin-action-card { padding: 24px; text-align: left; border: 1px solid var(--border); border-radius: 16px; background: #0B1423; cursor: pointer; transition: border-color .15s, background .15s; }
+.admin-action-card:hover { border-color: var(--primary); background: #101D30; }
+.admin-action-card:focus-visible,.admin-nav-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media(min-width:851px) { .admin-sidebar { position: sticky; top: 0; height: 100dvh; overflow-y: auto; } }
+@media(max-width:850px) { .admin-nav-button { width: auto; flex: 1 1 150px; } .admin-sidebar-account { display:none; } }
