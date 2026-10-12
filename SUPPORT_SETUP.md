@@ -21,3 +21,7 @@ O WhatsApp é obrigatório antes de abrir o widget, validado no servidor e envia
 O SDK é carregado sob demanda somente depois de preparar a identidade. Não há bolha livre para iniciar chat sem contato. A sessão do widget é encerrada/limpa ao sair do painel ou trocar de conta, e um carregamento pendente não abre a conversa de uma sessão encerrada. Na mudança da caixa com widget já carregado, é necessário atualizar a página.
 
 A disponibilidade e a aparência do widget dependem da instalação do Chatwoot e das opções da caixa. O formulário do painel é responsivo; não reescrevemos o iframe externo.
+
+## Campo de e-mail repetido
+
+A versão consultada do widget oculta o campo padrão emailAddress quando o contato retornado tem has_email=true. O painel reenvia e-mail/nome/telefone assinados a cada abertura, removendo somente o cache cw_user_<websiteToken> do SDK para evitar que uma identificação antiga/falha seja ignorada como repetida. Não remove o cookie de conversa para esse reenvio. Erros reportados pelo widget fecham a janela e exibem uma orientação, sem manter um falso estado de atendimento preparado. Se ainda houver campo de e-mail após essa atualização, é necessário conferir a identificação e o contato no Chatwoot: conflitos entre contatos já identificados podem impedir a atribuição do e-mail. Não mesclar/excluir contatos automaticamente nem mudar a identidade para contornar essa proteção.

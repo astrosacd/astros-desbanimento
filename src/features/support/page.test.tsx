@@ -1,8 +1,8 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
-const api=vi.hoisted(()=>({prepare:vi.fn(),open:vi.fn()}));
+const api=vi.hoisted(()=>({prepare:vi.fn(),open:vi.fn(),clear:vi.fn()}));
 vi.mock('./actions',()=>({getSupportSettings:vi.fn(),prepareSupport:api.prepare}));
-vi.mock('./widget',()=>({openSupport:api.open}));
+vi.mock('./widget',()=>({openSupport:api.open,closeSupport:api.clear}));
 vi.mock('@tanstack/react-query',()=>({useQuery:()=>({data:{enabled:true,title:'Atendimento Astros',description:'Converse com nossa equipe.'}})}));
 vi.mock('@tanstack/react-router',()=>({useRouteContext:()=>({client:{name:'Maria',email:'own@example.com'}}),Link:({children,...props}:any)=><a {...props}>{children}</a>}));
 vi.mock('../countries/picker',()=>({CountryPicker:()=> <button type="button" id="submission-country">Brasil (+55)</button>}));
@@ -10,3 +10,5 @@ import {SupportChatPage} from './page';
 beforeEach(()=>{cleanup();vi.resetAllMocks();api.prepare.mockResolvedValue({phone:'+5585999999999',id:'own'});api.open.mockResolvedValue(undefined);});
 it('replaces the contact form with a compact continue card after opening the widget',async()=>{render(<SupportChatPage/>);fireEvent.change(screen.getByLabelText('WhatsApp'),{target:{value:'85999999999'}});fireEvent.click(screen.getByRole('button',{name:'Abrir atendimento'}));await waitFor(()=>expect(screen.getByText('Seu atendimento está preparado')).toBeTruthy());expect(screen.queryByLabelText('WhatsApp')).toBeNull();expect(screen.getByText('+5585999999999')).toBeTruthy();expect(screen.queryByText('Mensagem enviada')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Alterar contato'}));expect(screen.getByLabelText('WhatsApp')).toBeTruthy();});
 it('does not show a successful preparation if the widget failed to open',async()=>{api.open.mockRejectedValue(Error('Não carregou'));render(<SupportChatPage/>);fireEvent.change(screen.getByLabelText('WhatsApp'),{target:{value:'85999999999'}});fireEvent.click(screen.getByRole('button',{name:'Abrir atendimento'}));await waitFor(()=>expect(screen.getByRole('alert').textContent).toBe('Não carregou'));expect(screen.queryByText('Seu atendimento está preparado')).toBeNull();expect(screen.getByLabelText('WhatsApp')).toBeTruthy();});
+
+it('shows identification rejection instead of keeping a misleading ready state',async()=>{render(<SupportChatPage/>);fireEvent.change(screen.getByLabelText('WhatsApp'),{target:{value:'85999999999'}});fireEvent.click(screen.getByRole('button',{name:'Abrir atendimento'}));await waitFor(()=>expect(screen.getByText('Seu atendimento está preparado')).toBeTruthy());fireEvent(window,new Event('chatwoot:error'));expect(screen.getByRole('alert').textContent).toContain('identificar sua conta');expect(api.clear).toHaveBeenCalledOnce();expect(screen.queryByText('Seu atendimento está preparado')).toBeNull();});
