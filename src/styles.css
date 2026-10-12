@@ -439,3 +439,16 @@ tbody tr:hover { background: var(--secondary); }
  .admin-header h1 { font-size: 23px; }
  .admin-content .form-section { padding: 16px; }
 }
+
+.support-layout { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(240px,1fr); gap: 24px; max-width: 1040px; align-items: start; }
+.support-layout > *, .support-heading > div { min-width: 0; }
+.support-card { padding: clamp(20px,3vw,32px); }
+.support-heading { display: flex; gap: 16px; align-items: center; }
+.support-icon { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border: 1px solid var(--border); border-radius: 14px; color: var(--primary); background: var(--secondary); }
+.support-contact-form,.support-ready { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 24px; }
+.support-side { display: grid; gap: 20px; }
+.support-contact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; margin: 22px 0; color: var(--muted-foreground); }
+.support-contact strong { color: var(--foreground); }
+.support-link { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; font-size: 12px; color: var(--primary); min-height: 44px; }
+@container (max-width:800px) { .support-layout { grid-template-columns: minmax(0,1fr); } .support-side { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .support-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-side { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-heading { gap: 12px; } .support-heading h2 { font-size: 18px; } .support-contact-form button[type=submit] { width: 100%; } }
