@@ -42,6 +42,20 @@ export function canonicalPhone(raw:string,country:string,custom?:{id:string;ddi:
  return country==='BR'?String(phone.nationalNumber):String(phone.number);
 }
 
+type Page={count:number;results:Row[]};
+// Bounded parallel reads preserve the complete global ownership/duplicate scan.
+export async function scanRows(load:(page:number)=>Promise<Page>,size=200,concurrency=3,maxRows=20000){
+ const first=await load(1);const total=first.count;
+ if(!Number.isSafeInteger(total)||total<0||total>maxRows||!Array.isArray(first.results))throw Error('A base precisa de conferência antes do envio.');
+ const pages:Row[][]=[first.results];const count=Math.max(1,Math.ceil(total/size));let next=2;
+ const check=(data:Page,page:number)=>{if(data.count!==total||!Array.isArray(data.results)||data.results.length!==Math.min(size,Math.max(0,total-(page-1)*size)))throw Error('A base mudou durante a consulta. Tente novamente.');};
+ check(first,1);
+ await Promise.all(Array.from({length:Math.min(concurrency,Math.max(0,count-1))},async()=>{while(next<=count){const page=next++;const data=await load(page);check(data,page);pages[page-1]=data.results;}}));
+ const rows=pages.flat();
+ if(rows.length!==total||rows.some(r=>!Number.isSafeInteger(r?.id)||r.id<=0)||new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('A base mudou durante a consulta. Tente novamente.');
+ return rows;
+}
+
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 const BASE='https://baserow.astroscomunicacaodigital.com';
 const PATH='/api/database/rows/table/511/';
@@ -65,22 +79,11 @@ async function baserow(path:string,body?:unknown,method='GET'){
  throw Error('O Baserow não respondeu corretamente.');
 }
 async function allRows(){
- const rows:Row[]=[];let total:number|undefined;
- // Full scan checks legacy formatted numbers and ownership globally. Never return it to clients.
- for(let page=1;page<=100;page++){
-  const data=await baserow(`${PATH}?size=200&page=${page}`);
-  if(!Number.isSafeInteger(data.count)||data.count<0||!Array.isArray(data.results))throw Error('Resposta inválida do Baserow.');
-  if(total===undefined)total=data.count;
-  if(data.count!==total||total>20000)throw Error('A base precisa de conferência antes do envio.');
-  rows.push(...data.results);
-  if(rows.length===total){if(new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('A base mudou durante a consulta. Tente novamente.');return rows;}
-  if(rows.length>total||!data.results.length)throw Error('A base mudou durante a consulta. Tente novamente.');
- }
- throw Error('A base excedeu o limite de consulta.');
+ return scanRows(page=>baserow(`${PATH}?size=200&page=${page}`));
 }
 Deno.serve(async req=>{
  if(req.method!=='POST')return json({success:false,message:'Método não permitido.'},405);
- let reserved=false;let requestId='';let context:any;
+ let reserved=false;let requestId='';let context:any;let stage='session';const started=Date.now();
  try{
   const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
   const {data:{user},error:authError}=await db.auth.getUser(token);
@@ -98,23 +101,27 @@ Deno.serve(async req=>{
    if(old.user_id!==user.id||old.number!==input.number)throw Error('Referência divergente.');
    return json(old.result||{success:false,state:old.state,message:'Este envio está em andamento ou aguardando conferência. Consulte o histórico ou o suporte.'});
   }
+  stage='profile-and-price';
   const [{data:profile,error:profileError},{data:config,error:configError}]=await Promise.all([
    db.from('painel_de_desbanimento').select('id,nome,recarga').eq('id',user.id).single(),
    db.from('astros_payment_settings').select('service_price_cents').eq('id',true).single(),
   ]);
   if(profileError||!profile)throw Error('Conta não encontrada.');
   if(configError)throw Error('Não foi possível consultar a taxa do serviço.');
+  stage='baserow-lookup';
   const plan=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   context={success:true,number:input.number,kind:plan.kind,costCents:plan.costCents,targetStatus:plan.targetStatus};
   if(plan.costCents>0&&(!Number.isFinite(Number(profile.recarga??0))||Math.round(Number(profile.recarga??0)*100)<plan.costCents))throw Error(`Saldo insuficiente para enviar este número. A taxa é ${new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(plan.costCents/100)}. Adicione saldo para continuar.`);
   if(input.action==='quote')return json({...context,state:'quoted',message:plan.costCents?'Confira a taxa antes de confirmar.':'Este reenvio não desconta saldo.'});
   if(input.expectedCents!==plan.costCents)throw Error('O valor ou a situação do número mudou. Consulte novamente antes de confirmar.');
+  stage='balance-reservation';
   const {data:reservation,error:reserveError}=await db.rpc('astros_start_service',{request_id:requestId,client_id:user.id,phone:input.number,service_kind:plan.kind,expected_cents:plan.costCents,target:plan.targetStatus});
   // An unknown RPC outcome must never proceed to Baserow or use a new reference.
   if(reserveError)return json({success:false,message:String(reserveError.message||'').includes('Saldo insuficiente')?'Saldo insuficiente. Adicione saldo para continuar.':String(reserveError.message||'').includes('Taxa não configurada')?'A taxa do serviço ainda não foi configurada.':'Não foi possível confirmar a reserva. Confira o saldo e o histórico antes de tentar novamente com a mesma referência.'});
   if(!reservation?.execute)return json(reservation||{success:false,message:'Não foi possível confirmar a reserva.'});
   reserved=true;
   // Recheck after locking/reserving, before performing any external write.
+  stage='baserow-recheck';
   const fresh=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   if(fresh.row?.id!==plan.row?.id||fresh.row?.field_4831?.value!==plan.row?.field_4831?.value||fresh.kind!==plan.kind){
    const response={...context,success:false,state:'failed',message:'A situação do número mudou. Nenhum envio foi feito e a taxa foi devolvida. Consulte novamente.'};
@@ -125,18 +132,22 @@ Deno.serve(async req=>{
   const observations=plan.kind==='resend'?String(fresh.row?.field_4784||''):(input.country==='BR'?'nacional':'internacional');
   const stamp=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Fortaleza',dateStyle:'short',timeStyle:'medium'}).format(new Date());
   const fields={field_4784:observations,field_4831:plan.kind==='resend'?2520:2521};
+  stage='baserow-write';
   const written:Row=plan.row
    ?await baserow(`${PATH}${plan.row.id}/`,fields,'PATCH')
    :await baserow(PATH,{...fields,field_4740:profile.nome,field_4741:input.number,field_4773:user.email,field_4827:stamp},'POST');
   if(!confirmed(written,input.number,user.email,plan.targetStatus,observations,input.country))throw Error('A gravação precisa de conferência.');
   // Read back the saved row: a successful HTTP response alone is not enough.
+  stage='baserow-readback';
   const readBack:Row=await baserow(`${PATH}${written.id}/`);
   if(!confirmed(readBack,input.number,user.email,plan.targetStatus,observations,input.country))throw Error('A gravação precisa de conferência.');
   const response={...context,state:'completed',message:plan.costCents?'Solicitação enviada. A taxa foi descontada do saldo.':'Reenvio solicitado sem desconto no saldo.'};
+  stage='finish-history';
   const {error:finishError}=await db.rpc('astros_finish_service',{request_id:requestId,final_state:'completed',response});
   if(finishError)throw Error('Não foi possível confirmar o histórico.');
   return json(response);
  }catch(error){
+  if(error instanceof Error&&['TypeError','AbortError','TimeoutError'].includes(error.name))console.warn('astros_submit_transport_failure',{stage,elapsedMs:Date.now()-started,reserved,code:error.name});
   if(reserved){
    const response={...context,success:false,state:'review',message:'O envio precisa de conferência pelo suporte. Não envie outra solicitação para este número. Consulte o histórico.'};
    await db.rpc('astros_finish_service',{request_id:requestId,final_state:'review',response}).catch(()=>undefined);

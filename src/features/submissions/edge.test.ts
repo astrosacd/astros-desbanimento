@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {z} from 'zod';
 import {expect,it,vi} from 'vitest';
+import {scanRows} from '../../../supabase/functions/astros-submit-number/scan';
 import {canonicalPhone} from './phone';
 import {classify,confirmed,normalize} from '../../../supabase/functions/astros-submit-number/core';
 const input={number:'85999999999',requestId:'00000000-0000-4000-8000-000000000001',action:'submit',expectedCents:900};
@@ -17,7 +18,7 @@ function setup(options:{unverified?:boolean;cached?:boolean;writeFail?:boolean;r
  });
  const source=readFileSync('supabase/functions/astros-submit-number/index.ts','utf8').replace(/^import .*;\n/gm,'');
  const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
- new Function('createClient','z','classify','confirmed','normalize','canonicalPhone','Deno','fetch',code)(()=>db,z,classify,confirmed,normalize,canonicalPhone,{env:{get:()=> 'secret'},serve:(h:any)=>handler=h},fetcher);
+ new Function('createClient','z','classify','confirmed','normalize','canonicalPhone','scanRows','Deno','fetch',code)(()=>db,z,classify,confirmed,normalize,canonicalPhone,scanRows,{env:{get:()=> 'secret'},serve:(h:any)=>handler=h},fetcher);
  const send=(extra={})=>handler!(new Request('https://supabase.example/functions/v1/astros-submit-number',{method:'POST',headers:{Authorization:'Bearer session'},body:JSON.stringify({...input,number:phone,country,...extra})}));
  return {send,rpc,fetcher};
 }

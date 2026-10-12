@@ -74,3 +74,9 @@ Registros antigos com DDI padrão são preservados, podem ser consultados/exclu�
 ## Saldo e envio automático
 
 Atualize a Edge Function com o arquivo de deploy atual. Não é necessário SQL adicional para esse ajuste. O painel faz quote + submit automaticamente, com o mesmo UUID, em um clique. A função classifica primeiro para identificar se a solicitação é paga ou gratuita. Para uma paga, verifica `recarga` contra a taxa vigente; saldo insuficiente bloqueia antes da reserva ou gravação e aparece com botão para `/carteira`. Para reenvios gratuitos, saldo zero é suficiente. O RPC `astros_start_service` continua conferindo e bloqueando atomicamente o saldo na reserva, inclusive se ele mudar entre consulta e envio. Falhas não são repetidas automaticamente; a referência permanece disponível para uma tentativa segura ou conferência. O botão fica bloqueado enquanto a operação está em andamento.
+
+## Consulta lenta ou falha de conexão
+
+A leitura completa do Baserow agora usa até três páginas em paralelo, com os mesmos limites de 200 registros/página e 20 mil registros e conferência de contagem/IDs para impedir falsos resultados vazios ou novos. Atualize a função com o arquivo de deploy atual; não há alteração SQL.
+
+Se o transporte falhar durante quote, o painel informa **Nenhum envio foi iniciado (E01)**. Se falhar durante submit, mantém a orientação de consultar o histórico antes de uma nova referência (**E02**), pois uma operação pode ter sido reservada. Falha de conexão não é tratada como número inexistente nem como saldo insuficiente: é preciso consultar a situação para preservar reenvios gratuitos, inclusive com saldo zero. Logs técnicos de transporte da função registram apenas etapa, tempo decorrido, estado de reserva e tipo do erro, sem token, e-mail ou número.

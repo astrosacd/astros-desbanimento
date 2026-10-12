@@ -1,0 +1,5 @@
+import {expect,it} from 'vitest';
+import {scanRows} from '../../../supabase/functions/astros-submit-number/scan';
+it('reads every page with a maximum of three concurrent requests',async()=>{let active=0,peak=0;const rows=await scanRows(async page=>{active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,1));active--;return {count:998,results:Array.from({length:page===5?198:200},(_,i)=>({id:(page-1)*200+i+1}))};});expect(rows).toHaveLength(998);expect(rows.at(-1)?.id).toBe(998);expect(peak).toBe(3);});
+it('returns a verified empty database without making extra requests',async()=>{let calls=0;expect(await scanRows(async()=>{calls++;return {count:0,results:[]};})).toEqual([]);expect(calls).toBe(1);});
+it.each(['count','duplicate','partial'])('rejects a %s inconsistent scan instead of treating missing records as new',async problem=>{await expect(scanRows(async page=>({count:problem==='count'&&page===2?201:202,results:Array.from({length:page===1?200:problem==='partial'?1:2},(_,i)=>({id:page===1?i+1:problem==='duplicate'?i+1:i+201}))}))).rejects.toThrow();});
