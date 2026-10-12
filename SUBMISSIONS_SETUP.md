@@ -80,3 +80,9 @@ Atualize a Edge Function com o arquivo de deploy atual. Não é necessário SQL 
 A leitura completa do Baserow agora usa até três páginas em paralelo, com os mesmos limites de 200 registros/página e 20 mil registros e conferência de contagem/IDs para impedir falsos resultados vazios ou novos. Atualize a função com o arquivo de deploy atual; não há alteração SQL.
 
 Se o transporte falhar durante quote, o painel informa **Nenhum envio foi iniciado (E01)**. Se falhar durante submit, mantém a orientação de consultar o histórico antes de uma nova referência (**E02**), pois uma operação pode ter sido reservada. Falha de conexão não é tratada como número inexistente nem como saldo insuficiente: é preciso consultar a situação para preservar reenvios gratuitos, inclusive com saldo zero. Logs técnicos de transporte da função registram apenas etapa, tempo decorrido, estado de reserva e tipo do erro, sem token, e-mail ou número.
+
+## Chamada do painel para a função
+
+O painel usa `src/features/submissions/transport.server.ts` para chamar diretamente o endpoint fixo deste projeto, com JWT do usuário previamente validado e chave pública. Redirecionamentos canônicos são seguidos manualmente apenas no mesmo host/caminho de função, mantendo POST e UUID; destinos externos/outras funções/query strings divergentes são bloqueados. Uma falha de rede não repete POST automaticamente. O transporte registra no servidor apenas ação, tipo/código de erro e identificador de redirecionamento, nunca credenciais ou dados do usuário. Este ajuste exige somente sincronizar/publicar o Lovable, sem novo deploy da Edge Function ou SQL.
+
+Na investigação de 12/10, as capturas do Supabase mostravam apenas o diagnóstico sem sessão às 09:23 (401), sem as tentativas mais recentes do cliente. O ajuste da chamada precisa de validação autenticada pelo usuário; esse diagnóstico não comprova o resultado do envio real.
