@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const api=vi.hoisted(()=>({requireAdmin:vi.fn(),request:vi.fn()}));
+vi.mock('../admin/auth.server',()=>api);
+vi.mock('@tanstack/react-start/server',()=>({getCookie:()=> 'admin-token',setResponseHeader:vi.fn()}));
+import {adminHistory} from './admin.server';
+const filters={page:2,number:'8599',state:'completed',kind:'resend'};
+beforeEach(()=>{vi.resetAllMocks();api.requireAdmin.mockResolvedValue({id:'admin'});api.request.mockImplementation(async(path:string,token:string,init:any)=>new Response(init.method==='HEAD'?null:JSON.stringify([{id:'ref',number:'85999999999',kind:'resend',amount_cents:0,state:'completed',created_at:'2026-10-12',updated_at:'2026-10-12',remote_intent:{email:'own@example.com',markerField:'private',country:'BR'}}]),{headers:{'content-range':'0-24/30'}}));});
+it('checks admin authorization before querying any history or count',async()=>{api.requireAdmin.mockRejectedValue(Error('Denied'));await expect(adminHistory(filters)).rejects.toThrow('Denied');expect(api.request).not.toHaveBeenCalled();});
+it('paginates and filters on the server and returns a bounded client-safe projection',async()=>{const r=await adminHistory(filters);expect(api.request.mock.calls[0]![0]).toContain('offset=25');expect(api.request.mock.calls[0]![0]).toContain('state=eq.completed');expect(api.request.mock.calls[0]![0]).toContain('kind=eq.resend');expect(r.total).toBe(30);expect(r.summary.completed).toBe(30);expect(r.rows[0]).toMatchObject({email:'own@example.com',amountCents:0});expect(r.rows[0]).not.toHaveProperty('remote_intent');expect(api.request.mock.calls.every(c=>c[1]==='admin-token')).toBe(true);});
+it('does not invent empty counts if the service fails or omits the count',async()=>{api.request.mockResolvedValue(new Response('[]'));await expect(adminHistory(filters)).rejects.toThrow('resumo');});
