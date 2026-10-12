@@ -1,3 +1,5 @@
 import {readFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
 it('keeps the manual Supabase deployment identical to the tested function and country validation',()=>{const read=(p:string)=>readFileSync(p,'utf8');const root='supabase/functions/astros-submit-number/';expect(read(root+'phone.ts')).toBe(read('src/features/submissions/phone.ts').replace("from 'libphonenumber-js'","from 'npm:libphonenumber-js@1.13.15'"));const expected=read(root+'index.ts').replace("import { classify, confirmed, normalize, type Row } from './core.ts';",read(root+'core.ts')).replace("import { canonicalPhone } from './phone.ts';",read(root+'phone.ts')).replace("import { scanRows } from './scan.ts';",read(root+'scan.ts').replace("import type {Row} from './core.ts';\n",''));expect(read('supabase/astros-submit-number.deploy.ts')).toBe('// Arquivo único para colar no editor Supabase. Gerado a partir de functions/astros-submit-number.\n'+expected);});
+
+it("keeps the fresh manual deployment download synchronized",()=>{expect(readFileSync("supabase/astros-submit-number-com-pais-e-saldo.ts","utf8")).toBe(readFileSync("supabase/astros-submit-number.deploy.ts","utf8"));});
