@@ -1,0 +1,6 @@
+import {expect,it} from 'vitest';
+import {chatOrigin,parseWidgetCode,supportPhone,supportSettingsSchema} from './validation';
+it('extracts widget configuration without executing pasted scripts',()=>{expect(parseWidgetCode(`<script>var BASE_URL="https://chat.example.com/";window.chatwootSDK.run({websiteToken:'abc_123',baseUrl:BASE_URL});throw Error('never run');</script>`)).toEqual({baseUrl:'https://chat.example.com',websiteToken:'abc_123'});});
+it.each(['http://chat.example.com','https://chat.example.com/path','https://user:pass@chat.example.com','https://chat.example.com/?secret=abc','https://127.0.0.1'])('rejects unsupported SDK origin %s',url=>expect(()=>chatOrigin(url)).toThrow());
+it('rejects ambiguous inbox tokens and client identity override fields',()=>{expect(()=>parseWidgetCode(`baseUrl:'https://chat.example.com',websiteToken:'one',websiteToken:'two'`)).toThrow();expect(()=>supportSettingsSchema.parse({code:'',enabled:false,title:'Oi',description:'Oi',hmacToken:'',userId:'other'})).toThrow();});
+it('normalizes contact phone independently of the Baserow number format',()=>{expect(supportPhone('(85) 99999-9999','BR')).toBe('+5585999999999');expect(supportPhone('912345678','PT')).toBe('+351912345678');expect(()=>supportPhone('123','BR')).toThrow();});

@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const api=vi.hoisted(()=>({requireAdmin:vi.fn(),request:vi.fn(),cookie:vi.fn(()=> 'session')}));
+vi.mock('../admin/auth.server',()=>api);
+vi.mock('@tanstack/react-start/server',()=>({getCookie:api.cookie,setResponseHeader:vi.fn()}));
+import {save,settings,identity} from './server';
+beforeEach(()=>{vi.resetAllMocks();api.cookie.mockReturnValue('session');api.requireAdmin.mockResolvedValue({id:'admin'});});
+it('denies nonadmin writes before reading or saving configuration',async()=>{api.requireAdmin.mockRejectedValue(Error('Denied'));await expect(save({})).rejects.toThrow('Denied');expect(api.request).not.toHaveBeenCalled();});
+it('requires a verified client before preparing any signed identity',async()=>{api.request.mockResolvedValue(new Response('{}',{status:401}));await expect(identity({number:'85999999999',country:'BR'})).rejects.toThrow('confirmada');expect(api.request).toHaveBeenCalledTimes(1);});
+it('sends only the phone to the identity RPC, never caller supplied identity',async()=>{api.request.mockResolvedValueOnce(new Response(JSON.stringify({id:'own',email_confirmed_at:'yes'}))).mockResolvedValueOnce(new Response(JSON.stringify({id:'own',hash:'signed'})));await identity({number:'85999999999',country:'BR'});expect(JSON.parse(api.request.mock.calls[1]![2].body)).toEqual({contact_phone:'+5585999999999'});});
+it('selects only public widget settings, never the private key',async()=>{api.request.mockResolvedValueOnce(new Response(JSON.stringify({id:'own',email_confirmed_at:'yes'}))).mockResolvedValueOnce(new Response(JSON.stringify([{enabled:true,base_url:'https://chat.example.com',website_token:'public',hmac_token:'never-visible'}])));const r=await settings();expect(api.request.mock.calls[1]![0]).not.toContain('hmac');expect(r).not.toHaveProperty('hmacToken');expect(JSON.stringify(r)).not.toContain('never-visible');});
