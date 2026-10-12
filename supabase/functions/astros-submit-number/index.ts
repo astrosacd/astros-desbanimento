@@ -1,10 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 import { classify, confirmed, normalize, type Row } from './core.ts';
+import { canonicalPhone } from './phone.ts';
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 const BASE='https://baserow.astroscomunicacaodigital.com';
 const PATH='/api/database/rows/table/511/';
-const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/).transform(normalize).refine(v=>/^\d{10,11}$/.test(v)),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict();
+const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().length(2).default('BR'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict().transform((data,ctx)=>{try{return {...data,number:canonicalPhone(data.number,data.country)};}catch{ctx.addIssue({code:z.ZodIssueCode.custom,message:'Confira o número e o país selecionado.'});return z.NEVER;}});
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 // GET redirects may only add/remove the endpoint's trailing slash. Never redirect writes.
 async function baserow(path:string,body?:unknown,method='GET'){
@@ -57,7 +58,7 @@ Deno.serve(async req=>{
   ]);
   if(profileError||!profile)throw Error('Conta não encontrada.');
   if(configError)throw Error('Não foi possível consultar a taxa do serviço.');
-  const plan=classify(await allRows(),input.number,user.email,Number(config.service_price_cents));
+  const plan=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   context={success:true,number:input.number,kind:plan.kind,costCents:plan.costCents,targetStatus:plan.targetStatus};
   if(input.action==='quote')return json({...context,state:'quoted',message:plan.costCents?'Confira a taxa antes de confirmar.':'Este reenvio não desconta saldo.'});
   if(input.expectedCents!==plan.costCents)throw Error('O valor ou a situação do número mudou. Consulte novamente antes de confirmar.');
@@ -67,24 +68,23 @@ Deno.serve(async req=>{
   if(!reservation?.execute)return json(reservation||{success:false,message:'Não foi possível confirmar a reserva.'});
   reserved=true;
   // Recheck after locking/reserving, before performing any external write.
-  const fresh=classify(await allRows(),input.number,user.email,Number(config.service_price_cents));
+  const fresh=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
   if(fresh.row?.id!==plan.row?.id||fresh.row?.field_4831?.value!==plan.row?.field_4831?.value||fresh.kind!==plan.kind){
    const response={...context,success:false,state:'failed',message:'A situação do número mudou. Nenhum envio foi feito e a taxa foi devolvida. Consulte novamente.'};
    const {error}=await db.rpc('astros_finish_service',{request_id:requestId,final_state:'failed',response});
    if(error)throw Error('Não foi possível confirmar a devolução.');
    return json(response);
   }
-  const marker=`[ASTROS:${requestId}]`;
-  const observations=[fresh.row?.field_4784||'',marker].filter(Boolean).join('\n');
+  const observations=plan.kind==='resend'?String(fresh.row?.field_4784||''):(input.country==='BR'?'nacional':'internacional');
   const stamp=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Fortaleza',dateStyle:'short',timeStyle:'medium'}).format(new Date());
   const fields={field_4784:observations,field_4831:plan.kind==='resend'?2520:2521};
   const written:Row=plan.row
    ?await baserow(`${PATH}${plan.row.id}/`,fields,'PATCH')
    :await baserow(PATH,{...fields,field_4740:profile.nome,field_4741:input.number,field_4773:user.email,field_4827:stamp},'POST');
-  if(!confirmed(written,input.number,user.email,plan.targetStatus,marker))throw Error('A gravação precisa de conferência.');
+  if(!confirmed(written,input.number,user.email,plan.targetStatus,observations,input.country))throw Error('A gravação precisa de conferência.');
   // Read back the saved row: a successful HTTP response alone is not enough.
   const readBack:Row=await baserow(`${PATH}${written.id}/`);
-  if(!confirmed(readBack,input.number,user.email,plan.targetStatus,marker))throw Error('A gravação precisa de conferência.');
+  if(!confirmed(readBack,input.number,user.email,plan.targetStatus,observations,input.country))throw Error('A gravação precisa de conferência.');
   const response={...context,state:'completed',message:plan.costCents?'Solicitação enviada. A taxa foi descontada do saldo.':'Reenvio solicitado sem desconto no saldo.'};
   const {error:finishError}=await db.rpc('astros_finish_service',{request_id:requestId,final_state:'completed',response});
   if(finishError)throw Error('Não foi possível confirmar o histórico.');

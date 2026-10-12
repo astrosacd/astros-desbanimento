@@ -6,6 +6,8 @@ O n8n não participa desta integração. O fluxo antigo serviu apenas de referê
 
 `supabase/migrations/20261012_submit_numbers.sql` já executado pelo usuário. Não execute novamente: o SQL cria a tabela. Esse controle é independente do n8n e continua sendo usado pela função abaixo.
 
+Para habilitar internacionais, execute **somente** `supabase/migrations/20261012_international_numbers.sql`. Ele amplia a validação do número no RPC de reserva e preserva as regras de saldo e cobrança. Depois atualize a função com o arquivo de deploy atual.
+
 ## 2. Token do Baserow
 
 No Baserow, crie um token exclusivo com permissões **Read, Create e Update somente na tabela 511**. Não precisa de Delete. Preserve o token de consulta atual e as outras integrações.
@@ -42,12 +44,14 @@ Regras:
 
 A identidade é obtida pelo Supabase; o cliente não escolhe e-mail, saldo, status ou modalidade de cobrança. Números de outro proprietário, sem e-mail, duplicados ou com status desconhecido ficam bloqueados para conferência. O nome usado em um número novo vem do perfil.
 
-O número é normalizado para DDD + número, sem 55. A consulta examina a tabela no servidor para reconhecer registros antigos com formatação/sufixos e detectar conflitos. Usa paginação de 200 registros, limitada a 20 mil; tabelas maiores exigem ampliar a estratégia de consulta. Nenhuma linha de outro cliente é devolvida ao painel.
+O Brasil permanece em DDD + número, sem 55, preservando os registros existentes. Países internacionais são selecionados pelo ISO/DDD no painel e validados por libphonenumber-js no cliente e na função. Números estrangeiros ficam em formato +DDI e número completo no Baserow e no histórico; o + identifica o formato internacional e evita conflito com chaves nacionais de 10/11 dígitos. A validação verifica país e comprimento possível, sem consultar se há uma conta WhatsApp ativa.
+
+Em números novos e renovações de EXCLUIDO, `observacoes` contém **somente** `nacional` (Brasil) ou `internacional` (outros países), sem marcador UUID. Reenvios gratuitos preservam as observações existentes. A referência de controle permanece no Supabase, não no texto de observações. Registros antigos sem país identificável que colidirem com um número internacional ficam bloqueados para conferência. A consulta examina a tabela no servidor para reconhecer registros antigos com formatação/sufixos e detectar conflitos. Usa paginação de 200 registros, limitada a 20 mil; tabelas maiores exigem ampliar a estratégia de consulta. Nenhuma linha de outro cliente é devolvida ao painel.
 
 ## Operações incertas
 
-A reserva/debito é transacional no Supabase e usa a referência UUID para impedir desconto repetido. Baserow é um sistema externo e não participa dessa transação. Após reservar, a função confere a situação novamente, escreve uma vez e lê o registro salvo para validar número, e-mail, status e marcador `[ASTROS:UUID]`.
+A reserva/debito é transacional no Supabase e usa a referência UUID para impedir desconto repetido. Baserow é um sistema externo e não participa dessa transação. Após reservar, a função confere a situação novamente, escreve uma vez e lê o registro salvo para validar número, e-mail, status e observação esperada.
 
-Se a situação mudar antes da gravação, a solicitação é encerrada como falha e a taxa é devolvida uma vez. Falhas de rede ou respostas incertas após reserva ficam em `review` ou `processing`, bloqueando novo envio para o número. Nunca repetimos uma gravação automaticamente ou estornamos um envio potencialmente concluído. O cliente deve consultar o histórico e o suporte deve verificar o marcador no Baserow antes de finalizar/estornar pelo RPC administrativo `astros_finish_service`. Não chamar esse RPC com credenciais do navegador.
+Se a situação mudar antes da gravação, a solicitação é encerrada como falha e a taxa é devolvida uma vez. Falhas de rede ou respostas incertas após reserva ficam em `review` ou `processing`, bloqueando novo envio para o número. Nunca repetimos uma gravação automaticamente ou estornamos um envio potencialmente concluído. O cliente deve consultar o histórico e o suporte deve conferir o número completo, proprietário, status e histórico no Baserow antes de finalizar/estornar pelo RPC administrativo `astros_finish_service`. Não chamar esse RPC com credenciais do navegador.
 
 A ativação e testes reais dependem do deploy manual e do token com permissões. Os testes locais não enviam números reais nem movimentam saldo real.

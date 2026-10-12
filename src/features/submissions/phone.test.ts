@@ -1,0 +1,9 @@
+import {expect,it} from 'vitest';
+import {submissionSchema} from './validation';
+import {classify} from '../../../supabase/functions/astros-submit-number/core';
+const parse=(number:string,country='BR')=>submissionSchema.parse({number,country,requestId:'00000000-0000-4000-8000-000000000001',action:'quote'}).number;
+it('keeps national numbers compatible with the existing Baserow format',()=>{expect(parse('(85) 99999-9999')).toBe('85999999999');expect(parse('+55 85 99999-9999')).toBe('85999999999');expect(parse('5585999999999')).toBe('85999999999');});
+it.each([['PT','912345678','+351912345678'],['US','4155552671','+14155552671'],['GB','020 7946 0018','+442079460018']])('adds the selected %s DDI once', (country,number,expected)=>{expect(parse(number,country)).toBe(expected);expect(parse(expected,country)).toBe(expected);});
+it('rejects a pasted international number for a different selected country and impossible lengths',()=>{expect(()=>parse('+351912345678','BR')).toThrow();expect(()=>parse('123','PT')).toThrow();expect(()=>parse('912345678','XX')).toThrow();});
+it('preserves the complete international number during classification',()=>{const rows=[{id:7,field_4741:'+5491155550123',field_4773:'own@example.com',field_4784:'internacional',field_4831:{value:'EXCLUIDO'}}];expect(classify(rows,'+5491155550123','own@example.com',900,'AR').kind).toBe('renew');});
+it('separates explicit national and international identities and blocks ambiguous legacy collisions',()=>{const row={id:7,field_4741:'14155552671',field_4773:'own@example.com',field_4784:'nacional',field_4831:{value:'EXCLUIDO'}};expect(classify([row],'+14155552671','own@example.com',900,'US').kind).toBe('new');expect(()=>classify([{...row,field_4784:''}],'+14155552671','own@example.com',900,'US')).toThrow('conferência');});
