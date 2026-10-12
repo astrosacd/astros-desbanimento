@@ -1,4 +1,4 @@
-export type Row={id:number;field_4741?:string;field_4773?:string;field_4784?:string;field_4831?:{value:string}|null};
+export type Row={[field:string]:unknown;id:number;field_4741?:string;field_4773?:string;field_4784?:string;field_4831?:{value:string}|null};
 export const normalize=(v:string,country='BR')=>{const n=String(v||'').replace(/\D/g,'');return country==='BR'?(n.startsWith('55')&&[12,13].includes(n.length)?n.slice(2):n):'+'+n;};
 export function classify(rows:Row[],number:string,email:string,price:number,country='BR'){
  const matches=rows.filter(r=>{

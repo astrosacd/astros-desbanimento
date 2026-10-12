@@ -46,15 +46,32 @@ A identidade é obtida pelo Supabase; o cliente não escolhe e-mail, saldo, stat
 
 O Brasil permanece em DDD + número, sem 55, preservando os registros existentes. Países internacionais são selecionados pelo ISO/DDD no painel e validados por libphonenumber-js no cliente e na função. Números estrangeiros ficam em formato +DDI e número completo no Baserow e no histórico; o + identifica o formato internacional e evita conflito com chaves nacionais de 10/11 dígitos. A validação verifica país e comprimento possível, sem consultar se há uma conta WhatsApp ativa.
 
-Em números novos e renovações de EXCLUIDO, `observacoes` contém **somente** `nacional` (Brasil) ou `internacional` (outros países), sem marcador UUID. Reenvios gratuitos preservam as observações existentes. A referência de controle permanece no Supabase, não no texto de observações. Registros antigos sem país identificável que colidirem com um número internacional ficam bloqueados para conferência. A consulta examina a tabela no servidor para reconhecer registros antigos com formatação/sufixos e detectar conflitos. Usa paginação de 200 registros, limitada a 20 mil; tabelas maiores exigem ampliar a estratégia de consulta. Nenhuma linha de outro cliente é devolvida ao painel.
+Em números novos e renovações de EXCLUIDO, `observacoes` contém **somente** `nacional` (Brasil) ou `internacional` (outros países), sem marcador UUID. Reenvios gratuitos preservam as observações existentes. A referência de controle fica no Supabase e, no protocolo atual, na coluna separada astros_solicitacao_id; nunca no texto de observações. Registros antigos sem país identificável que colidirem com um número internacional ficam bloqueados para conferência. A consulta examina a tabela no servidor para reconhecer registros antigos com formatação/sufixos e detectar conflitos. Usa paginação de 200 registros, limitada a 20 mil; tabelas maiores exigem ampliar a estratégia de consulta. Nenhuma linha de outro cliente é devolvida ao painel.
 
-## Operações incertas
+## Conferência automática — ativação atual
 
-A reserva/debito é transacional no Supabase e usa a referência UUID para impedir desconto repetido. Baserow é um sistema externo e não participa dessa transação. Após reservar, a função confere a situação novamente, escreve uma vez e lê o registro salvo para validar número, e-mail, status e observação esperada.
+As etapas antigas acima descrevem a instalação inicial. Para ativar a versão com conferência automática, siga esta ordem:
 
-Se a situação mudar antes da gravação, a solicitação é encerrada como falha e a taxa é devolvida uma vez. Falhas de rede ou respostas incertas após reserva ficam em `review` ou `processing`, bloqueando novo envio para o número. Nunca repetimos uma gravação automaticamente ou estornamos um envio potencialmente concluído. O cliente deve consultar o histórico e o suporte deve conferir o número completo, proprietário, status e histórico no Baserow antes de finalizar/estornar pelo RPC administrativo `astros_finish_service`. Não chamar esse RPC com credenciais do navegador.
+1. Na tabela **511 do Baserow**, adicione uma coluna **Texto de uma linha** com nome exato `astros_solicitacao_id`. Ela armazena apenas a referência do envio; não modifique `observacoes` nem os dados existentes. O token de escrita precisa continuar com Read/Create/Update na tabela.
+2. Execute `supabase/migrations/20261012_auto_reconciliation.sql` no SQL Editor do Supabase atual. Ele acrescenta a fila, leases e RPCs privados; preserva os envios anteriores como protocolo 1.
+3. Execute `supabase/migrations/20261012_reconciliation_schedule.sql`. Ele configura um cron exclusivo do Astros a cada minuto e gera uma chave privada no Vault. Copie o valor retornado **somente** para Edge Functions → Secrets, nome `ASTROS_RECONCILE_SECRET`. Não envie essa chave no chat.
+4. Substitua todo o `index.ts` da função existente **astros-submit-number** pelo arquivo **supabase/astros-submit-number-automatico.ts** e faça Deploy. O arquivo é completo. Se o gateway estiver exigindo JWT legado, desative Verify JWT apenas nessa função: o código valida independentemente o usuário, o admin ou a chave privada do worker.
+5. Aguarde cerca de um minuto para o cron executar. Novos envios pagos ficam bloqueados antes do débito enquanto a coluna, chave e heartbeat não estiverem prontos. Publique a versão atual do Lovable e teste primeiro uma conta sem saldo; depois faça um envio controlado com saldo suficiente.
 
-A ativação e testes reais dependem do deploy manual e do token com permissões. Os testes locais não enviam números reais nem movimentam saldo real.
+Não altere Auth, SMTP, outras funções ou crons de outros projetos. O botão **Conferir agora**, em **Admin → Envios em conferência**, usa a mesma verificação segura, sem repetir a gravação.
+
+### Cobrança e falhas
+
+A reserva e o débito continuam ocorrendo atomicamente no Supabase **antes** da gravação no Baserow. O Baserow é externo e não participa dessa transação. A referência UUID impede nova cobrança do mesmo envio.
+
+- Falha comprovada antes de iniciar a gravação, ou rejeição definitiva do Baserow: encerra e devolve automaticamente a taxa uma única vez.
+- Resposta perdida após iniciar a gravação: mantém o envio em processamento e consulta automaticamente o recibo exclusivo no Baserow. Recibo com número e proprietário corretos confirma o envio, mesmo se o status operacional já avançou.
+- Recibo ainda ausente ou consulta indisponível: repete somente a leitura. Não repete POST/PATCH nem estorna apenas por não encontrar o registro.
+- Após 12 conferências sem resultado seguro, ou recibo ambíguo: sinaliza para a equipe no admin. Essa exceção ainda exige conferência humana; não é correto prometer resolução automática de todos os casos.
+
+O histórico do cliente acompanha as mudanças e atualiza saldo/lista de números após a conclusão. Envios antigos sem o recibo continuam exigindo conferência manual. Um lease vencido revoga a permissão do despachante antigo antes de permitir estorno de uma operação ainda não iniciada.
+
+Os testes locais não enviam números reais nem movimentam saldo real. A validação em produção depende da ativação manual acima.
 
 ## Países adicionais pelo admin
 
