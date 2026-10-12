@@ -64,3 +64,9 @@ A ativação e testes reais dependem do deploy manual e do token com permissões
 4. O cliente busca país ou DDI no seletor. Países adicionais aparecem na próxima consulta (atualização automática a cada 30 segundos). Cadastros adicionados podem ser editados ou excluídos com confirmação dentro do painel. Excluir apaga o registro da tabela, sem apagar envios anteriores.
 
 A lista padrão vem da biblioteca e permanece disponível. A lista personalizada é lida somente por usuários autenticados e escrita apenas por admin, com checagem no servidor e RLS no Supabase. O cliente envia apenas o ID do país adicional; a Edge Function consulta o DDI atual no banco antes de validar/reservar. País removido ou DDI alterado incompatível impede o envio antes da cobrança. Países adicionais não conhecidos pela biblioteca são validados pelo formato internacional (DDI, prefixo e comprimento até 15 dígitos); o cadastro não verifica uma conta WhatsApp ou a atribuição oficial de um DDI. Confira o DDI antes de cadastrar.
+
+## Bloqueio de DDIs duplicados
+
+Execute `supabase/migrations/20261012_unique_ddis.sql`. O formulário e o servidor rejeitam qualquer DDI já presente na lista padrão da biblioteca, além de DDIs adicionais já cadastrados. Na edição, o próprio registro é excluído da consulta de duplicidade. O Supabase aplica índice único nos DDIs adicionais para barrar gravações concorrentes e uma restrição contra os DDIs padrão (lista extraída de libphonenumber-js 1.13.15).
+
+Registros antigos com DDI padrão são preservados, podem ser consultados/excluídos, mas não podem ser salvos novamente com um DDI padrão. A migração não exclui dados automaticamente. Se houver dois registros adicionais antigos com o mesmo DDI, o índice único não será criado: exclua a duplicata pelo admin e execute novamente. Mudanças futuras nos DDIs padrão da biblioteca exigem atualizar a restrição SQL correspondente.
