@@ -461,3 +461,7 @@ tbody tr:hover { background: var(--secondary); }
 .settings-webhook { grid-column: 1/-1; }
 @container(max-width:780px) { .payment-settings-layout { grid-template-columns: minmax(0,1fr); } }
 @media(max-width:650px) { .payment-settings-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .settings-card-heading { gap: 12px; } .settings-card-heading h2 { font-size: 17px; } }
+
+.payment-settings-column { display: grid; gap: 24px; align-content: start; min-width: 0; }
+.payment-settings-column > .admin-settings { margin-bottom: 0; }
+@media(max-width:650px) { .payment-settings-column { gap: 16px; } }
