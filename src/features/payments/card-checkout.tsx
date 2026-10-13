@@ -31,7 +31,7 @@ export function CardCheckout({order,onStatus}:{order:{id:string;amount_cents:num
    };
    controller=await mp.bricks().create(challenge?'statusScreen':'cardPayment',id,{
     initialization:challenge?{paymentId:challenge.paymentId,additionalInfo:{externalResourceURL:challenge.externalResourceURL,creq:challenge.creq}}:{amount:order.amount_cents/100,payer:{email:client.email}},
-    customization:{visual:{style:{theme:'dark'}}},
+    customization:{visual:{style:{theme:'default'}}},
     callbacks:{onReady:()=>{if(active)setReady(true);},onError:()=>{if(active)setError('Não foi possível concluir o formulário. Confira os dados ou tente carregar novamente.');},...(!challenge?{onSubmit}:{})}
    });
    if(!active)controller.unmount();

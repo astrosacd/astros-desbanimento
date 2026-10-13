@@ -17,7 +17,7 @@
  --color-secondary: var(--secondary); --color-secondary-foreground: var(--foreground);
  --color-muted: var(--secondary); --color-muted-foreground: var(--muted-foreground);
  --color-accent: var(--accent); --color-accent-foreground: var(--foreground);
- --color-destructive: var(--destructive); --color-destructive-foreground: #240C13;
+ --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground);
  --color-border: var(--border); --color-input: var(--border); --color-ring: var(--primary);
  --color-success: var(--success); --color-warning: var(--warning); --color-electric: var(--electric);
 }
@@ -28,7 +28,7 @@
  --primary: #66DCE5; --primary-foreground: #082129;
  --muted-foreground: #A9B8CA; --accent: #223447;
  --border: #2D3E52; --electric: #0055FF;
- --success: #83DBB4; --warning: #EBC382; --destructive: #F79AA8;
+ --destructive-foreground:#240C13; --success: #83DBB4; --warning: #EBC382; --destructive: #F79AA8;
  --surface-input: #0E1825; --border-input: #586B83;
  --surface-brand: #17313B; --text-brand: #A1E9EF; --border-brand: #325565;
  --surface-success: #163128; --border-success: #345A49;
@@ -715,3 +715,71 @@ tbody tr:hover { background: var(--secondary); }
 .wallet-ledger .wallet-history { border-radius:0; box-shadow:none; }
 @media(max-width:850px) { .content,.admin-content { padding-block:26px; } .overview-welcome,.overview-wallet > .balance-card,.admin-welcome { padding:26px; } }
 @media(max-width:650px) { .page-heading,.admin-header { padding-bottom:20px; margin-bottom:22px; } .page-heading h1,.admin-header h1 { font-size:27px; } .content .table-section,.admin-content .form-section,.admin-settings { padding:20px; } .admin-workspace-grid { grid-template-columns:minmax(0,1fr); } .admin-workspace-grid .admin-action-card { padding:20px; gap:12px; } .overview-welcome,.overview-wallet > .balance-card,.admin-welcome { padding:24px; } .content .number-search,.admin-content .number-search { padding:12px; } .overview-shortcut { padding:20px; } }
+
+/* Light workspaces with a dark Astros navigation frame. */
+:where(.content,.admin-content,.topbar,[role="dialog"],[role="alertdialog"],[role="menu"],[cmdk-root],[data-radix-popper-content-wrapper]) {
+ color-scheme:light;
+ --background:#F5F7FB; --foreground:#18243B; --card:#FFFFFF;
+ --secondary:#EEF2F7; --accent:#E7EDF5; --muted-foreground:#56657B;
+ --border:#DFE5EE; --primary:#087C88; --primary-foreground:#FFFFFF;
+ --success:#167449; --warning:#915B0C; --destructive:#B83250; --destructive-foreground:#FFFFFF;
+ --surface-input:#F8FAFD; --border-input:#9CAAC0;
+ --surface-brand:#E8F7F8; --text-brand:#096D78; --border-brand:#BDE3E7;
+ --surface-success:#EAF8F0; --border-success:#B8DEC8;
+ --surface-warning:#FFF5E3; --border-warning:#EBD5AA;
+ --surface-danger:#FFF0F3; --border-danger:#E9BDCA;
+ --panel-shadow:0 5px 24px #253A5D07;
+ color:var(--foreground);
+}
+.shell,.admin-shell { background:#F5F7FB; }
+.content,.admin-content { background:transparent; }
+.topbar { background:#FFFFFF; border-color:#E1E7F0; }
+.sidebar,.admin-sidebar { background:#171B2C; color:#E8ECF5; border-color:#282D43; }
+.sidebar .nav-link,.admin-sidebar .nav-link { color:#B4BED2; }
+.sidebar .nav-link:hover,.admin-sidebar .nav-link:hover { background:#232A3D; color:#FFFFFF; }
+.sidebar .nav-link[data-status=active],.admin-sidebar .admin-nav-button[data-status="active"] { background:#283247; color:#FFFFFF; border-color:#3E4C65; box-shadow:inset 3px 0 #52D5CD; }
+.sidebar .nav-caption,.sidebar-footer { color:#9DAAC1; }
+.sidebar nav > :nth-child(1) svg,.admin-sidebar nav > :nth-child(1) svg { color:#65A8FF; }
+.sidebar nav > :nth-child(2) svg,.admin-sidebar nav > :nth-child(2) svg { color:#6EDEB0; }
+.sidebar nav > :nth-child(3) svg,.admin-sidebar nav > :nth-child(3) svg { color:#B3A2FF; }
+.sidebar nav > :nth-child(4) svg,.admin-sidebar nav > :nth-child(4) svg { color:#F2C77F; }
+.sidebar nav > :nth-child(5) svg,.admin-sidebar nav > :nth-child(5) svg { color:#6AD9E1; }
+.sidebar nav > :nth-child(6) svg,.admin-sidebar nav > :nth-child(6) svg { color:#F49BC0; }
+.admin-sidebar-account { background:#202638; border-color:#343D53; }
+.admin-sidebar-account .text-muted-foreground,.admin-sidebar .admin-back { color:#B4BED2; }
+.mobile-brand { background:#171B2C; border-radius:9px; padding:5px; }
+.content .bg-primary,.admin-content .bg-primary,[role="dialog"] .bg-primary,[role="alertdialog"] .bg-primary { background:var(--primary); color:var(--primary-foreground); }
+.overview-welcome,.admin-welcome { background:linear-gradient(120deg,#1C2238,#252C47); border-color:#343D55; color:#F5F7FF; box-shadow:0 8px 24px #19243C12; }
+.overview-welcome p,.admin-welcome p { color:#C8D2E3; }
+.overview-welcome .eyebrow,.admin-welcome .text-primary { color:#74DED7; }
+.overview-welcome .bg-primary,.admin-welcome .bg-primary { background:#6AE0CA; color:#102C2A; }
+.admin-welcome .border { background:#30394F; color:#F5F7FF; border-color:#566078; }
+.overview-shortcut { background:#FFFFFF; }
+.overview-shortcut-icon { background:#EEF0FF; color:#6755C5; }
+.overview-shortcut:nth-child(2) .overview-shortcut-icon { background:#FFF2E2; color:#9B671A; }
+.balance-card-label { color:#167449; }
+.balance-card strong.text-2xl,.wallet-summary-balance strong { color:#167449; }
+.overview-wallet > .balance-card { border-top:3px solid #54BD8D; }
+.workspace-icon { background:#EEF0FF; border-color:#DCD8F9; color:#6854C7; }
+.admin-workspace-grid > :nth-child(2) .workspace-icon { background:#EAF8F0; border-color:#C8E9D7; color:#167449; }
+.admin-workspace-grid > :nth-child(3) .workspace-icon { background:#EAF2FF; border-color:#CDDCF7; color:#3663B7; }
+.admin-workspace-grid > :nth-child(4) .workspace-icon { background:#FFF3E5; border-color:#F2DDC1; color:#956017; }
+.admin-workspace-grid > :nth-child(5) .workspace-icon { background:#FCEEF5; border-color:#F0D2E3; color:#A44076; }
+.admin-workspace-grid > :nth-child(6) .workspace-icon { background:#E8F7F8; border-color:#BDE3E7; color:#087C88; }
+.content th,.admin-content th { background:#F6F8FC; color:#526179; }
+.content tbody tr:hover,.admin-content tbody tr:hover { background:#F8FAFD; }
+.content .number-search,.admin-content .number-search { background:#F8FAFD; }
+.content .field:hover,.admin-content .field:hover { border-color:#6D819F; }
+.status-guide > .grid > div { background:#FBFCFE; border-color:var(--border); }
+.status-guide .text-emerald-400 { color:#167449; }
+.status-guide .text-amber-400 { color:#915B0C; }
+.status-guide .text-slate-300 { color:#56657B; }
+.status-guide .text-red-400 { color:#B83250; }
+.status-guide .text-blue-400 { color:#3663B7; }
+.overview-banner { background:#FFF0F3; color:#7C2340; border-color:#E9BDCA; border-left-color:#C13A58; }
+.avatar { background:#E8F7F8; border-color:#BDE3E7; color:#096D78; }
+.wallet-page .wallet-history,.wallet-ledger .wallet-history { background:transparent; }
+.payment-confirmed { background:var(--surface-success); border-color:var(--border-success); color:var(--success); }
+.status.pending,.wallet-payment-status.pending { background:var(--surface-warning); border-color:var(--border-warning); color:var(--warning); }
+.status.complete,.wallet-payment-status.approved { background:var(--surface-success); border-color:var(--border-success); color:var(--success); }
+.status.rejected,.wallet-payment-status.rejected { background:var(--surface-danger); border-color:var(--border-danger); color:var(--destructive); }
