@@ -78,7 +78,11 @@ const PATH='/api/database/rows/table/511/';
 const countryNames=new Intl.DisplayNames(['pt-BR'],{type:'region'});
 function countryObservation(country:string,custom?:{name?:string}){if(country==='BR')return 'nacional';const name=country.startsWith('custom:')?custom?.name:countryNames.of(country);if(!name?.trim())throw Error('Não foi possível identificar o país selecionado.');return `internacional - ${name.trim()}`;}
 const schema=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().regex(/^([A-Z]{2}|custom:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i).default('BR'),requestId:z.string().uuid(),action:z.enum(['quote','submit']),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict();
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+const json=(body:unknown,status=200)=>{
+ const result=body&&typeof body==='object'&&!Array.isArray(body)?body as Record<string,unknown>:null;
+ const value=result?.success===true&&result.state==='completed'?{...result,message:'Solicitação enviada com sucesso.'}:body;
+ return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+};
 // GET redirects may only add/remove the endpoint's trailing slash. Never redirect writes.
 async function baserow(path:string,body?:unknown,method='GET'){
  const token=Deno.env.get('ASTROS_BASEROW_WRITE_TOKEN');
