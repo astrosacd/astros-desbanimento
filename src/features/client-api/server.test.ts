@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {createHash} from 'node:crypto';
+const api=vi.hoisted(()=>({request:vi.fn(),admin:vi.fn(),cookie:vi.fn()}));
+vi.mock('@tanstack/react-start/server',()=>({getCookie:api.cookie,setResponseHeader:vi.fn()}));vi.mock('../admin/auth.server',()=>({request:api.request,requireAdmin:api.admin}));
+import {key,permission,adminStatus,status,revoke} from './server';
+beforeEach(()=>{vi.resetAllMocks();api.cookie.mockReturnValue('session');api.request.mockResolvedValue({ok:true,json:async()=>({enabled:true,hasKey:true,keyCreatedAt:null})});});
+it('generates a random key once and sends only its hash to the database',async()=>{const result=await key();expect(result.key).toMatch(/^astros_[0-9a-f]{64}$/);expect(JSON.parse(api.request.mock.calls[0]![2].body)).toEqual({new_hash:createHash('sha256').update(result.key).digest('hex')});const second=await key();expect(second.key).not.toBe(result.key);});
+it('requires authoritative admin permission before reading other accounts or allowing API',async()=>{api.admin.mockRejectedValue(Error('admin only'));await expect(permission('target',true)).rejects.toThrow('admin only');await expect(adminStatus('target')).rejects.toThrow('admin only');expect(api.request).not.toHaveBeenCalled();});
+it('requires a session for own status, key issuance and revocation',async()=>{api.cookie.mockReturnValue(undefined);await expect(status()).rejects.toThrow('Entre');await expect(key()).rejects.toThrow('Entre');await expect(revoke()).rejects.toThrow('Entre');expect(api.request).not.toHaveBeenCalled();});
+it('fails closed if permission or key database update fails',async()=>{api.request.mockResolvedValue({ok:false});await expect(key()).rejects.toThrow('liberação');});

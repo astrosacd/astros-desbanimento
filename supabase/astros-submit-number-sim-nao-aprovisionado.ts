@@ -132,7 +132,8 @@ async function reconcile(jobId:string|null=null){
  const result=await finishJob(job,decision);return {success:true,checked:1,state:result.state};
 }
 Deno.serve(async req=>{
- if(req.method!=='POST')return json({success:false,message:'Método não permitido.'},405);
+ const apiOperation=new URL(req.url).searchParams.get('api');
+ if(req.method!=='POST'&&!(apiOperation&&req.method==='GET'))return json({success:false,message:'Método não permitido.'},405);
  let job:ServiceJob|undefined;let dispatched=false;let requestId='';let context:any;let stage='session';const started=Date.now();
  try{
   if(new URL(req.url).searchParams.get('worker')==='1'){
@@ -140,10 +141,45 @@ Deno.serve(async req=>{
    const {error:pingError}=await db.rpc('astros_service_worker_ping');if(pingError)throw Error('A conferência automática ainda está em configuração.');
    return json(await reconcile());
   }
-  const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
-  const {data:{user},error:authError}=await db.auth.getUser(token);
-  if(authError||!user?.email||!user.email_confirmed_at)return json({success:false,message:'Sua sessão expirou ou o e-mail não foi confirmado.'},401);
-  const body=await req.json();
+  let user:any;
+  if(apiOperation){
+   const secret=req.headers.get('x-astros-api-key')||'';
+   if(!/^astros_[0-9a-f]{64}$/.test(secret))return json({success:false,message:'Chave inválida ou API não liberada.'},401);
+   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret)));const hash=Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
+   const {data:identity,error}=await db.rpc('astros_api_authenticate',{token_hash:hash});
+   if(error)return json({success:false,message:'A API está temporariamente indisponível.'},503);
+   if(identity?.error==='rate_limit')return json({success:false,message:'Limite de 60 consultas por minuto. Aguarde antes de tentar novamente.'},429);
+   if(!identity?.id||!identity.email||!identity.email_confirmed_at)return json({success:false,message:'Chave inválida ou API não liberada.'},401);
+   user=identity;
+   if(apiOperation==='saldo'&&req.method==='GET'){
+    const {data,error}=await db.from('painel_de_desbanimento').select('recarga').eq('id',user.id).single();
+    if(error)return json({success:false,message:'Não foi possível consultar o saldo.'},503);
+    return json({success:true,balanceCents:Math.round(Number(data.recarga||0)*100),currency:'BRL'});
+   }
+   if(apiOperation==='solicitacoes'&&req.method==='GET'){
+    const page=z.coerce.number().int().min(1).max(100000).parse(new URL(req.url).searchParams.get('page')||1);
+    const {data,error}=await db.from('astros_service_jobs').select('id,number,kind,amount_cents,target_status,state,created_at').eq('user_id',user.id).order('created_at',{ascending:false}).order('id',{ascending:false}).range((page-1)*20,page*20);
+    if(error)return json({success:false,message:'Não foi possível consultar o histórico.'},503);
+    return json({success:true,page,pageSize:20,hasMore:data.length>20,rows:data.slice(0,20)});
+   }
+   if(req.method!=='POST'||!['validar','consultar','enviar'].includes(apiOperation))return json({success:false,message:'Operação inválida.'},400);
+  }else{
+   const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
+   const {data,error}=await db.auth.getUser(token);user=data?.user;
+   if(error||!user?.email||!user.email_confirmed_at)return json({success:false,message:'Sua sessão expirou ou o e-mail não foi confirmado.'},401);
+  }
+  let body=await req.json();
+  if(apiOperation){
+   const input=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().default('BR'),requestId:z.string().uuid().optional(),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict().parse(body);
+   if(apiOperation==='validar'){
+    const country=z.string().regex(/^([A-Z]{2}|custom:[0-9a-f-]{36})$/).parse(input.country);let custom;
+    if(country.startsWith('custom:')){const {data,error}=await db.from('astros_custom_countries').select('id,name,ddi').eq('id',country.slice(7)).maybeSingle();if(error||!data)return json({success:false,message:'País adicional indisponível.'},400);custom=data;}
+    return json({success:true,number:canonicalPhone(input.number,country,custom),country,message:'Formato válido. Isso não confirma que o número existe ou possui WhatsApp.'});
+   }
+   if(!input.requestId)return json({success:false,message:'Informe requestId no formato UUID e reutilize-o nas tentativas do mesmo envio.'},400);
+   if(apiOperation==='enviar'&&input.expectedCents===undefined)return json({success:false,message:'Consulte o número antes de enviar e informe expectedCents retornado pela consulta.'},400);
+   body={...input,action:apiOperation==='enviar'?'submit':'quote'};
+  }
   if(body.action==='admin-reconcile'){
    const input=z.object({action:z.literal('admin-reconcile'),requestId:z.string().uuid()}).strict().parse(body);
    const {data:admin}=await db.from('painel_de_desbanimento').select('tipo_usuario').eq('id',user.id).single();

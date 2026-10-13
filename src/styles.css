@@ -783,3 +783,14 @@ tbody tr:hover { background: var(--secondary); }
 .status.pending,.wallet-payment-status.pending { background:var(--surface-warning); border-color:var(--border-warning); color:var(--warning); }
 .status.complete,.wallet-payment-status.approved { background:var(--surface-success); border-color:var(--border-success); color:var(--success); }
 .status.rejected,.wallet-payment-status.rejected { background:var(--surface-danger); border-color:var(--border-danger); color:var(--destructive); }
+
+.client-api-page .form-section { max-width:none; }
+.api-secret { display:flex; align-items:center; gap:16px; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--surface-input); }
+.api-secret code { flex:1; min-width:0; overflow-wrap:anywhere; font-size:12px; }
+.api-endpoint { padding-block:24px; border-top:1px solid var(--border); margin-top:24px; }
+.api-method { background:var(--surface-brand); color:var(--text-brand); font-size:11px; font-weight:700; padding:6px 9px; border-radius:6px; }
+.api-example { padding:16px; margin-top:16px; border:1px solid var(--border); border-radius:12px; background:var(--surface-input); }
+.api-example pre,.api-code { color:var(--foreground); font-size:12px; line-height:1.8; padding:0; overflow-x:auto; white-space:pre; max-width:100%; }
+.api-code { margin-top:14px; background:var(--surface-input); padding:16px; border-radius:10px; }
+.api-example button { margin-top:12px; }
+@media(max-width:650px) { .api-secret { flex-direction:column; align-items:stretch; } }
