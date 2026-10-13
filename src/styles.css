@@ -601,3 +601,10 @@ tbody tr:hover { background: var(--secondary); }
 .submission-history details { margin-top:12px; }
 @container(max-width:780px) { .submission-record { grid-template-columns:minmax(0,1fr) auto; gap:14px; } .submission-state { grid-column:1 / -1; grid-row:2; justify-self:start; } }
 @media(max-width:650px) { .requests-toolbar { align-items:stretch; } .requests-tabs { width:100%; } .requests-tabs button { flex:1; padding:11px; } .requests-toolbar > a { width:100%; } .requests-page .table-section,.requests-page .submission-history { padding:20px; } .submission-record { grid-template-columns:minmax(0,1fr) auto; gap:14px; } .submission-state { grid-column:1 / -1; grid-row:2; justify-self:start; } }
+
+.number-search { display:flex; align-items:center; gap:10px; margin:20px 0; }
+.number-search .field { flex:1; min-width:0; max-width:440px; min-height:44px; }
+.number-search button { min-height:44px; }
+.list-pagination { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:22px; padding-top:18px; border-top:1px solid var(--border); }
+.list-pagination span { font-size:12px; color:var(--muted-foreground); }
+@media(max-width:650px) { .number-search { flex-wrap:wrap; } .number-search .field { flex-basis:100%; max-width:none; } .number-search button { flex:1; } }

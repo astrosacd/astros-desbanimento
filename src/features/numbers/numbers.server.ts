@@ -7,7 +7,7 @@ import { fetchNumberRows } from './transport.server';
 const rowSchema = z.object({ id: z.number().int(), field_4773: z.string(), field_4784: z.string().nullish(), field_4741: z.string().nullish(), field_4827: z.string().nullish(), field_4828: z.string().nullish(), field_4831: z.object({ value: z.string() }).nullish() });
 const responseSchema = z.object({ count: z.number().int().nonnegative(), results: z.array(rowSchema).max(200) });
 export async function listOwnNumbers(input: unknown) {
- const { page } = listSchema.parse(input);
+ const { page, number, pageSize } = listSchema.parse(input);
  setResponseHeader('Cache-Control', 'private, no-store');
  const session = getCookie('astros_client_session');
  if (!session) throw new Error('Sua sessão expirou. Entre novamente.');
@@ -46,7 +46,8 @@ export async function listOwnNumbers(input: unknown) {
   if (ids.size === expected) break;
   if (!data.results.length || ids.size > expected || providerPage === 100) throw new Error('incomplete');
   }
-  return { count: visible.length, page, pageSize: 25, rows: visible.slice((page - 1) * 25, page * 25).map(row => ({ id: row.id, number: row.field_4741 || '', registeredAt: row.field_4827 || '', consultedAt: row.field_4828 || '', status: row.field_4831?.value || 'Sem status' })) };
+  const matches=visible.filter(row=>!number||String(row.field_4741||'').replace(/\D/g,'').includes(number));
+  return { count: matches.length, page, pageSize, rows: matches.slice((page - 1) * pageSize, page * pageSize).map(row => ({ id: row.id, number: row.field_4741 || '', registeredAt: row.field_4827 || '', consultedAt: row.field_4828 || '', status: row.field_4831?.value || 'Sem status' })) };
  } catch (error) {
   const cause = error instanceof Error ? (error as Error & { cause?: { code?: string } }).cause?.code : undefined;
   const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : '';

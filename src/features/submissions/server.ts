@@ -1,3 +1,4 @@
+import {historySearchSchema} from '../numbers/validation';
 import { getCookie, setResponseHeader } from '@tanstack/react-start/server';
 import { request } from '../admin/auth.server';
 import { callSubmission } from './transport.server';
@@ -22,4 +23,14 @@ async function trackedResult(id:string,number:string,userId:string,token:string)
  const r=await request(`/rest/v1/astros_service_jobs?id=eq.${id}&user_id=eq.${encodeURIComponent(userId)}&select=id,number,kind,amount_cents,target_status,state,protocol_version&limit=1`,token);
  if(!r.ok)return null;const job=(await r.json())[0];if(!job||job.protocol_version!==2||job.number!==number)return null;
  return {state:String(job.state),number:String(job.number),kind:String(job.kind),costCents:Number(job.amount_cents),targetStatus:String(job.target_status),message:job.state==='completed'?'Envio confirmado.':job.state==='failed'?'O envio não foi concluído. A taxa foi devolvida.':'Seu envio está sendo conferido automaticamente. Acompanhe em Solicitações.'};
+}
+
+export async function searchedHistory(input:unknown){
+ const {page,number}=historySearchSchema.parse(input);
+ setResponseHeader('Cache-Control','private, no-store');const token=getCookie('astros_client_session');if(!token)throw Error('Entre novamente.');
+ const auth=await request('/auth/v1/user',token);if(!auth.ok)throw Error('Sua sessão expirou.');const user=await auth.json();if(!user.id||!user.email_confirmed_at)throw Error('Confirme seu e-mail e entre novamente.');
+ const path=`/rest/v1/astros_service_jobs?user_id=eq.${encodeURIComponent(user.id)}&select=id,number,kind,amount_cents,target_status,state,created_at,protocol_version&order=created_at.desc,id.desc&limit=11&offset=${(page-1)*10}${number?`&number=like.*${number}*`:''}`;
+ let r=await request(path,token);if(r.status===400)r=await request(path.replace(',protocol_version',''),token);if(!r.ok)throw Error('Não foi possível consultar o histórico de envios. Tente novamente.');
+ const rows=await r.json() as Awaited<ReturnType<typeof history>>;if(rows.some(row=>!String(row.number).replace(/\D/g,'').includes(number)))throw Error('Não foi possível validar o resultado da busca.');
+ return {rows:rows.slice(0,10),page,pageSize:10,hasMore:rows.length>10};
 }
