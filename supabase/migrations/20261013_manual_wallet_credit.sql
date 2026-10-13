@@ -21,7 +21,7 @@ begin
  if actor is null or not public.astros_is_admin() then raise exception 'Acesso administrativo necessário'; end if;
  if request_id is null or client_id is null or credit_cents is null or credit_cents not between 1 and 1000000 or description is null or length(btrim(description)) not between 3 and 500 then raise exception 'Dados do lançamento inválidos'; end if;
  select recarga,tipo_usuario into current_balance,user_type from public.painel_de_desbanimento where id=client_id for update;
- if not found or user_type<>'cliente' then raise exception 'Cliente não encontrado'; end if;
+ if not found or user_type is null or user_type not in ('cliente','admin') then raise exception 'Cliente não encontrado'; end if;
  select * into old from public.astros_manual_credits where id=request_id;
  if found then
   if old.user_id<>client_id or old.admin_id<>actor or old.amount_cents<>credit_cents or old.reason<>btrim(description) then raise exception 'Referência já utilizada com dados diferentes'; end if;

@@ -5,7 +5,7 @@ async function session(){await requireAdmin();setResponseHeader('Cache-Control',
 export async function searchClients(input:unknown){
  const token=await session();const data=clientSearchSchema.parse(input);
  const escaped=data.search.replace(/[\\%_*]/g,v=>'\\'+(v==='*'?'%':v));
- const query=new URLSearchParams({select:'id,nome,email,recarga',tipo_usuario:'eq.cliente',[data.field]:`ilike.*${escaped}*`,order:'nome.asc,id.asc',limit:'11',offset:String((data.page-1)*10)});
+ const query=new URLSearchParams({select:'id,nome,email,recarga',tipo_usuario:'in.(cliente,admin)',[data.field]:`ilike.*${escaped}*`,order:'nome.asc,id.asc',limit:'11',offset:String((data.page-1)*10)});
  const r=await request(`/rest/v1/painel_de_desbanimento?${query}`,token);if(!r.ok)throw Error('Não foi possível pesquisar os clientes.');
  const rows=await r.json();return {rows:rows.slice(0,10).map((row:any)=>({id:String(row.id),name:String(row.nome||'Cliente'),email:String(row.email||''),balanceCents:Math.round(Number(row.recarga||0)*100)})),hasMore:rows.length>10};
 }
