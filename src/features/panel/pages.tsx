@@ -1,3 +1,6 @@
+import {useState} from 'react';
+import {Link} from '@tanstack/react-router';
+import {Button} from '@/components/ui/button';
 import { SubmissionHistory } from '../submissions/history';
 import { ServicePrice } from '../payments/service-price';
 import { useSearch } from '@tanstack/react-router';
@@ -8,7 +11,10 @@ export function EmptyPanel({ title, description }: { title: string; description:
  return <section className="table-section"><div className="empty-state"><Inbox/><h3>{title}</h3><p className="mt-3 text-sm text-muted-foreground max-w-lg mx-auto">{description}</p></div></section>;
 }
 function PendingPage({ title, description }: { title: string; description: string }) { return <><PageHeading title={title} subtitle="Acompanhe os serviços da sua conta."/><EmptyPanel title="Em preparação" description={description}/></>; }
-export function RequestsPage() { return <><PageHeading title="Solicitações" subtitle="Acompanhe os números vinculados à sua conta."/><SubmissionHistory/><NumbersList/></>; }
+export function RequestsPage() {
+ const [tab,setTab]=useState<'numbers'|'history'>('numbers');
+ return <div className="requests-page"><PageHeading title="Solicitações" subtitle="Acompanhe seus números e consulte os envios realizados pelo painel."/><div className="requests-toolbar"><div className="requests-tabs" role="group" aria-label="Consulta de solicitações"><button type="button" aria-pressed={tab==='numbers'} onClick={()=>setTab('numbers')}>Seus números</button><button type="button" aria-pressed={tab==='history'} onClick={()=>setTab('history')}>Histórico de envios</button></div><Button asChild><Link to="/nova-solicitacao">Enviar número</Link></Button></div><div hidden={tab!=='numbers'}><NumbersList/></div><div hidden={tab!=='history'}><SubmissionHistory/></div></div>;
+}
 export function NewRequestPage() {
  const { numero } = useSearch({ from: '/nova-solicitacao' });
  if (!numero) return <><PageHeading title="Nova solicitação" subtitle="Desbanimento permanente de número."/><ServicePrice/><EmptyPanel title="Em preparação" description="A contratação estará disponível após a conexão do envio ao serviço."/></>;
