@@ -109,8 +109,18 @@ Deno.serve(async req=>{
   }
   return json({error:'Operação inválida.'},400);
  }catch(error){
-  const message=error instanceof z.ZodError?'Confira os dados informados.':error instanceof Error?error.message:'Não foi possível processar a operação.';
+  const message=error instanceof z.ZodError?paymentValidationMessage(error):error instanceof Error?error.message:'Não foi possível processar a operação.';
   // Never return provider payloads, tokens, SQL errors or stack traces.
   return json({error:message},400);
  }
 });
+
+function paymentValidationMessage(error:z.ZodError){
+ const issue=error.issues[0];
+ if(issue?.code==='unrecognized_keys')return 'Os campos recebidos não correspondem à versão da função de pagamentos. Atualize astros-payments no Supabase. (P01)';
+ const labels:Record<string,string>={accessToken:'Access Token',webhookSecret:'Chave secreta do webhook',enabled:'Habilitar recargas',liveMode:'Ambiente',servicePriceCents:'Taxa de desbanimento',minimumEnabled:'Opção de recarga mínima',minimumRechargeCents:'Valor mínimo de recarga',amountCents:'Valor da recarga',method:'Forma de pagamento',requestId:'Referência da recarga',cpf:'CPF do pagador'};
+ const label=labels[String(issue?.path.at(-1))];
+ if(!label)return 'A configuração recebida está incompleta ou incompatível. Atualize astros-payments no Supabase. (P02)';
+ if(issue?.code==='too_big'&&['accessToken','webhookSecret'].includes(String(issue.path.at(-1))))return `${label}: conteúdo muito longo. Cole somente a credencial, sem código ou texto adicional. (P03)`;
+ return `Confira o campo ${label}. O valor recebido está ausente ou em formato inválido. (P04)`;
+}

@@ -23,3 +23,6 @@ A taxa configurada e o débito atômico de saldo estão preparados. O botão de 
 
 ## Atualização da taxa global e mínimo opcional
 Se o SQL inicial já foi executado, rode apenas `supabase/migrations/20261011_payment_prices.sql`. Depois substitua o código da Edge Function `astros-payments` pelo `index.ts` atualizado e publique novamente, mantendo a verificação JWT legada desligada. Os valores públicos não incluem credenciais. As telas dos clientes atualizam a taxa ao abrir e a cada 30 segundos enquanto estiverem visíveis. A contratação efetiva consulta a taxa do admin no servidor, rejeitando alteração de preço entre a exibição e a confirmação.
+
+## Diagnóstico de configuração
+Atualize a função existente astros-payments com supabase/astros-payments-configuracao-atualizada.ts. Mensagens P01/P02 indicam incompatibilidade de campos; P03/P04 identificam o campo sem mostrar valores privados. Use ambiente Produção para credenciais de produção, salve inicialmente com recargas desativadas e depois habilite. Não gere credenciais novas apenas por um erro de validação do formulário.
