@@ -131,7 +131,9 @@ async function reconcile(jobId:string|null=null){
  else{try{decision=reconciliationDecision(job,await allRows());}catch{decision=job.check_attempts>=12?'review':'processing';}}
  const result=await finishJob(job,decision);return {success:true,checked:1,state:result.state};
 }
-Deno.serve(async req=>{
+type ApiLogContext={userId:string;operation:string;requestId?:string;number?:string;country?:string;started:number};
+const apiLogContexts=new WeakMap<Request,ApiLogContext>();
+async function handleRequest(req:Request){
  const apiOperation=new URL(req.url).searchParams.get('api');
  if(req.method!=='POST'&&!(apiOperation&&req.method==='GET'))return json({success:false,message:'Método não permitido.'},405);
  let job:ServiceJob|undefined;let dispatched=false;let requestId='';let context:any;let stage='session';const started=Date.now();
@@ -151,6 +153,7 @@ Deno.serve(async req=>{
    if(identity?.error==='rate_limit')return json({success:false,message:'Limite de 60 consultas por minuto. Aguarde antes de tentar novamente.'},429);
    if(!identity?.id||!identity.email||!identity.email_confirmed_at)return json({success:false,message:'Chave inválida ou API não liberada.'},401);
    user=identity;
+   if(['saldo','validar','consultar','enviar','solicitacoes'].includes(apiOperation))apiLogContexts.set(req,{userId:identity.id,operation:apiOperation,started});
    if(apiOperation==='saldo'&&req.method==='GET'){
     const {data,error}=await db.from('painel_de_desbanimento').select('recarga').eq('id',user.id).single();
     if(error)return json({success:false,message:'Não foi possível consultar o saldo.'},503);
@@ -172,10 +175,12 @@ Deno.serve(async req=>{
   if(apiOperation){
    const input=z.object({number:z.string().trim().max(40).regex(/^[+\d\s().-]+$/),country:z.string().default('BR'),requestId:z.string().uuid().optional(),expectedCents:z.number().int().min(0).max(1000000).optional()}).strict().parse(body);
    if(apiOperation==='validar'){
+    const log=apiLogContexts.get(req);if(log){const digits=input.number.replace(/\D/g,'');if(digits.length<=15)log.number=(input.number.startsWith('+')?'+':'')+digits;if(/^([A-Z]{2}|custom:[0-9a-f-]{36})$/.test(input.country))log.country=input.country;}
     const country=z.string().regex(/^([A-Z]{2}|custom:[0-9a-f-]{36})$/).parse(input.country);let custom;
     if(country.startsWith('custom:')){const {data,error}=await db.from('astros_custom_countries').select('id,name,ddi').eq('id',country.slice(7)).maybeSingle();if(error||!data)return json({success:false,message:'País adicional indisponível.'},400);custom=data;}
     return json({success:true,number:canonicalPhone(input.number,country,custom),country,message:'Formato válido. Isso não confirma que o número existe ou possui WhatsApp.'});
    }
+   const log=apiLogContexts.get(req);if(log){log.requestId=input.requestId;const digits=input.number.replace(/\D/g,'');if(digits.length<=15)log.number=(input.number.startsWith('+')?'+':'')+digits;if(/^([A-Z]{2}|custom:[0-9a-f-]{36})$/.test(input.country))log.country=input.country;}
    if(!input.requestId)return json({success:false,message:'Informe requestId no formato UUID e reutilize-o nas tentativas do mesmo envio.'},400);
    if(apiOperation==='enviar'&&input.expectedCents===undefined)return json({success:false,message:'Consulte o número antes de enviar e informe expectedCents retornado pela consulta.'},400);
    body={...input,action:apiOperation==='enviar'?'submit':'quote'};
@@ -239,4 +244,19 @@ Deno.serve(async req=>{
   }
   return json({success:false,message:error instanceof z.ZodError?'Dados da solicitação inválidos.':error instanceof Error&&/^(Saldo insuficiente|Este país|Selecione|Confira o número|Este número|O status|A taxa|O envio|O controle|O rastreamento|A conferência|Conta não|Não foi possível consultar|O valor|Referência|A base|O Baserow|O endereço)/.test(error.message)?error.message:'Não foi possível consultar o serviço. Tente novamente em alguns instantes.'},400);
  }
+ }
+Deno.serve(async req=>{
+ const response=await handleRequest(req);const context=apiLogContexts.get(req);
+ if(context){
+  try{
+   const result=await response.clone().json();const success=result.success===true;
+   const state=['quoted','completed','processing','review','failed'].includes(result.state)?result.state:success?(context.operation==='validar'?'valid':'ok'):'error';
+   const message=String(result.message||'');const code=success?null:message.startsWith('Saldo insuficiente')?'insufficient_balance':message.startsWith('Referência divergente')?'reference_mismatch':message.startsWith('O valor')?'value_changed':message.startsWith('Dados')||message.startsWith('Informe')?'invalid_data':message.startsWith('Este número')?'number_unavailable':response.status>=500?'service_unavailable':'request_failed';
+   const phone=typeof result.number==='string'&&/^\+?[0-9]{1,15}$/.test(result.number)?result.number:context.number||null;
+   let logTimer:ReturnType<typeof setTimeout>|undefined;
+   try{const {error}=await Promise.race([db.rpc('astros_api_record_log',{owner_id:context.userId,api_operation:context.operation,reference_id:context.requestId||null,phone,selected_country:context.country||null,result_state:state,result_code:code,status_code:response.status,elapsed_ms:Math.min(300000,Math.max(0,Date.now()-context.started))}),new Promise<never>((_,reject)=>{logTimer=setTimeout(()=>reject(Error('LOG_TIMEOUT')),2000);})]);
+   if(error)console.warn('astros_api_log_unavailable');}finally{if(logTimer)clearTimeout(logTimer);}
+  }catch{console.warn('astros_api_log_unavailable');}
+ }
+ return response;
 });
