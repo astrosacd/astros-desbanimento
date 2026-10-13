@@ -29,8 +29,8 @@ export async function wallet() {
  if (!p.ok) throw new Error('Não foi possível consultar o saldo.');
  const rows=await p.json();
  if (!rows[0] || !Number.isFinite(Number(rows[0].recarga ?? 0))) throw new Error('Não foi possível consultar o saldo.');
- let movements: Array<{id:string;amount_cents:number;kind:string;created_at:string}> = [];
- const m=await request(`/rest/v1/astros_wallet_movements?user_id=eq.${encodeURIComponent(user.id)}&select=id,amount_cents,kind,created_at&order=created_at.desc&limit=30`,token);
+ let movements: Array<{id:string;amount_cents:number;kind:string;reference?:string;created_at:string}> = [];
+ const m=await request(`/rest/v1/astros_wallet_movements?user_id=eq.${encodeURIComponent(user.id)}&select=id,amount_cents,kind,reference,created_at&order=created_at.desc&limit=30`,token);
  if (m.ok) movements=await m.json();
  let ordersResponse=await request(`/rest/v1/astros_payment_orders?user_id=eq.${encodeURIComponent(user.id)}&select=id,method,status,amount_cents,qr_code,qr_base64,checkout_url,card_mode,created_at&order=created_at.desc&limit=20`,token);
  if(ordersResponse.status===400)ordersResponse=await request(`/rest/v1/astros_payment_orders?user_id=eq.${encodeURIComponent(user.id)}&select=id,method,status,amount_cents,qr_code,qr_base64,checkout_url,created_at&order=created_at.desc&limit=20`,token);

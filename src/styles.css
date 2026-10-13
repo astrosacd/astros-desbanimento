@@ -616,3 +616,12 @@ tbody tr:hover { background: var(--secondary); }
 
 .card-checkout { margin-top:20px; padding-top:20px; border-top:1px solid var(--border); min-width:0; }
 .card-checkout iframe { max-width:100%; }
+
+.client-balances .form-section { max-width:none; width:100%; }
+.payment-details-summary { display:grid; gap:14px; padding:18px; border:1px solid var(--border); border-radius:12px; background:var(--background); }
+.payment-details-summary > div { display:flex; justify-content:space-between; align-items:start; gap:18px; }
+.payment-details-summary dt { font-size:12px; color:var(--muted-foreground); }
+.payment-details-summary dd { font-size:13px; text-align:right; font-weight:600; }
+@media(max-width:400px) { .payment-details-summary > div { flex-direction:column; gap:5px; } .payment-details-summary dd { text-align:left; } }
+
+.client-balances .number-search select.field { flex:0 0 140px; max-width:140px; }

@@ -1,0 +1,12 @@
+import {beforeEach,afterEach,expect,it,vi} from 'vitest';
+import {render,screen,fireEvent,within,cleanup} from '@testing-library/react';
+const api=vi.hoisted(()=>({status:'refunded'}));
+vi.mock('./actions',()=>({getWallet:vi.fn(),createRecharge:vi.fn(),checkRecharge:vi.fn(),getPaymentPrices:vi.fn(),prepareCardRecharge:vi.fn(),getCardConfiguration:vi.fn()}));
+vi.mock('./card-checkout',()=>({CardCheckout:()=>null}));
+vi.mock('./automatic',()=>({paymentPending:(status:string)=>status==='pending',useAutomaticPayment:()=>({checking:false,error:false})}));
+vi.mock('@tanstack/react-router',()=>({useRouteContext:()=>({client:{id:'own',email:'own@example.com'}})}));
+vi.mock('@tanstack/react-query',()=>({useQuery:({queryKey}:any)=>({data:queryKey[0]==='wallet'?{balanceCents:100,movements:[],orders:[{id:'00000000-0000-4000-8000-000000000001',method:'pix',status:api.status,amount_cents:100,created_at:'2026-10-13T12:00:00Z'}]}:{servicePriceCents:397,minimumEnabled:false,publicKey:'APP_USR-public',enabled:true},isPending:false,isError:false,isFetching:false,refetch:vi.fn()})}));
+import {WalletPage} from './wallet';
+beforeEach(()=>{cleanup();api.status='refunded';});afterEach(cleanup);
+it('opens real recarga details with value, status and explanation, instead of only scrolling to an empty payment block',()=>{render(<WalletPage/>);fireEvent.click(screen.getByRole('button',{name:'Recargas',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Ver detalhes'}));const dialog=screen.getByRole('dialog');expect(within(dialog).getByText('Valor da recarga')).toBeInTheDocument();expect(within(dialog).getByText('Pagamento estornado')).toBeInTheDocument();expect(within(dialog).getByText('Forma de pagamento')).toBeInTheDocument();expect(within(dialog).getByText('Gerada em')).toBeInTheDocument();expect(within(dialog).queryByRole('button',{name:'Acompanhar pagamento'})).not.toBeInTheDocument();});
+it('offers payment tracking for a pending recharge',()=>{api.status='pending';render(<WalletPage/>);fireEvent.click(screen.getByRole('button',{name:'Recargas',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Ver detalhes'}));expect(within(screen.getByRole('dialog')).getByRole('button',{name:'Acompanhar pagamento'})).toBeInTheDocument();});
