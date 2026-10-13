@@ -1,0 +1,14 @@
+import {expect,it,vi,beforeEach} from 'vitest';
+import {bannerSchema,bannerVisible} from './validation';
+const mocks=vi.hoisted(()=>({admin:vi.fn(),request:vi.fn(),cookie:vi.fn()}));
+vi.mock('../admin/auth.server',()=>({requireAdmin:mocks.admin,request:mocks.request}));
+vi.mock('@tanstack/react-start/server',()=>({getCookie:mocks.cookie,setResponseHeader:vi.fn()}));
+import {readBanner,saveBanner} from './server';
+const banner={message:'Aviso',enabled:true,startsAt:'2026-10-12T20:00:00Z',endsAt:'2026-10-12T21:00:00Z'};
+beforeEach(()=>{vi.resetAllMocks();mocks.cookie.mockReturnValue('session');});
+it('shows only in the configured interval, ending exactly at expiration',()=>{expect(bannerVisible(banner,Date.parse(banner.startsAt)-1)).toBe(false);expect(bannerVisible(banner,Date.parse(banner.startsAt))).toBe(true);expect(bannerVisible(banner,Date.parse(banner.endsAt))).toBe(false);expect(bannerVisible({...banner,enabled:false},Date.parse(banner.startsAt))).toBe(false);});
+it('rejects empty active text, reversed periods and client-provided role fields',()=>{expect(bannerSchema.safeParse({...banner,message:' '}).success).toBe(false);expect(bannerSchema.safeParse({...banner,endsAt:banner.startsAt}).success).toBe(false);expect(bannerSchema.safeParse({...banner,admin:true}).success).toBe(false);});
+it('requires admin permission before reading administrative settings or writing',async()=>{mocks.admin.mockRejectedValue(Error('admin'));await expect(readBanner(true)).rejects.toThrow('admin');await expect(saveBanner(banner)).rejects.toThrow('admin');expect(mocks.request).not.toHaveBeenCalled();});
+it('keeps expired text available to admin, hides it from clients',async()=>{mocks.request.mockResolvedValue({ok:true,json:async()=>[{message:'Aviso',enabled:true,starts_at:banner.startsAt,ends_at:banner.endsAt}]});expect((await readBanner()).banner).toBe(null);expect((await readBanner(true)).banner?.message).toBe('Aviso');});
+it('rejects enabling an expired interval but allows disabling it',async()=>{await expect(saveBanner(banner)).rejects.toThrow('futuro');expect(mocks.request).not.toHaveBeenCalled();mocks.request.mockResolvedValue({ok:true,json:async()=>[{id:true}]});await expect(saveBanner({...banner,enabled:false})).resolves.toEqual({success:true});});
+it('does not treat a failed settings write as success',async()=>{mocks.request.mockResolvedValue({ok:true,json:async()=>[]});await expect(saveBanner({...banner,enabled:false})).rejects.toThrow('não foi salva');});

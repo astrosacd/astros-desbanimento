@@ -523,3 +523,9 @@ tbody tr:hover { background: var(--secondary); }
 .overview-shortcut p { color: var(--muted-foreground); font-size: 12px; line-height: 1.6; margin-top: 4px; }
 @container(max-width:780px) { .overview-top { grid-template-columns: minmax(0,1fr); } .overview-wallet > section { flex-direction: row; align-items: center; flex-wrap: wrap; height: auto; } }
 @media(max-width:650px) { .overview-top,.overview-shortcuts { grid-template-columns: minmax(0,1fr); gap: 14px; } .overview-welcome,.overview-wallet > section { padding: 22px; } .overview-welcome a { width: 100%; justify-content: center; } .overview-wallet > section { height: auto; } .overview-wallet a { width: 100%; } .overview-shortcut { padding: 18px; gap: 12px; } }
+
+.overview-banner { display:flex; align-items:flex-start; gap:14px; padding:18px 22px; margin-bottom:24px; border:1px solid #91414E; border-left:4px solid #FF8C9B; border-radius:12px; background:#351B26; color:#FFE8EC; }
+.overview-banner > svg { flex-shrink:0; color:#FFADB8; margin-top:2px; }
+.overview-banner strong { font-size:14px; }
+.overview-banner p { font-size:13px; line-height:1.7; margin-top:5px; white-space:pre-wrap; overflow-wrap:anywhere; }
+@media(max-width:650px) { .overview-banner { padding:16px; gap:12px; } }
