@@ -1,0 +1,7 @@
+import {expect,it} from 'vitest';
+import {validCpf,cpfMessage,friendlyRechargeError} from './cpf';
+import {rechargeSchema} from './validation';
+it('accepts valid formatted CPFs and rejects incomplete, repeated and incorrect check digits',()=>{expect(validCpf('529.982.247-25')).toBe(true);expect(validCpf('11144477735')).toBe(true);for(const value of ['000000000','00000000000','11111111111','52998224726'])expect(validCpf(value)).toBe(false);});
+it('provides actionable CPF feedback',()=>{expect(cpfMessage('000000000')).toContain('11 dígitos');expect(cpfMessage('00000000000')).toContain('Confira os números');});
+it('turns serialized validation failures into safe client-facing messages',()=>{expect(friendlyRechargeError(new Error('[{"validation":"regex","code":"invalid_string","message":"Invalid","path":["cpf"]}]'))).toBe('Confira o CPF do pagador e tente novamente.');expect(friendlyRechargeError(new Error('[{"path":["amountCents"],"message":"INTERNAL"}]'))).not.toContain('INTERNAL');});
+it('blocks invalid or missing Pix CPF on the server action, while card does not require CPF',()=>{const base={amountCents:100,requestId:'00000000-0000-4000-8000-000000000001',method:'pix'};expect(rechargeSchema.safeParse({...base,cpf:'00000000000'}).success).toBe(false);expect(rechargeSchema.safeParse(base).success).toBe(false);expect(rechargeSchema.safeParse({...base,method:'card'}).success).toBe(true);});
