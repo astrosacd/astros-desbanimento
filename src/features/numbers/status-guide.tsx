@@ -7,7 +7,7 @@ const statuses = [
  { name: 'Reedesbanimento', description: 'A solicitação foi enviada novamente. A Astros acompanha essa nova etapa do processo.', Icon: RotateCw, color: 'text-blue-400', background: 'bg-blue-400/10' },
 ];
 export function StatusGuide() {
- return <section className="table-section p-4 sm:p-6 mt-7" aria-labelledby="status-guide-title">
+ return <section className="table-section status-guide p-4 sm:p-6 mt-7" aria-labelledby="status-guide-title">
   <h2 id="status-guide-title" className="text-lg font-semibold">Entenda os status</h2>
   <p className="mt-1 text-sm text-muted-foreground">Cada status informa em qual etapa está sua solicitação.</p>
   <div className="mt-5 grid gap-3 sm:grid-cols-2">{statuses.map(({ name, description, Icon, color, background }) => <div key={name} className="flex items-start gap-3 rounded-xl border border-border p-4"><span className={`rounded-lg p-2 shrink-0 ${color} ${background}`}><Icon className="size-5" aria-hidden="true"/></span><div><h3 className={`text-sm font-semibold ${color}`}>{name}</h3><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p></div></div>)}</div>

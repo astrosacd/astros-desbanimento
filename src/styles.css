@@ -663,3 +663,55 @@ tbody tr:hover { background: var(--secondary); }
 .wallet-movement-icon.credit { background:var(--surface-success); color:var(--success); }
 .wallet-movement-icon.debit { background:var(--surface-warning); color:var(--warning); }
 .admin-action-card:hover,.overview-shortcut:hover { border-color:var(--border-brand); background:var(--secondary); }
+
+/* Panel design: shared hierarchy, predictable spacing and quiet surfaces. */
+:root { --panel-shadow:0 8px 28px #00000012; --panel-radius:18px; }
+.shell,.admin-shell { background:radial-gradient(ellipse at 75% 0%,#142B3A45,transparent 48%),var(--background); }
+.content,.admin-content { padding-block:36px; }
+.page-heading,.admin-header { padding-bottom:24px; border-bottom:1px solid var(--border); margin-bottom:28px; }
+.page-heading-kicker { display:block; font-size:10px; font-weight:650; letter-spacing:.12em; color:var(--muted-foreground); margin-bottom:10px; }
+.page-heading h1,.admin-header h1 { font-size:clamp(26px,2.6vw,34px); line-height:1.25; letter-spacing:-.035em; font-weight:750; }
+.page-heading p,.admin-header p { font-size:13px; line-height:1.8; max-width:680px; }
+.sidebar,.admin-sidebar { border-color:#243346; }
+.nav-caption { color:#8497AF; }
+.nav-link { font-size:13px; min-height:46px; gap:12px; border:1px solid transparent; padding:12px; }
+.nav-link[data-status=active],.admin-nav-button[data-status="active"] { border-color:var(--border-brand); padding:12px; box-shadow:inset 3px 0 var(--primary); }
+.admin-sidebar-account { padding:18px 14px; border-radius:12px; background:#111E2C; border:1px solid var(--border); }
+.content .table-section,.content .summary-box,.admin-welcome,.admin-settings,.admin-action-card,.wallet-page .form-section,.wallet-summary,.wallet-ledger,.admin-content .form-section { border-radius:var(--panel-radius); box-shadow:var(--panel-shadow); }
+.content .table-section,.admin-content .form-section,.admin-settings { padding:28px; }
+.content .table-section h2,.admin-settings h2,.admin-content .form-section h2 { letter-spacing:-.02em; }
+.content .field,.admin-content .field { border-radius:11px; min-height:46px; padding:12px 14px; font-size:14px; }
+.content .field:hover,.admin-content .field:hover { border-color:#70839B; }
+.content th,.admin-content th { text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; background:#182637; color:#BDCCDC; padding:15px 16px; }
+.content td,.admin-content td { padding:18px 16px; font-size:13px; line-height:1.65; border-color:var(--border); }
+.content tbody tr,.admin-content tbody tr { border-color:var(--border); }
+.content tbody tr:hover,.admin-content tbody tr:hover { background:#192738; }
+.content .number-search,.admin-content .number-search { padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--surface-input); }
+.overview-top { gap:24px; }
+.overview-welcome { position:relative; background:linear-gradient(120deg,#193443,#142230 75%); border:1px solid #385568; border-radius:20px; padding:32px; }
+.overview-welcome h2 { font-size:clamp(26px,2.6vw,36px); line-height:1.25; letter-spacing:-.035em; max-width:540px; }
+.overview-welcome p { font-size:13px; line-height:1.85; max-width:450px; }
+.overview-wallet > .balance-card { background:var(--card); border-radius:20px; padding:30px; border-color:var(--border); }
+.balance-card-label { display:flex; align-items:center; gap:10px; color:var(--primary); margin-bottom:18px; }
+.balance-card-label p { font-size:12px; color:var(--muted-foreground); }
+.balance-card strong.text-2xl { display:block; font-size:clamp(28px,3vw,40px); font-weight:700; letter-spacing:-.04em; color:var(--text-brand); }
+.overview-shortcut { padding:22px 24px; border-radius:16px; background:#111D2B; }
+.overview-shortcut h2 { font-size:14px; font-weight:650; }
+.overview-shortcut p { font-size:12px; line-height:1.7; }
+.status-guide > .grid > div { background:var(--surface-input); border-color:#26394C; padding:20px; }
+.status-guide h3 { line-height:1.6; }
+.status-guide .grid p { font-size:12px; line-height:1.85; }
+.admin-welcome { background:linear-gradient(115deg,#193443,#142230 75%); border-color:#385568; padding:32px; }
+.admin-welcome h2 { font-size:30px; letter-spacing:-.035em; }
+.workspace-heading { margin:30px 0 20px; }
+.workspace-heading h2 { font-size:20px; font-weight:650; letter-spacing:-.02em; margin-top:8px; }
+.workspace-heading p { font-size:13px; color:var(--muted-foreground); margin-top:8px; line-height:1.7; }
+.admin-workspace-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.admin-workspace-grid .admin-action-card { display:grid; grid-template-columns:44px minmax(0,1fr) 18px; align-items:start; gap:16px; padding:24px; }
+.workspace-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:var(--surface-brand); color:var(--primary); border:1px solid var(--border-brand); }
+.admin-workspace-grid h2 { font-size:15px; font-weight:650; margin:2px 0 8px; }
+.admin-workspace-grid p { font-size:12px; line-height:1.8; color:var(--muted-foreground); }
+.workspace-arrow { color:var(--muted-foreground); margin-top:4px; }
+.wallet-ledger .wallet-history { border-radius:0; box-shadow:none; }
+@media(max-width:850px) { .content,.admin-content { padding-block:26px; } .overview-welcome,.overview-wallet > .balance-card,.admin-welcome { padding:26px; } }
+@media(max-width:650px) { .page-heading,.admin-header { padding-bottom:20px; margin-bottom:22px; } .page-heading h1,.admin-header h1 { font-size:27px; } .content .table-section,.admin-content .form-section,.admin-settings { padding:20px; } .admin-workspace-grid { grid-template-columns:minmax(0,1fr); } .admin-workspace-grid .admin-action-card { padding:20px; gap:12px; } .overview-welcome,.overview-wallet > .balance-card,.admin-welcome { padding:24px; } .content .number-search,.admin-content .number-search { padding:12px; } .overview-shortcut { padding:20px; } }
