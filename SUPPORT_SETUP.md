@@ -1,5 +1,7 @@
 # Atendimento dentro do painel
 
+> Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](docs/INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.
+
 ## Ativação
 
 1. No projeto Supabase atual, execute `supabase/migrations/20261012_support_chat.sql` no SQL Editor. Esse arquivo cria somente as configurações e RPCs do suporte; não altera Auth, SMTP, pagamentos ou Baserow.

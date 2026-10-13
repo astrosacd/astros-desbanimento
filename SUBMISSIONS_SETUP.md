@@ -1,5 +1,7 @@
 # Envios reais: Supabase e Baserow
 
+> Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](docs/INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.
+
 O n8n não participa desta integração. O fluxo antigo serviu apenas de referência das regras. Não importe ou ative o arquivo preparado anteriormente. Não é necessária planilha Google.
 
 ## 1. SQL

@@ -1,32 +1,38 @@
 # Astros Desbanimento
 
-Crie um NOVO projeto chamado "ASTROS • Painel de Desbanimento V2". O usuário quer um frontend muito mais profissional para seu painel existente. Não altere o projeto original 65b4004c-1306-4b1b-9b3c-6e360e7eceb4. Nesta entrega construa um frontend navegável completo em português brasileiro com modo de demonstração explícito, sem conectar webhooks ou banco original e sem enviar solicitações reais/cobrar pagamentos. Não implementar força bruta nem métodos de contornar sistemas da Meta. O produto é gestão e acompanhamento de solicitações de revisão/desbloqueio, sem promessa de aprovação.
+Painel de clientes e administradores da Astros Comunicação Digital®, com autenticação Supabase, carteira, pagamentos Mercado Pago, solicitações integradas ao Baserow, suporte Chatwoot e API de clientes liberada pelo administrador.
 
-Direção visual premium Astros Comunicação Digital® / Ecossistema de Crescimento Digital: fundo #020711, superfícies navy #0B1423, ciano #00D7E8 e azul elétrico. Tipografia refinada, títulos fortes, bordas discretas, bastante espaço, ícones lucide, gráficos úteis, sem excesso de brilho e sem visual genérico de landing page. Sem inventar logo: use wordmark tipográfico ASTROS com símbolo geométrico discreto. Dashboard deve ser tela inicial para fácil revisão, com badge "Demonstração" persistente e dados fictícios explicitamente identificados. Login pode ser acessado pelo menu da conta e ter botão "Explorar demonstração".
+Este repositório contém a aplicação real. As instruções antigas de demonstração não descrevem o estado atual.
 
-Funções reais identificadas no painel antigo: login, cadastro, recuperação de senha, saldo, nova solicitação com número e tipo, histórico de solicitações, recargas, API e perfil; área administrativa existe. Tipos: WhatsApp Business, WhatsApp Messenger, WhatsApp Business (Internacional), WhatsApp Messenger (Internacional), Rebanimento. Custo apresentado no original R$3,97 por solicitação: preservar como preço de referência na demo, não cobrar. Rebanimento deve avisar que exige número já registrado.
+## Documentação
 
-Faça sidebar desktop com Visão geral, Nova solicitação, Solicitações, Carteira/Recargas, API, Perfil e suporte. Mobile drawer ou bottom navigation com rótulos. Header com breadcrumb, badge demo e avatar. Dashboard: saudação, hero funcional discreto, CTA Nova solicitação e Adicionar saldo, cards saldo/andamento/concluídas/total (derivados dos registros demo), gráfico de atividade, tabela de solicitações recentes com filtros status e busca por número. Use BRL/pt-BR em valores e datas. Status textuais coloridos, detalhes em drawer com timeline apenas ilustrativa. Solicitações com paginação e export CSV realmente funcional. Nova solicitação: formulário com seletor dos 5 tipos, validação de número nacional e internacional clara, revisão de número/tipo/custo e confirmação; só adicionar registro local demo em andamento e ajustar saldo demo, nunca alegar desbloqueio. Impedir duplicatas acidentais e saldo insuficiente. Recargas: valores rápidos, customizado, modal de confirmação explicitamente simulado e histórico de movimentações demo. API: documentação demonstrativa, snippets copiáveis, não expor chaves reais nem inventar endpoint de produção. Perfil edição local com feedback. Login/cadastro/reset com validação visual, sem armazenar senhas ou fingir autenticação real. Termos e suporte acessíveis. Persistência local somente de demo; botão restaurar demo. Estados vazios, loading, erro, toasts, focus acessível e prefers-reduced-motion. Não mostrar promessas de sucesso nem alegar serviço online a partir de dados falsos.
+| Objetivo | Guia |
+|---|---|
+| Entender a estrutura e os fluxos | [Mapa do projeto](docs/ARQUITETURA.md) |
+| Preparar outra instalação em outra conta | [Instalação e replicação](docs/INSTALACAO.md) |
+| Planejar manutenção e próximos recursos | [Plano de evolução](docs/PLANO_DE_EVOLUCAO.md) |
+| Acesso e permissões | [Administradores](docs/ADMIN_SETUP.md) |
+| E-mails personalizados | [Gmail](docs/GMAIL_SETUP.md) |
+| Carteira e pagamentos | [Pagamentos](PAYMENTS_SETUP.md) |
+| Envios e conferência automática | [Solicitações](SUBMISSIONS_SETUP.md) |
+| Atendimento | [Suporte](SUPPORT_SETUP.md) |
+| API, chaves e logs | [API](API_SETUP.md) |
 
-Implemente agora todo frontend e confira build TypeScript, rotas/menu, filtros, modais, mobile sem overflow. Não publique em produção. Retorne resumo do que funciona e limitações de backend.
+Os guias por recurso registram também etapas históricas da implementação. Para uma nova instalação, comece por INSTALACAO.md. Não execute novamente SQLs já aplicados na instalação em produção.
 
-This project was built with [Lovable](https://lovable.dev).
+## Desenvolvimento
 
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/a135bd51-5c95-48af-b761-0912ca8dea47).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```bash
+git clone https://github.com/astrosacd/astros-desbanimento.git
+cd astros-desbanimento
+npm ci
 npm run dev
 ```
+
+Verificações: `npm test` e `npm run build`. Testes locais usam simulações e não comprovam pagamentos, e-mails ou gravações reais nos serviços externos.
+
+## Sincronização e publicação
+
+As alterações enviadas à branch main sincronizam com o projeto conectado no [Lovable](https://lovable.dev/projects/a135bd51-5c95-48af-b761-0912ca8dea47). Sincronizar código e publicar o site são etapas distintas. SQLs, Edge Functions e secrets do Supabase exigem instalação própria; um commit não os aplica automaticamente.
+
+O GitHub não é uma cópia dos dados de produção nem das credenciais privadas. Não coloque tokens, senhas de app ou chaves administrativas em commits ou exemplos.

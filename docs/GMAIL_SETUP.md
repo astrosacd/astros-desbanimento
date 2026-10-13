@@ -1,6 +1,8 @@
 # E-mails exclusivos do painel Astros
 
-Implementação preparada, não ativada. Não altera SMTP, templates ou confirmação de e-mail compartilhados no Supabase. Até ativar a variável de servidor abaixo, permanece o envio existente do Supabase.
+> Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.
+
+Implementação disponível; a ativação depende da configuração de cada instalação. Não altera SMTP, templates ou confirmação de e-mail compartilhados no Supabase. Até ativar a variável de servidor abaixo, permanece o envio existente do Supabase.
 
 ## Configuração no Supabase
 

@@ -1,5 +1,7 @@
 # Ativação dos pagamentos Astros
 
+> Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](docs/INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.
+
 A implementação no GitHub contém a carteira real, a configuração privada do Mercado Pago e o processamento de pagamentos. Ainda é necessário instalar o SQL e publicar a função no Supabase antes de ativar as recargas.
 
 ## 1. SQL
@@ -19,7 +21,7 @@ Após configurar as notificações, habilite as recargas e faça um teste. Confi
 Créditos e estornos são transacionais e idempotentes. O valor da recarga é creditado integralmente; eventuais tarifas do Mercado Pago não são descontadas automaticamente do saldo do cliente. O mínimo de recarga é configurável no admin, incluindo a opção sem mínimo definido pela Astros. Pagamentos precisam ter valor positivo e respeitar os limites do meio de pagamento; o limite superior do painel é R$ 10.000.
 
 ## Contratação de serviços
-A taxa configurada e o débito atômico de saldo estão preparados. O botão de contratar ainda não debita nem reativa um número: é necessário conectar a execução efetiva do serviço ao Baserow, incluindo compensação em caso de falha, antes de liberar essa etapa. Nunca desconte saldo apenas por clicar no botão ou sem registrar o serviço correspondente.
+A taxa configurada e o débito atômico de saldo estão preparados. A execução atual está integrada ao Baserow, com reserva e compensação/conferência descritas em SUBMISSIONS_SETUP.md. Nunca desconte saldo apenas por clicar no botão ou sem registrar o serviço correspondente.
 
 ## Atualização da taxa global e mínimo opcional
 Se o SQL inicial já foi executado, rode apenas `supabase/migrations/20261011_payment_prices.sql`. Depois substitua o código da Edge Function `astros-payments` pelo `index.ts` atualizado e publique novamente, mantendo a verificação JWT legada desligada. Os valores públicos não incluem credenciais. As telas dos clientes atualizam a taxa ao abrir e a cada 30 segundos enquanto estiverem visíveis. A contratação efetiva consulta a taxa do admin no servidor, rejeitando alteração de preço entre a exibição e a confirmação.

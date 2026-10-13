@@ -1,5 +1,7 @@
 # API de clientes Astros
 
+> Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](docs/INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.
+
 1. Execute `supabase/migrations/20261013_client_api.sql` no SQL Editor deste projeto. As contas começam sem liberação; nenhuma tabela de outros aplicativos é alterada.
 2. Atualize a função existente **astros-submit-number** com todo o conteúdo de `supabase/astros-submit-number-com-api.ts` e faça Deploy. Desative **Verify JWT** somente nessa função se estiver ligado: o código verifica independentemente o JWT das sessões normais, a chave individual da API e o segredo do worker. Não altere outras funções ou configurações globais de Auth.
 3. Admin → Gestão de contas → pesquisar conta → Gerenciar conta → Acesso à API → Liberar API.
