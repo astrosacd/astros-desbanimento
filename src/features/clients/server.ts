@@ -7,7 +7,9 @@ export async function searchClients(input:unknown){
  const escaped=data.search.replace(/[\\%_*]/g,v=>'\\'+(v==='*'?'%':v));
  const query=new URLSearchParams({select:'id,nome,email,recarga',tipo_usuario:'in.(cliente,admin)',[data.field]:`ilike.*${escaped}*`,order:'nome.asc,id.asc',limit:'11',offset:String((data.page-1)*10)});
  const r=await request(`/rest/v1/painel_de_desbanimento?${query}`,token);if(!r.ok)throw Error('Não foi possível pesquisar os clientes.');
- const rows=await r.json();return {rows:rows.slice(0,10).map((row:any)=>({id:String(row.id),name:String(row.nome||'Cliente'),email:String(row.email||''),balanceCents:Math.round(Number(row.recarga||0)*100)})),hasMore:rows.length>10};
+ const rows=await r.json();const visible=rows.slice(0,10);const logins=new Map<string,string|null>();
+ if(visible.length){try{const response=await request('/rest/v1/rpc/astros_admin_last_logins',token,{method:'POST',body:JSON.stringify({user_ids:visible.map((row:any)=>row.id)})});if(response.ok){const values=await response.json();if(Array.isArray(values))for(const item of values){if(typeof item.user_id==='string'&&(item.last_login_at===null||(typeof item.last_login_at==='string'&&Number.isFinite(Date.parse(item.last_login_at)))))logins.set(item.user_id,item.last_login_at);}}}catch{/* Keep account search usable when login information is unavailable. */}}
+ return {rows:visible.map((row:any)=>({id:String(row.id),name:String(row.nome||'Cliente'),email:String(row.email||''),balanceCents:Math.round(Number(row.recarga||0)*100),lastLoginAt:logins.get(String(row.id))??null,lastLoginAvailable:logins.has(String(row.id))})),hasMore:rows.length>10};
 }
 export async function creditClient(input:unknown){
  const token=await session();const data=clientCreditSchema.parse(input);
