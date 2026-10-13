@@ -1,3 +1,4 @@
+import {cardPaymentSchema,prepareCardSchema} from './card-validation';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { historySchema } from './history-validation';
@@ -13,3 +14,7 @@ export const getPaymentHistory = createServerFn({ method: 'GET' }).inputValidato
 
 export const getAdminPrices=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).adminPrices());
 export const saveAdminPrices=createServerFn({method:'POST'}).inputValidator(pricesSchema).handler(async({data})=>(await import('./server')).savePrices(data));
+
+export const getCardConfiguration=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).clientCall('card-config',{}));
+export const prepareCardRecharge=createServerFn({method:'POST'}).inputValidator(prepareCardSchema).handler(async({data})=>(await import('./server')).clientCall('prepare-card',data));
+export const payCardRecharge=createServerFn({method:'POST'}).inputValidator(cardPaymentSchema).handler(async({data})=>(await import('./server')).clientCall('pay-card',data));

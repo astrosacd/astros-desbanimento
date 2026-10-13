@@ -613,3 +613,6 @@ tbody tr:hover { background: var(--secondary); }
 .payment-confirmed svg { margin:0 auto 12px; }
 .payment-confirmed h3 { font-weight:600; font-size:17px; }
 .payment-confirmed p { font-size:13px; line-height:1.7; margin-top:10px; }
+
+.card-checkout { margin-top:20px; padding-top:20px; border-top:1px solid var(--border); min-width:0; }
+.card-checkout iframe { max-width:100%; }

@@ -26,3 +26,9 @@ Se o SQL inicial já foi executado, rode apenas `supabase/migrations/20261011_pa
 
 ## Diagnóstico de configuração
 Atualize a função existente astros-payments com supabase/astros-payments-configuracao-atualizada.ts. Mensagens P01/P02 indicam incompatibilidade de campos; P03/P04 identificam o campo sem mostrar valores privados. Use ambiente Produção para credenciais de produção, salve inicialmente com recargas desativadas e depois habilite. Não gere credenciais novas apenas por um erro de validação do formulário.
+
+## Cartão integrado ao painel
+1. Rode supabase/migrations/20261013_embedded_card.sql.
+2. Substitua a função existente astros-payments pelo arquivo completo supabase/astros-payments-cartao-no-painel.ts e publique.
+3. Configure a Public Key da mesma aplicação e ambiente do Access Token no admin.
+O Pix mantém a integração atual. Novas recargas de cartão usam Card Payment Brick; recargas antigas por link continuam consultáveis. Valor, conta, e-mail e referência vêm do servidor. Somente token temporário e identificação necessária são enviados ao backend: número de cartão e CVV não são armazenados. Cada recarga possui uma tentativa imutável com fingerprint, idempotência por UUID e crédito transacional existente. Respostas incertas devem ser consultadas; não gerar nova recarga para repetir um pagamento sem antes esclarecer sua situação. Pagamentos recusados podem ser refeitos criando outra recarga após a confirmação da recusa. Quando o banco exigir autenticação 3DS, o Status Screen Brick apresenta o desafio de confirmação dentro do painel.
