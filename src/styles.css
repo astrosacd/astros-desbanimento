@@ -544,10 +544,10 @@ tbody tr:hover { background: var(--secondary); }
 .wallet-section-title h2 { font-size:17px; font-weight:600; }
 .wallet-section-title p { font-size:12px; color:var(--muted-foreground); line-height:1.6; margin-top:3px; }
 .wallet-icon { width:36px; height:36px; display:grid; place-items:center; color:#83E3E9; background:#17313D; border-radius:9px; flex-shrink:0; }
-.wallet-recharge-grid form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; align-items:start; }
-.wallet-recharge-grid form > * { margin:0; }
-.wallet-page form > button { grid-column:1 / -1; width:auto; justify-self:start; min-height:46px; min-width:200px; margin-top:0; }
-.wallet-page form > [role=status] { grid-column:1 / -1; }
+.wallet-recharge-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; align-items:start; }
+.wallet-recharge-form > * { margin:0; }
+.wallet-page .wallet-recharge-form > button { grid-column:1 / -1; width:auto; justify-self:start; min-height:46px; min-width:200px; margin-top:0; }
+.wallet-page .wallet-recharge-form > [role=status] { grid-column:1 / -1; }
 .wallet-payment-details { padding-top:22px; max-width:540px; margin:0 auto; }
 .wallet-payment-details img { display:block; margin-inline:auto; max-width:100%; }
 .wallet-payment-details > button,.wallet-payment-details > a { width:100%; }
@@ -577,8 +577,8 @@ tbody tr:hover { background: var(--secondary); }
 .wallet-movement-icon.credit { color:#9DEBCC; background:#13332A; }
 .wallet-movement-icon.debit { color:#F2D7A7; background:#302719; }
 .wallet-empty { padding:4px 0; color:var(--muted-foreground); font-size:13px; line-height:1.8; }
-@container(max-width:780px) { .wallet-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .wallet-recharge-grid form { grid-template-columns:minmax(0,1fr); } }
-@media(max-width:650px) { .wallet-page .form-section,.wallet-summary,.wallet-ledger { padding:20px; } .wallet-summary { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; } .wallet-summary-balance { grid-column:1 / -1; } .wallet-summary > button { grid-column:1 / -1; width:100%; } .wallet-summary-item strong { font-size:18px; } .wallet-summary-balance strong { font-size:28px; } .wallet-recharge-grid form { grid-template-columns:minmax(0,1fr); } .wallet-page form > button { width:100%; } .wallet-ledger-tabs { width:100%; } .wallet-ledger-tabs button { flex:1; } .wallet-records li > button { width:100%; } }
+@container(max-width:780px) { .wallet-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .wallet-recharge-form { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:650px) { .wallet-page .form-section,.wallet-summary,.wallet-ledger { padding:20px; } .wallet-summary { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; } .wallet-summary-balance { grid-column:1 / -1; } .wallet-summary > button { grid-column:1 / -1; width:100%; } .wallet-summary-item strong { font-size:18px; } .wallet-summary-balance strong { font-size:28px; } .wallet-recharge-form { grid-template-columns:minmax(0,1fr); } .wallet-page .wallet-recharge-form > button { width:100%; } .wallet-ledger-tabs { width:100%; } .wallet-ledger-tabs button { flex:1; } .wallet-records li > button { width:100%; } }
 
 .requests-page .form-section { max-width:none; width:100%; }
 .requests-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:22px; flex-wrap:wrap; }
@@ -625,3 +625,17 @@ tbody tr:hover { background: var(--secondary); }
 @media(max-width:400px) { .payment-details-summary > div { flex-direction:column; gap:5px; } .payment-details-summary dd { text-align:left; } }
 
 .client-balances .number-search select.field { flex:0 0 140px; max-width:140px; }
+
+/* Keep wallet layout rules outside the provider's secure card form. */
+.wallet-checkout-card .wallet-payment-details { max-width:640px; padding-top:24px; }
+.checkout-total { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:18px 20px; border:1px solid var(--border); border-radius:12px; background:var(--background); }
+.checkout-total > div { display:flex; flex-direction:column; gap:7px; }
+.checkout-total span { font-size:12px; color:var(--muted-foreground); }
+.checkout-total strong { font-size:26px; font-weight:650; letter-spacing:-.025em; }
+.checkout-total .checkout-method { padding:7px 11px; border-radius:8px; background:#17313D; color:#95EFF1; white-space:nowrap; }
+.card-checkout { border-top:0; padding-top:0; margin-top:20px; }
+.card-checkout-intro { margin-bottom:18px; font-size:13px; color:var(--muted-foreground); line-height:1.7; }
+.card-checkout-host { min-width:0; width:100%; }
+.card-checkout-security { display:flex; gap:8px; align-items:center; color:var(--muted-foreground); font-size:11px; margin-top:16px; line-height:1.6; }
+.card-checkout-security svg { flex-shrink:0; color:#83E3E9; }
+@media(max-width:450px) { .checkout-total { padding:16px; gap:12px; } .checkout-total strong { font-size:23px; } .checkout-total .checkout-method { font-size:10px; padding:6px 8px; } }
