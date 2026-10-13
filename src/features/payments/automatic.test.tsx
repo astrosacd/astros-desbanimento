@@ -1,0 +1,11 @@
+import {beforeEach,afterEach,expect,it,vi} from 'vitest';
+import {renderHook,act,cleanup} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {useAutomaticPayment} from './automatic';
+const api=vi.hoisted(()=>({check:vi.fn()}));vi.mock('./actions',()=>({checkRecharge:api.check}));
+beforeEach(()=>{vi.useFakeTimers();api.check.mockReset();});afterEach(()=>{cleanup();vi.useRealTimers();});
+function wrapper(){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return ({children}:any)=><QueryClientProvider client={client}>{children}</QueryClientProvider>;}
+async function flush(){await act(async()=>{await vi.advanceTimersByTimeAsync(1);});}
+it('checks pending payment automatically, reports approval and stops periodic checks',async()=>{api.check.mockResolvedValueOnce({status:'pending'}).mockResolvedValue({status:'approved'});const result=vi.fn();renderHook(()=>useAutomaticPayment('own',{id:'a',status:'pending'},false,result),{wrapper:wrapper()});await flush();expect(api.check).toHaveBeenCalledWith({data:{orderId:'a'}});await act(async()=>{await vi.advanceTimersByTimeAsync(8000);});await flush();expect(result).toHaveBeenCalledWith('a','approved');const calls=api.check.mock.calls.length;await act(async()=>{await vi.advanceTimersByTimeAsync(24000);});expect(api.check).toHaveBeenCalledTimes(calls);});
+it('does not query a completed payment or an unauthenticated account',async()=>{renderHook(()=>useAutomaticPayment('own',{id:'a',status:'approved'},false,vi.fn()),{wrapper:wrapper()});renderHook(()=>useAutomaticPayment(undefined,{id:'a',status:'pending'},false,vi.fn()),{wrapper:wrapper()});await flush();expect(api.check).not.toHaveBeenCalled();});
+it('does not apply a delayed response from a previously selected payment',async()=>{let resolve!:(value:any)=>void;api.check.mockImplementationOnce(()=>new Promise(r=>{resolve=r;})).mockResolvedValue({status:'pending'});const result=vi.fn();const hook=renderHook(({id})=>useAutomaticPayment('own',{id,status:'pending'},false,result),{initialProps:{id:'a'},wrapper:wrapper()});await flush();hook.rerender({id:'b'});await flush();await act(async()=>{resolve({status:'approved'});});await flush();expect(result).not.toHaveBeenCalledWith('a','approved');expect(result).toHaveBeenCalledWith('b','pending');});

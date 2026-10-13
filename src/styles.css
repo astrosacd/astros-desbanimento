@@ -608,3 +608,8 @@ tbody tr:hover { background: var(--secondary); }
 .list-pagination { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:22px; padding-top:18px; border-top:1px solid var(--border); }
 .list-pagination span { font-size:12px; color:var(--muted-foreground); }
 @media(max-width:650px) { .number-search { flex-wrap:wrap; } .number-search .field { flex-basis:100%; max-width:none; } .number-search button { flex:1; } }
+
+.payment-confirmed { text-align:center; border:1px solid #315C4A; background:#13332A; color:#9DEBCC; border-radius:12px; padding:24px; }
+.payment-confirmed svg { margin:0 auto 12px; }
+.payment-confirmed h3 { font-weight:600; font-size:17px; }
+.payment-confirmed p { font-size:13px; line-height:1.7; margin-top:10px; }
