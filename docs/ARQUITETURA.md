@@ -26,6 +26,7 @@ O n8n não é dependência interna do painel. Pode ser usado por um cliente como
 | src/features/numbers | Consulta e apresentação dos números |
 | src/features/submissions | Envio e histórico de solicitações |
 | src/features/payments | Carteira, recargas e pagamentos |
+| src/features/client-import | Migração administrativa única de clientes e saldo legado |
 | src/features/client-api | Documentação, chaves, permissões e logs da API |
 | src/features/notices e banners | Comunicados e faixa informativa |
 | src/features/countries | Países e DDIs adicionais |

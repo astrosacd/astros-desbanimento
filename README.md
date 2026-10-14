@@ -16,6 +16,7 @@ Este repositório contém a aplicação real. As instruções antigas de demonst
 | Carteira e pagamentos | [Pagamentos](PAYMENTS_SETUP.md) |
 | Envios e conferência automática | [Solicitações](SUBMISSIONS_SETUP.md) |
 | Atendimento | [Suporte](SUPPORT_SETUP.md) |
+| Trazer clientes e saldos do painel antigo | [Migração de clientes](docs/MIGRACAO_CLIENTES.md) |
 | API, chaves e logs | [API](API_SETUP.md) |
 
 Os guias por recurso registram também etapas históricas da implementação. Para uma nova instalação, comece por INSTALACAO.md. Não execute novamente SQLs já aplicados na instalação em produção.
