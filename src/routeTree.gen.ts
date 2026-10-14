@@ -15,6 +15,7 @@ import { Route as AlterarSenhaRouteImport } from './routes/alterar-senha'
 import { Route as ApiRouteImport } from './routes/api'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as CarteiraRouteImport } from './routes/carteira'
+import { Route as DesbanimentoRouteImport } from './routes/desbanimento'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NovaSolicitacaoRouteImport } from './routes/nova-solicitacao'
 import { Route as PerfilRouteImport } from './routes/perfil'
@@ -52,6 +53,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const CarteiraRoute = CarteiraRouteImport.update({
   id: '/carteira',
   path: '/carteira',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesbanimentoRoute = DesbanimentoRouteImport.update({
+  id: '/desbanimento',
+  path: '/desbanimento',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
+  '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
+  '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
+  '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/cadastro'
     | '/carteira'
+    | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/cadastro'
     | '/carteira'
+    | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/cadastro'
     | '/carteira'
+    | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   ApiRoute: typeof ApiRoute
   CadastroRoute: typeof CadastroRoute
   CarteiraRoute: typeof CarteiraRoute
+  DesbanimentoRoute: typeof DesbanimentoRoute
   LoginRoute: typeof LoginRoute
   NovaSolicitacaoRoute: typeof NovaSolicitacaoRoute
   PerfilRoute: typeof PerfilRoute
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/carteira'
       fullPath: '/carteira'
       preLoaderRoute: typeof CarteiraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/desbanimento': {
+      id: '/desbanimento'
+      path: '/desbanimento'
+      fullPath: '/desbanimento'
+      preLoaderRoute: typeof DesbanimentoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRoute: ApiRoute,
   CadastroRoute: CadastroRoute,
   CarteiraRoute: CarteiraRoute,
+  DesbanimentoRoute: DesbanimentoRoute,
   LoginRoute: LoginRoute,
   NovaSolicitacaoRoute: NovaSolicitacaoRoute,
   PerfilRoute: PerfilRoute,

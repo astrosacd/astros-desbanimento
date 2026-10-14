@@ -883,3 +883,30 @@ tbody tr:hover { background: var(--secondary); }
  .service-nav-trigger { min-height:48px; font-size:14px; }
 }
 @media(prefers-reduced-motion:reduce) { .service-nav-trigger .service-nav-chevron { transition:none; } }
+
+.platform-home { display:grid; gap:28px; min-width:0; }
+.platform-home-heading h1 { font-size:32px; font-weight:750; margin-top:10px; }
+.platform-home-heading p,.platform-section-heading p { margin-top:8px; color:var(--muted-foreground); line-height:1.65; }
+.platform-home-welcome { display:flex; align-items:center; gap:22px; padding:32px; border-radius:20px; background:#20273f; color:#fff; }
+.platform-home-symbol { display:grid; place-items:center; flex-shrink:0; width:60px; height:60px; border-radius:16px; background:#33415a; color:#71ded2; }
+.platform-home-welcome h2 { font-size:24px; font-weight:700; }
+.platform-home-welcome p { margin-top:8px; color:#c2ccdd; line-height:1.65; }
+.platform-section-heading { margin-bottom:18px; }
+.platform-section-heading h2 { font-size:19px; font-weight:700; }
+.platform-home-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+.platform-service-card { display:flex; flex-direction:column; align-items:flex-start; gap:16px; padding:30px; border:1px solid var(--border); border-radius:20px; background:var(--card); min-width:0; }
+.platform-service-icon { width:56px; height:56px; display:grid; place-items:center; border-radius:16px; background:var(--surface-brand); color:var(--text-brand); }
+.platform-support-card .platform-service-icon { background:var(--surface-warning); color:#b57c27; }
+.platform-service-label { font-size:10px; font-weight:700; letter-spacing:.09em; color:var(--muted-foreground); }
+.platform-service-card h2 { font-size:23px; font-weight:700; }
+.platform-service-card p { color:var(--muted-foreground); line-height:1.75; }
+.platform-service-card button,.platform-service-card a { margin-top:auto; min-height:46px; max-width:100%; white-space:normal; }
+@media(max-width:650px) {
+ .platform-home { gap:22px; }
+ .platform-home-grid { grid-template-columns:minmax(0,1fr); gap:16px; }
+ .platform-home-welcome { padding:24px; align-items:flex-start; flex-direction:column; gap:16px; }
+ .platform-home-heading h1 { font-size:28px; }
+ .platform-home-welcome h2,.platform-service-card h2 { font-size:22px; }
+ .platform-service-card { padding:24px; }
+ .platform-service-card button,.platform-service-card a { width:100%; }
+}
