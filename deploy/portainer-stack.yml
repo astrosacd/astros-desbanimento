@@ -39,7 +39,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=AstrosNet
-        - traefik.http.routers.astros-painel.rule=Host(`desbanimento.astroscomunicacaodigital.com`)
+        - traefik.http.routers.astros-painel.rule=Host(`mais.astroscomunicacaodigital.com`)
         - traefik.http.routers.astros-painel.entrypoints=websecure
         - traefik.http.routers.astros-painel.tls=true
         - traefik.http.routers.astros-painel.tls.certresolver=letsencryptresolver

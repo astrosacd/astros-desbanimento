@@ -43,3 +43,5 @@ O GitHub não é uma cópia dos dados de produção nem das credenciais privadas
 - [VPS e contingência no Lovable](docs/VPS_CONTINGENCIA.md)
 
 - [Endereço principal compartilhado](docs/ENDERECO_PRINCIPAL.md)
+
+- [Domínio Astros Mais](docs/ASTROS_MAIS.md)

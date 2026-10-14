@@ -4,7 +4,7 @@
 Preparação do código; instalação e teste na VPS ainda pendentes. Não foram alterados DNS, Portainer, secrets nem configurações globais do Supabase por esta preparação.
 
 ## Estrutura
-- Principal: https://desbanimento.astroscomunicacaodigital.com
+- Principal: https://mais.astroscomunicacaodigital.com
 - Alternativa: https://desbanimento-de-numeros.lovable.app
 - Mesmo Supabase atual, mesmas funções Edge, registros, contas e saldos; nenhum banco novo.
 - Sessão separada por endereço: entrar novamente ao trocar de domínio.

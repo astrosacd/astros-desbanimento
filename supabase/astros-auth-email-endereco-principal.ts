@@ -30,7 +30,7 @@ Deno.serve(async request => {
   if (input.type === 'signup' && (typeof input.name !== 'string' || input.name.trim().split(/\s+/).length < 2 || input.name.length > 120 || typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 256 || !/^[1-9]\d{9,14}$/.test(input.whatsapp || ''))) return reply(400, 'Confira os dados do cadastro.');
   const supabase = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
   const {data: address,error: addressError}=await supabase.from('astros_panel_address').select('origin').eq('id',true).single();
-  if(addressError||!address||!['https://desbanimento.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app'].includes(address.origin)) return reply(503,'Endereço do painel ainda não configurado.');
+  if(addressError||!address||!['https://mais.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app','https://desbanimento.astroscomunicacaodigital.com'].includes(address.origin)) return reply(503,'Endereço do painel ainda não configurado.');
   const app=address.origin;
   const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email)))).map(n => n.toString(16).padStart(2, '0')).join('');
   const { data: allowed, error: limiterError } = await supabase.rpc('astros_mail_allow', { recipient_hash: hash });

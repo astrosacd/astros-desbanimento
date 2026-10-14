@@ -3,7 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 const SUPABASE_URL=Deno.env.get('SUPABASE_URL')!;
 const db=createClient(SUPABASE_URL,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
-async function primaryOrigin(){const {data,error}=await db.from('astros_panel_address').select('origin').eq('id',true).single();if(error||!data||!['https://desbanimento.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app'].includes(data.origin))throw Error('Endereço principal do painel não configurado.');return data.origin;}
+async function primaryOrigin(){const {data,error}=await db.from('astros_panel_address').select('origin').eq('id',true).single();if(error||!data||!['https://mais.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app','https://desbanimento.astroscomunicacaodigital.com'].includes(data.origin))throw Error('Endereço principal do painel não configurado.');return data.origin;}
 const notify=`${SUPABASE_URL}/functions/v1/astros-payments?webhook=1`;
 function json(body: unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}
 async function settings(){const {data,error}=await db.from('astros_payment_settings').select('*').eq('id',true).single();if(error||!data)throw Error('Execute primeiro o SQL de pagamentos no Supabase.');return data;}
