@@ -21,6 +21,16 @@ export function stateFromCheck(value:Obj):'pending'|'received'|'refunded'|'revie
  if([1,4,7,8].includes(value['status']))return 'pending';
  return 'review'; // Expired/cancelled alone are not proof of a provider refund.
 }
+export function chooseOffer(value:unknown,service:number,country:number){
+ if(!Array.isArray(value))throw Error('Não foi possível consultar a disponibilidade agora. Tente novamente.');
+ const offers:Array<{pool:number;usd:number}>=[];
+ for(const row of value){if(!row||Number(row.service)!==service||Number(row.country)!==country||!Number.isSafeInteger(Number(row.stock))||Number(row.stock)<1)continue;
+  const pool=Number(row.pool);if(!Number.isSafeInteger(pool)||pool<=0||pool>1000000)continue;
+  try{const usd=units(row.price);if(usd>0)offers.push({pool,usd});}catch{/* Ignore malformed offers, never guess cost. */}
+ }
+ offers.sort((a,b)=>a.usd-b.usd||a.pool-b.pool);
+ if(!offers[0])throw Error('Não há números disponíveis para esse serviço neste país. Experimente outro país.');return offers[0];
+}
 function env(name:string){const s=Deno.env.get(name);if(!s)throw Error('Serviço ainda não configurado.');return s;}
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
 async function db(path:string,method='GET',data?:unknown):Promise<any>{
@@ -105,7 +115,7 @@ export async function handler(req:Request):Promise<Response>{
    const s=await settings(),p=await privateSettings();open(s,p);
    const q=(await db(`astros_sms_quotes?id=eq.${quoteId}&user_id=eq.${user['id']}&limit=1`))[0];if(!q)throw Error('Atualize o preço antes de comprar.');
    const live=await provider('request/price',{service:q['service_id'],country:q['country_id'],pool:q['pool_id']},p['api_key']);
-   if(units(live.price)!==Number(q['usd_units'])||id(live.pool)!==q['pool_id'])throw Error('O preço mudou. Consulte novamente antes de comprar.');
+   if(units(live.price)!==Number(q['usd_units'])||(live.pool!==undefined&&id(live.pool)!==q['pool_id']))throw Error('O preço mudou. Consulte novamente antes de comprar.');
    const reservation=await db('rpc/astros_sms_reserve','POST',{actor:user['id'],request_id:requestId,quote:quoteId});
    if(!reservation.dispatch)return json({order:view(await orderById(requestId,user))});
    const o=await orderById(requestId,user);
@@ -126,10 +136,10 @@ export async function handler(req:Request):Promise<Response>{
   }
   if(action==='quote'||action==='admin-price'){
    const s=await settings(),p=await privateSettings();if(action==='admin-price'){admin(user);if(!p['api_key']||!s['usd_brl_units'])throw Error('Salve a chave e a cotação antes de consultar.');}else open(s,p);const service=id(data.serviceId),country=id(data.countryId);
-   const [services,countries,price]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all'),provider('request/price',{service,country},p['api_key'])]);
+   const [services,countries,availability]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all'),provider('sms/all_stock',{service,country},p['api_key'])]);
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    const serviceRow=services.find(v=>id(v.ID)===service),countryRow=countries.find(v=>id(v.ID)===country);if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo.');
-   const pool=id(price['pool']),usd=units(price['price']);if(usd<=0)throw Error('Sem opções disponíveis para esta combinação.');
+   const {pool,usd}=chooseOffer(availability,service,country);
    const stock=await provider('sms/stock',{service,country,pool},p['api_key']);if(stock['success']!==1||Number(stock['amount'])<1)throw Error('Sem números disponíveis para esse serviço e país.');
    const cents=saleCents(usd,Number(s['usd_brl_units']),s['margin_bps'],Number(s['fee_cents']));
    if(action==='admin-price'){const costCents=saleCents(usd,Number(s['usd_brl_units']),0,0);return json({service:String(serviceRow['name']),country:String(countryRow['name']),costUsd:usd/1000000,costCents,priceCents:cents,differenceCents:cents-costCents,stock:Number(stock['amount'])});}
