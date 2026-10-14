@@ -22,7 +22,7 @@ Teste controlado após ativação: conta não liberada não gera chave; libere u
 ## Logs da API e países
 Execute `supabase/migrations/20261013_api_logs.sql` e atualize a função com `supabase/astros-submit-number-com-api.ts`. Chamadas autenticadas geram somente metadados permitidos; chaves, cabeçalhos, corpos e mensagens internas não são gravados. A falha/timeout de registro não muda o resultado do envio. Requisições recusadas antes da autenticação não criam logs, evitando gravações anônimas ilimitadas.
 
-Cliente: somente os próprios logs na aba API, inclusive após bloqueio do acesso à integração. Admin: menu Logs da API e consulta específica em Gestão de contas → Acesso à API. Filtros e páginas de 20 registros.
+Cliente: somente os próprios logs na aba API, exibida apenas enquanto o acesso estiver liberado. Bloqueio oculta a aba e encerra a visualização; os registros existentes são preservados. Admin: menu global Logs da API para auditoria; a consulta específica em Gestão de contas → Acesso à API aparece quando aquela conta está liberada. Filtros e páginas de 20 registros.
 
 Retenção: 30 dias e no máximo 5.000 registros por conta, exclusivamente na nova tabela astros_api_logs. O cron diário próprio é cadastrado se pg_cron já estiver instalado; sem pg_cron, expiração é removida nas próximas gravações. Nenhum histórico financeiro, solicitação ou tabela de outro aplicativo é apagado. A retenção do log não altera a proteção contra cobranças duplicadas.
 
