@@ -1,5 +1,7 @@
 # Migração do painel antigo
 
+> Migração concluída pelo proprietário em 13/10/2026: a interface informou 65 registros conferidos. A opção de importação foi retirada da Gestão de contas após a conclusão. As instruções abaixo são referência técnica da ferramenta usada; ela não está disponível no menu atual. Clientes, créditos e controle de duplicidades permanecem preservados.
+
 ## O que está preparado
 
 Admin → Gestão de contas → Importar clientes do painel antigo. A ferramenta lê o CSV localmente, mostra uma prévia e envia somente id antigo (controle de duplicidades), Nome, Email, WhatsApp e Recarga. Senha, ID MP e Token do arquivo antigo não são enviados ao servidor. Nenhuma planilha real é incluída no repositório.
