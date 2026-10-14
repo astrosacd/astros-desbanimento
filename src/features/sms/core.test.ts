@@ -12,3 +12,9 @@ it('selects an available pool from stock even when the general price response ha
  const rows=[{country:85,service:995,pool:7,stock:10,price:'0.11'},{country:85,service:995,pool:8,stock:0,price:'0.01'},{country:1,service:995,pool:9,stock:10,price:'0.01'}];
  expect(chooseOffer(rows,995,85)).toEqual({pool:7,usd:110000});expect(()=>chooseOffer([],995,85)).toThrow('Não há números disponíveis');expect(()=>chooseOffer({price:'0.11'},995,85)).toThrow('disponibilidade');
 });
+
+it('reads the nested stock batches returned by the live provider',()=>{
+ const response=[[{country:1,country_name:'United States',service:1,service_name:'1688',pool:7,pool_name:'Foxtrot',stock:16827,price:'0.14',last_update:'2026-10-14 23:06:21'},{country:1,service:1,pool:12,stock:0,price:'0.15'}]];
+ expect(chooseOffer(response,1,1)).toEqual({pool:7,usd:140000});
+ expect(()=>chooseOffer([[{unexpected:'format'}]],1,1)).toThrow('validar o estoque');
+});

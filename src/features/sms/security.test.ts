@@ -26,7 +26,7 @@ it('admin cost preview works with sales disabled and never purchases or reserves
  else if(url.includes('astros_sms_private'))value=[{api_key:'private-test-only'}];
  else if(url.includes('service/retrieve_all'))value=[{ID:1,name:'Example'}];
  else if(url.includes('country/retrieve_all'))value=[{ID:1,name:'Example country'}];
- else if(url.includes('sms/all_stock'))value=[{service:1,country:1,pool:1,stock:10,price:'0.24'}];
+ else if(url.includes('sms/all_stock'))value=[[{service:1,country:1,pool:1,stock:10,price:'0.24'}]];
  else if(url.includes('sms/stock'))value={success:1,amount:10};
  else throw Error('Unexpected write or endpoint');
  return new Response(JSON.stringify(value));}));

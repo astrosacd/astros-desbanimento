@@ -24,7 +24,9 @@ export function stateFromCheck(value:Obj):'pending'|'received'|'refunded'|'revie
 export function chooseOffer(value:unknown,service:number,country:number){
  if(!Array.isArray(value))throw Error('Não foi possível consultar a disponibilidade agora. Tente novamente.');
  const offers:Array<{pool:number;usd:number}>=[];
- for(const row of value){if(!row||Number(row.service)!==service||Number(row.country)!==country||!Number.isSafeInteger(Number(row.stock))||Number(row.stock)<1)continue;
+ const rows=value.flat(3);
+ if(rows.length&&!rows.some(row=>row&&Number.isSafeInteger(Number(row.country))&&Number.isSafeInteger(Number(row.service))&&Number.isFinite(Number(row.stock))))throw Error('Não foi possível validar o estoque retornado pelo fornecedor. Tente novamente.');
+ for(const row of rows){if(!row||Number(row.service)!==service||Number(row.country)!==country||!Number.isSafeInteger(Number(row.stock))||Number(row.stock)<1)continue;
   const pool=Number(row.pool);if(!Number.isSafeInteger(pool)||pool<=0||pool>1000000)continue;
   try{const usd=units(row.price);if(usd>0)offers.push({pool,usd});}catch{/* Ignore malformed offers, never guess cost. */}
  }
