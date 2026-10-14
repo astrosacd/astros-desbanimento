@@ -1,3 +1,5 @@
+> Instalação atual: completar a sequência de migrações de endereço com 20261014_remove_previous_origin.sql. A interface atual aceita somente Mais e contingência.
+
 # Endereço principal compartilhado
 
 ## Ativação — executar nesta ordem
