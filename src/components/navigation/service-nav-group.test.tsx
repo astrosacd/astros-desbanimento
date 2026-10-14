@@ -1,0 +1,9 @@
+import {useState} from 'react';
+import {afterEach,expect,it,vi} from 'vitest';
+import {render,screen,fireEvent,cleanup} from '@testing-library/react';
+import {ServiceNavGroup} from './service-nav-group';
+afterEach(cleanup);
+function Menu(){const [open,setOpen]=useState(false);return <nav><ServiceNavGroup open={open} onToggle={()=>setOpen(!open)}><a href="/solicitacoes">Solicitações</a></ServiceNavGroup><a href="/suporte">Central de suporte</a></nav>;}
+it('opens service links and keeps support available when the group is closed',()=>{render(<Menu/>);const button=screen.getByRole('button',{name:'Desbanimento'});expect(button.getAttribute('aria-expanded')).toBe('false');expect(screen.queryByRole('link',{name:'Solicitações'})).toBeNull();expect(screen.getByRole('link',{name:'Central de suporte'})).toBeTruthy();fireEvent.click(button);expect(screen.getByRole('link',{name:'Solicitações'})).toBeTruthy();expect(button.getAttribute('aria-expanded')).toBe('true');fireEvent.click(button);expect(screen.queryByRole('link',{name:'Solicitações'})).toBeNull();expect(screen.getByRole('link',{name:'Central de suporte'})).toBeTruthy();});
+it('uses unique accessible controls for desktop and mobile instances',()=>{render(<><Menu/><Menu/></>);const buttons=screen.getAllByRole('button',{name:'Desbanimento'});const ids=buttons.map(b=>b.getAttribute('aria-controls'));expect(new Set(ids).size).toBe(2);for(const id of ids)expect(document.getElementById(id!)).toBeTruthy();fireEvent.click(buttons[0]);expect(buttons[1].getAttribute('aria-expanded')).toBe('false');});
+it('compact navigation provides a named button and does not expose clipped child links',()=>{const toggle=vi.fn();render(<ServiceNavGroup compact open onToggle={toggle}><a href="/solicitacoes">Solicitações</a></ServiceNavGroup>);const button=screen.getByRole('button',{name:'Desbanimento'});expect(screen.queryByRole('link')).toBeNull();fireEvent.click(button);expect(toggle).toHaveBeenCalledOnce();});
