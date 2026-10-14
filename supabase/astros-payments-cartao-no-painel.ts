@@ -3,7 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 const SUPABASE_URL=Deno.env.get('SUPABASE_URL')!;
 const db=createClient(SUPABASE_URL,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
-const APP='https://desbanimento-de-numeros.lovable.app';
+async function primaryOrigin(){const {data,error}=await db.from('astros_panel_address').select('origin').eq('id',true).single();if(error||!data||!['https://desbanimento.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app'].includes(data.origin))throw Error('Endereço principal do painel não configurado.');return data.origin;}
 const notify=`${SUPABASE_URL}/functions/v1/astros-payments?webhook=1`;
 function json(body: unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}
 async function settings(){const {data,error}=await db.from('astros_payment_settings').select('*').eq('id',true).single();if(error||!data)throw Error('Execute primeiro o SQL de pagamentos no Supabase.');return data;}
@@ -111,7 +111,7 @@ Deno.serve(async req=>{
    if(!order||order.user_id!==user.id||Number(order.amount_cents)!==input.amountCents||order.method!==input.method||(action==='prepare-card'&&order.card_mode!=='embedded'))throw Error('Solicitação divergente.');
    if(action==='prepare-card')return json({id:order.id,method:'card',card_mode:'embedded',status:order.status,amount_cents:Number(order.amount_cents),publicKey:config.public_key});
    if(!order.mp_payment_id&&!order.checkout_url){
-    const reference=order.id;const value=input.amountCents/100;
+    const reference=order.id;const value=input.amountCents/100;const APP=input.method==='card'?await primaryOrigin():'';
     const payload=input.method==='pix'?{transaction_amount:value,description:'Recarga da carteira Astros',payment_method_id:'pix',external_reference:reference,notification_url:notify,payer:{email:user.email,identification:{type:'CPF',number:input.cpf}}}:{items:[{id:reference,title:'Recarga da carteira Astros',quantity:1,currency_id:'BRL',unit_price:value}],external_reference:reference,notification_url:notify,payer:{email:user.email},back_urls:{success:`${APP}/carteira`,pending:`${APP}/carteira`,failure:`${APP}/carteira`},auto_return:'approved',payment_methods:{excluded_payment_types:[{id:'ticket'},{id:'bank_transfer'},{id:'debit_card'},{id:'atm'},{id:'prepaid_card'}]}};
     const payment=await mp(input.method==='pix'?'/v1/payments':'/checkout/preferences',config.access_token,payload,order.id);
     const tx=payment.point_of_interaction?.transaction_data;

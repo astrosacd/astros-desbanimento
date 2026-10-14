@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {addressSchema,PANEL_ORIGINS} from './validation';
+const mocks=vi.hoisted(()=>({requireAdmin:vi.fn(),request:vi.fn(),getCookie:vi.fn(()=> 'admin-token'),setResponseHeader:vi.fn()}));
+vi.mock('../admin/auth.server',()=>mocks);vi.mock('@tanstack/react-start/server',()=>mocks);
+import {readAddress,saveAddress} from './server';
+beforeEach(()=>{vi.clearAllMocks();mocks.requireAdmin.mockResolvedValue({id:'admin'});});
+it('rejects arbitrary redirects, credentials, paths and extra data',()=>{for(const origin of ['https://evil.example','https://desbanimento.astroscomunicacaodigital.com/','https://desbanimento.astroscomunicacaodigital.com@evil.example','http://desbanimento.astroscomunicacaodigital.com'])expect(addressSchema.safeParse({origin}).success).toBe(false);expect(addressSchema.safeParse({origin:PANEL_ORIGINS[0],userId:'admin'}).success).toBe(false);});
+it('denies non-admins before reading or saving',async()=>{mocks.requireAdmin.mockRejectedValue(Error('denied'));await expect(readAddress()).rejects.toThrow('denied');await expect(saveAddress({origin:PANEL_ORIGINS[0]})).rejects.toThrow('denied');expect(mocks.request).not.toHaveBeenCalled();});
+it('uses authenticated RPC and verifies persisted response',async()=>{mocks.request.mockResolvedValue({ok:true,json:async()=>PANEL_ORIGINS[0]});expect(await saveAddress({origin:PANEL_ORIGINS[0]})).toEqual({origin:PANEL_ORIGINS[0]});expect(mocks.request).toHaveBeenCalledWith('/rest/v1/rpc/astros_set_panel_address','admin-token',expect.objectContaining({body:JSON.stringify({new_origin:PANEL_ORIGINS[0]})}));});
+it('fails closed when settings are unavailable or altered',async()=>{mocks.request.mockResolvedValue({ok:false});await expect(readAddress()).rejects.toThrow('SQL');mocks.request.mockResolvedValue({ok:true,json:async()=>[{origin:'https://evil.example'}]});await expect(readAddress()).rejects.toThrow();});

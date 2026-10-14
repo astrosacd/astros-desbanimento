@@ -7,6 +7,7 @@ import {AdminSubmissions} from '../submissions/admin';
 import {CountrySettings} from '../countries/admin';
 import { NoticeSettings } from '../notices/admin';
 import { PaymentHistory } from '../payments/admin-history';
+import {PanelAddressSettings} from '../panel-address/admin';
 import { PaymentSettings } from '../payments/admin-settings';
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
@@ -45,6 +46,6 @@ export function AdminArea({ session }: { session: AdminSession }) {
  {id:'support' as const,title:'Atendimento',description:'Configure a central de suporte dos clientes.',Icon:Headphones},
  {id:'settings' as const,title:'Configurações',description:'Gerencie pagamentos, taxa e mínimo de recarga.',Icon:Settings2}
  ].map(({id,title,description,Icon})=><button key={id} type="button" className="admin-action-card" onClick={()=>setSection(id)}><span className="workspace-icon"><Icon size={21}/></span><div><h2>{title}</h2><p>{description}</p></div><ArrowUpRight size={18} className="workspace-arrow"/></button>)}</div></section></>}
-  {section==='apiLogs'&&<ApiLogs adminId={session.admin.id}/>} {section==='clients'&&<ClientBalances adminId={session.admin.id}/>} {section==='support'&&<SupportSettings adminId={session.admin.id}/>} {section==='history'&&<AdminSubmissionHistory adminId={session.admin.id}/>} {section==='submissions'&&<AdminSubmissions adminId={session.admin.id}/>} {section==='countries'&&<CountrySettings adminId={session.admin.id}/>} {section==='notices'&&<><BannerSettings adminId={session.admin.id}/><NoticeSettings adminId={session.admin.id}/></>} {section==='payments'&&<PaymentHistory adminId={session.admin.id}/>} {section==='settings'&&<PaymentSettings/>}
+  {section==='apiLogs'&&<ApiLogs adminId={session.admin.id}/>} {section==='clients'&&<ClientBalances adminId={session.admin.id}/>} {section==='support'&&<SupportSettings adminId={session.admin.id}/>} {section==='history'&&<AdminSubmissionHistory adminId={session.admin.id}/>} {section==='submissions'&&<AdminSubmissions adminId={session.admin.id}/>} {section==='countries'&&<CountrySettings adminId={session.admin.id}/>} {section==='notices'&&<><BannerSettings adminId={session.admin.id}/><NoticeSettings adminId={session.admin.id}/></>} {section==='payments'&&<PaymentHistory adminId={session.admin.id}/>} {section==='settings'&&<><PanelAddressSettings adminId={session.admin.id}/><PaymentSettings/></>}
   </main><Sheet open={mobileMenu} onOpenChange={setMobileMenu}><SheetContent side="left" className="admin-menu-sheet w-[min(88vw,320px)] p-0" onCloseAutoFocus={event=>{event.preventDefault();if(window.innerWidth<=850)menuTrigger.current?.focus();}}><SheetTitle className="sr-only">Menu administrativo</SheetTitle><SheetDescription className="sr-only">Navegação das áreas de administração Astros.</SheetDescription><aside className="admin-sidebar">{sidebar()}</aside></SheetContent></Sheet></div>;
 }

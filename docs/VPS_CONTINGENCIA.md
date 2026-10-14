@@ -26,7 +26,7 @@ Não transfira SMTP, service_role ou credenciais Mercado Pago para essa stack. E
 Traefik existente: rede externa AstrosNet; websecure; letsencryptresolver. Sem publicar porta adicional no host. Limites iniciais 1 CPU e 768 MiB; medir uso em teste. Atualização start-first pode usar temporariamente duas réplicas durante troca. Logs locais limitados a 3 arquivos de 10 MB.
 
 ## E-mails e HTTPS
-Os e-mails personalizados já são gerados pela função astros-auth-email usando seu ASTROS_APP_URL fixo. Manter https://desbanimento-de-numeros.lovable.app como destino de confirmação/recuperação garante acesso quando a hospedagem VPS estiver indisponível. Alteração de senha vale nas duas hospedagens.
+Após ativar docs/ENDERECO_PRINCIPAL.md, os novos e-mails usam o endereço salvo pelo admin no Supabase. Principal normal: domínio da Astros. Para contingência, entre pelo Lovable e selecione Acesso de contingência no admin. Links antigos não mudam. A senha vale nas duas hospedagens. A mudança não troca DNS nem desliga serviços.
 Conferir no Supabase os Redirect URLs exatos de login e reset-password dos dois domínios, preservando as entradas dos outros aplicativos. Não substituir Site URL global, SMTP nem desativar confirmações.
 Conferir certificado HTTPS e cookies HttpOnly/Secure na VPS. Não usar iframe para contingência.
 

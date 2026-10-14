@@ -1,0 +1,4 @@
+import {z} from 'zod';
+export const PANEL_ORIGINS=['https://desbanimento.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app'] as const;
+export const addressSchema=z.object({origin:z.enum(PANEL_ORIGINS)}).strict();
+export function panelOrigin(value:unknown){return z.enum(PANEL_ORIGINS).parse(value);}

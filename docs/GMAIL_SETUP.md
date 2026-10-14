@@ -1,3 +1,5 @@
+> Após ativar [Endereço principal](ENDERECO_PRINCIPAL.md), o destino dos novos e-mails é definido pelo admin na tabela astros_panel_address. ASTROS_APP_URL é a configuração histórica, substituída após atualizar a função.
+
 # E-mails exclusivos do painel Astros
 
 > Guia por recurso, com etapas históricas. Para uma nova conta, comece pelo [guia de instalação](INSTALACAO.md). Não repita migrações já aplicadas. Descrições antigas de “ainda não implementado” não são inventário do estado atual; consulte o README e o mapa do projeto.

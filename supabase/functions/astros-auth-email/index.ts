@@ -21,14 +21,17 @@ Deno.serve(async request => {
  if (request.method !== 'POST') return reply(405, 'Método indisponível.');
  const secret = env('ASTROS_EMAIL_INTERNAL_SECRET');
  if (secret.length < 32 || !matches(request.headers.get('x-astros-email-secret') || '', secret)) return reply(401, 'Acesso não autorizado.');
- const app = env('ASTROS_APP_URL'), gmail = env('ASTROS_GMAIL_USER'), password = env('ASTROS_GMAIL_APP_PASSWORD');
- if (!app.startsWith('https://') || !gmail || !password) return reply(503, 'Envio ainda não configurado.');
+ const gmail = env('ASTROS_GMAIL_USER'), password = env('ASTROS_GMAIL_APP_PASSWORD');
+ if (!gmail || !password) return reply(503, 'Envio ainda não configurado.');
  try {
   const input = await request.json();
   if (!['signup', 'recovery'].includes(input.type) || typeof input.email !== 'string' || input.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return reply(400, 'Confira os dados.');
   const email = input.email.trim().toLowerCase();
   if (input.type === 'signup' && (typeof input.name !== 'string' || input.name.trim().split(/\s+/).length < 2 || input.name.length > 120 || typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 256 || !/^[1-9]\d{9,14}$/.test(input.whatsapp || ''))) return reply(400, 'Confira os dados do cadastro.');
   const supabase = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
+  const {data: address,error: addressError}=await supabase.from('astros_panel_address').select('origin').eq('id',true).single();
+  if(addressError||!address||!['https://desbanimento.astroscomunicacaodigital.com','https://desbanimento-de-numeros.lovable.app'].includes(address.origin)) return reply(503,'Endereço do painel ainda não configurado.');
+  const app=address.origin;
   const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email)))).map(n => n.toString(16).padStart(2, '0')).join('');
   const { data: allowed, error: limiterError } = await supabase.rpc('astros_mail_allow', { recipient_hash: hash });
   if (limiterError) return reply(503, 'Envio temporariamente indisponível.');

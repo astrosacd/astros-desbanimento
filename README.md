@@ -41,3 +41,5 @@ As alterações enviadas à branch main sincronizam com o projeto conectado no [
 O GitHub não é uma cópia dos dados de produção nem das credenciais privadas. Não coloque tokens, senhas de app ou chaves administrativas em commits ou exemplos.
 
 - [VPS e contingência no Lovable](docs/VPS_CONTINGENCIA.md)
+
+- [Endereço principal compartilhado](docs/ENDERECO_PRINCIPAL.md)
