@@ -21,7 +21,7 @@ Deno.serve(async req=>{
   if(!clientId){
    // A new unknown random password prevents login using any legacy password.
    // No invitation or recovery message is sent during import.
-   const password=crypto.randomUUID()+crypto.randomUUID()+'aA1!';
+   const password=(crypto.randomUUID()+crypto.randomUUID()).replace(/-/g,'')+'aA1!';
    const {data:created,error:createError}=await db.auth.admin.createUser({email:row.email,password,email_confirm:true,user_metadata:{nome:row.name,whatsapp:row.whatsapp},app_metadata:{astros_legacy_import:job.id}});
    if(createError||!created.user?.id){
     // On timeout/duplicate, inspect our durable provenance; never reset an existing account.
