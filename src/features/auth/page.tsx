@@ -1,3 +1,4 @@
+import {clearNavigationSession} from '@/features/panel/navigation-session';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { Eye, EyeOff, ShieldCheck, ArrowRight,  KeyRound } from 'lucide-react';
@@ -24,18 +25,18 @@ export function Entrance({ mode, passwordUpdated = false }: { mode: Mode; passwo
  async function submit(event: FormEvent) {
   event.preventDefault(); setError(''); setMessage(''); setBusy(true);
   try {
-   if (mode === 'login') { await loginClient({ data: { email, password } }); await router.invalidate(); await router.navigate({ to: '/' }); }
+   if (mode === 'login') { await loginClient({ data: { email, password } }); clearNavigationSession(router.options?.context?.queryClient); await router.invalidate(); await router.navigate({ to: '/' }); }
    if (mode === 'cadastro') {
     const parsed = signupSchema.safeParse({ name, email, whatsapp, password });
     if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || 'Confira os dados do cadastro.');
     const result = await signupClient({ data: { name, email, whatsapp, password } });
-    if (result.signedIn) { await router.invalidate(); await router.navigate({ to: '/' }); }
+    if (result.signedIn) { clearNavigationSession(router.options?.context?.queryClient); await router.invalidate(); await router.navigate({ to: '/' }); }
     else setMessage('Confira sua caixa de entrada para confirmar o cadastro. Se esse e-mail já possui conta, entre ou use “Esqueci minha senha”.');
    }
    if (mode === 'recuperacao') { await recoverClient({ data: { email } }); setMessage('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha. Confira também o spam. Ainda não tem conta? Crie seu cadastro abaixo.'); }
    if (mode === 'reset') {
     if (password !== confirmation) throw new Error('As senhas precisam ser iguais.');
-    await resetClient({ data: { token, password } }); setToken(''); setPassword(''); setConfirmation('');
+    await resetClient({ data: { token, password } }); clearNavigationSession(router.options?.context?.queryClient); setToken(''); setPassword(''); setConfirmation('');
     await router.navigate({ to: '/login', search: { senha: 'atualizada' }, replace: true });
    }
   } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível concluir. Tente novamente.'); }

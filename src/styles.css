@@ -910,3 +910,5 @@ tbody tr:hover { background: var(--secondary); }
  .platform-service-card { padding:24px; }
  .platform-service-card button,.platform-service-card a { width:100%; }
 }
+
+.navigation-progress { position:fixed; z-index:45; top:72px; left:50%; transform:translateX(-50%); padding:8px 16px; border:1px solid var(--border-brand); border-radius:12px; background:var(--card); color:var(--text-brand); font-size:12px; box-shadow:0 4px 16px #00000015; pointer-events:none; }

@@ -1,0 +1,9 @@
+import {QueryClient} from '@tanstack/react-query';
+import {afterEach,expect,it,vi} from 'vitest';
+import {clearNavigationSession,navigationSession} from './navigation-session';
+afterEach(()=>vi.useRealTimers());
+const client={id:'user-a',email:'a@example.com',name:'Maria Costa'};
+it('coalesces concurrent navigation checks and reuses only a recently verified identity',async()=>{const qc=new QueryClient();const verify=vi.fn(async()=>client);expect(await Promise.all([navigationSession(qc,verify),navigationSession(qc,verify)])).toEqual([client,client]);await navigationSession(qc,verify);expect(verify).toHaveBeenCalledOnce();qc.clear();});
+it('revalidates after the short window and does not use expired identity when verification fails',async()=>{vi.useFakeTimers();const qc=new QueryClient();const verify=vi.fn().mockResolvedValueOnce(client).mockRejectedValueOnce(Error('offline'));await navigationSession(qc,verify);vi.advanceTimersByTime(15001);await expect(navigationSession(qc,verify)).rejects.toThrow('offline');expect(verify).toHaveBeenCalledTimes(2);qc.clear();});
+it('account transitions clear the old identity and retrieve password-change requirements again',async()=>{const qc=new QueryClient();const verify=vi.fn().mockResolvedValueOnce(client).mockResolvedValueOnce({...client,id:'user-b',requiresPasswordChange:true});await navigationSession(qc,verify);clearNavigationSession(qc);expect(await navigationSession(qc,verify)).toMatchObject({id:'user-b',requiresPasswordChange:true});expect(verify).toHaveBeenCalledTimes(2);qc.clear();});
+it('does not retain unauthenticated results',async()=>{const qc=new QueryClient();const verify=vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(client);expect(await navigationSession(qc,verify)).toBeNull();expect(await navigationSession(qc,verify)).toEqual(client);expect(verify).toHaveBeenCalledTimes(2);qc.clear();});

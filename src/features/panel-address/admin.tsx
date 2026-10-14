@@ -5,7 +5,7 @@ import {Button} from '@/components/ui/button';
 import {getPanelAddress,setPanelAddress} from './actions';
 import {PANEL_ORIGINS} from './validation';
 export function PanelAddressSettings({adminId}:{adminId:string}){
- const query=useQuery({queryKey:['panel-address',adminId],queryFn:()=>getPanelAddress(),retry:false});
+ const query=useQuery({queryKey:['panel-address',adminId],queryFn:()=>getPanelAddress(),retry:false,staleTime:15000});
  const [choice,setChoice]=useState<string|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
  async function save(e:FormEvent){e.preventDefault();if(!query.data)return;setBusy(true);setError('');setMessage('');try{const origin=(choice??query.data.origin) as typeof PANEL_ORIGINS[number];await setPanelAddress({data:{origin}});const refreshed=await query.refetch();if(refreshed.isError||refreshed.data?.origin!==origin)throw Error('Endereço salvo, mas não foi possível atualizar a tela. Atualize para conferir.');setChoice(null);setMessage('Endereço principal salvo. Os próximos e-mails usarão este endereço.');}catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}}
  return <section className="admin-settings mb-6"><div className="flex items-center gap-3"><Globe2 size={24}/><div><h2>Endereço principal do painel</h2><p className="text-sm text-muted-foreground mt-1">Escolha o acesso utilizado nos novos links de confirmação, recuperação de senha e retorno de pagamentos por link.</p></div></div>

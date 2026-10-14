@@ -1,3 +1,4 @@
+import {clearNavigationSession} from '@/features/panel/navigation-session';
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { LockKeyhole, Save, ShieldCheck } from 'lucide-react';
@@ -20,7 +21,7 @@ export function ProfilePage({ identity }: { identity: { name: string; email: str
   if (!data.success) { setError(data.error.issues[0]?.message || 'Confira os campos.'); return; }
   if (newPassword !== confirmPassword) { setError('A confirmação da nova senha não confere.'); return; }
   setBusy(true);
-  try { await updateClientProfile({ data: data.data }); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); await router.invalidate(); toast.success('Perfil atualizado com sucesso.'); }
+  try { await updateClientProfile({ data: data.data }); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); clearNavigationSession(router.options?.context?.queryClient); await router.invalidate(); toast.success('Perfil atualizado com sucesso.'); }
   catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível atualizar o perfil.'); }
   finally { setBusy(false); }
  }

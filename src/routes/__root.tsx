@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import {navigationSession} from '@/features/panel/navigation-session';
 import { getClientSession } from '@/features/auth/actions';
 
 import { ClientRouteFrame } from "@/features/panel/route-frame";
@@ -78,10 +79,10 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location,context }) => {
     const publicPaths = ['/login', '/cadastro', '/recuperar-senha', '/reset-password', '/termos'];
     if (publicPaths.includes(location.pathname) || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) return { client: null };
-    const client = await getClientSession();
+    const client = await navigationSession(context.queryClient,()=>getClientSession());
     if (!client) throw redirect({ to: '/login' });
     if(client.requiresPasswordChange && location.pathname!=='/alterar-senha')throw redirect({to:'/alterar-senha'});
     return { client };

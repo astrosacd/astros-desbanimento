@@ -12,7 +12,7 @@ export const getRouter = () => {
     // Warm visible navigation before the first click. These routes have no server loaders.
     defaultPreload: 'viewport',
     defaultPreloadStaleTime: 60_000,
-    defaultPendingMs: 150,
+    defaultPendingMs: 0,
     defaultPendingMinMs: 0,
   });
 

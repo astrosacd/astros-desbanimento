@@ -39,3 +39,5 @@
 - Both operational shells use a mobile drawer at <=850px and desktop navigation above that breakpoint. Close an open drawer when switching to desktop; restore focus to its opener when closing on a small screen. Keep dialogs within viewport width/height with internal scrolling and long-text wrapping. Tables/code scroll locally; never hide page overflow to mask a layout problem. See docs/RESPONSIVIDADE.md for the locally checked viewport coverage.
 
 - Astros Mais entrance at / is a general service chooser; keep desbanimento indicators in /desbanimento. Admin starts in home, separate from service overview. Shared support remains outside service groups. Never show unimplemented services as available.
+
+- Navigation identity cache is memory-only per router, max 15 seconds; clear on account and credential/profile transitions. It is only for UI navigation. Keep all operation-level live Auth/requireAdmin/SQL authorization guards. Never cache credentials or financial authorization there. See docs/NAVEGACAO.md.
