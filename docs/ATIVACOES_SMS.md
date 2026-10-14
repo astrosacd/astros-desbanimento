@@ -50,3 +50,7 @@ ASTROS_PGLITE_MODULE=/tmp/astros-sms-sql/node_modules/@electric-sql/pglite/dist/
 ```
 
 Ele cria um PostgreSQL em memória e testa permissão administrativa, heartbeat, repetição de pedido, propriedade, saldo insuficiente, bloqueio de troca de chave, devolução única, finalização de SMS recebido e privilégios privados. Não conecta à produção.
+
+## Consulta administrativa sem liberar vendas
+
+O bloco **Consultar custos e preço de venda** funciona com compras desativadas. Escolha o serviço e país e consulte custo em USD, equivalente em BRL pela cotação salva e preço final. Não cria cotação de compra, não reserva saldo nem compra número. Operações admin-catalog/admin-price exigem requireAdmin na aplicação e papel admin confirmado na Edge Function. A diferença exibida é anterior a impostos, câmbio efetivo e tarifas; não é garantia de lucro líquido.

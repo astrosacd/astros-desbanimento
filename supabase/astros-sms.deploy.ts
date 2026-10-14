@@ -68,6 +68,7 @@ export async function handler(req:Request):Promise<Response>{
   }
   const user=await identity(req);
   if(!await db('rpc/astros_sms_gate','POST',{actor:user['id']}))return json({error:'Muitas consultas em sequência. Aguarde um minuto e tente novamente.'},429);
+  if(action==='admin-catalog'||action==='admin-price')admin(user);
   if(action==='admin-settings'){
    admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
   }
@@ -117,20 +118,21 @@ export async function handler(req:Request):Promise<Response>{
    }catch{await settle(o,'review').catch(()=>undefined);}
    return json({order:view(await orderById(requestId,user))});
   }
-  if(action==='catalog'){
-   const s=await settings(),p=await privateSettings();if(!s['enabled'])return json({available:false,services:[],countries:[]});open(s,p);
+  if(action==='catalog'||action==='admin-catalog'){
+   const s=await settings(),p=await privateSettings();if(action==='admin-catalog'){admin(user);if(!p['api_key'])throw Error('Salve a chave do fornecedor antes de consultar.');}else{if(!s['enabled'])return json({available:false,services:[],countries:[]});open(s,p);}
    const [services,countries]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all')]);
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    return json({available:true,services:services.map(v=>({id:id(v.ID),name:String(v.name).slice(0,160)})),countries:countries.map(v=>({id:id(v.ID),name:String(v.name).slice(0,100),iso:String(v.short_name).slice(0,2)}))});
   }
-  if(action==='quote'){
-   const s=await settings(),p=await privateSettings();open(s,p);const service=id(data.serviceId),country=id(data.countryId);
+  if(action==='quote'||action==='admin-price'){
+   const s=await settings(),p=await privateSettings();if(action==='admin-price'){admin(user);if(!p['api_key']||!s['usd_brl_units'])throw Error('Salve a chave e a cotação antes de consultar.');}else open(s,p);const service=id(data.serviceId),country=id(data.countryId);
    const [services,countries,price]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all'),provider('request/price',{service,country},p['api_key'])]);
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    const serviceRow=services.find(v=>id(v.ID)===service),countryRow=countries.find(v=>id(v.ID)===country);if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo.');
    const pool=id(price['pool']),usd=units(price['price']);if(usd<=0)throw Error('Sem opções disponíveis para esta combinação.');
    const stock=await provider('sms/stock',{service,country,pool},p['api_key']);if(stock['success']!==1||Number(stock['amount'])<1)throw Error('Sem números disponíveis para esse serviço e país.');
    const cents=saleCents(usd,Number(s['usd_brl_units']),s['margin_bps'],Number(s['fee_cents']));
+   if(action==='admin-price'){const costCents=saleCents(usd,Number(s['usd_brl_units']),0,0);return json({service:String(serviceRow['name']),country:String(countryRow['name']),costUsd:usd/1000000,costCents,priceCents:cents,differenceCents:cents-costCents,stock:Number(stock['amount'])});}
    const rows=await db('astros_sms_quotes','POST',{user_id:user['id'],service_id:service,country_id:country,pool_id:pool,service_name:String(serviceRow['name']).slice(0,160),country_name:String(countryRow['name']).slice(0,100),usd_units:usd,price_cents:cents,settings_version:s['updated_at']});
    return json({quoteId:rows[0].id,priceCents:cents,expiresAt:rows[0].expires_at,service:rows[0].service_name,country:rows[0].country_name});
   }
