@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AlterarSenhaRouteImport } from './routes/alterar-senha'
 import { Route as ApiRouteImport } from './routes/api'
+import { Route as AtivacoesSmsRouteImport } from './routes/ativacoes-sms'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as CarteiraRouteImport } from './routes/carteira'
 import { Route as DesbanimentoRouteImport } from './routes/desbanimento'
@@ -43,6 +44,11 @@ const AlterarSenhaRoute = AlterarSenhaRouteImport.update({
 const ApiRoute = ApiRouteImport.update({
   id: '/api',
   path: '/api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtivacoesSmsRoute = AtivacoesSmsRouteImport.update({
+  id: '/ativacoes-sms',
+  path: '/ativacoes-sms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
+  '/ativacoes-sms': typeof AtivacoesSmsRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
   '/desbanimento': typeof DesbanimentoRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
+  '/ativacoes-sms': typeof AtivacoesSmsRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
   '/desbanimento': typeof DesbanimentoRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
+  '/ativacoes-sms': typeof AtivacoesSmsRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
   '/desbanimento': typeof DesbanimentoRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alterar-senha'
     | '/api'
+    | '/ativacoes-sms'
     | '/cadastro'
     | '/carteira'
     | '/desbanimento'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alterar-senha'
     | '/api'
+    | '/ativacoes-sms'
     | '/cadastro'
     | '/carteira'
     | '/desbanimento'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alterar-senha'
     | '/api'
+    | '/ativacoes-sms'
     | '/cadastro'
     | '/carteira'
     | '/desbanimento'
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AlterarSenhaRoute: typeof AlterarSenhaRoute
   ApiRoute: typeof ApiRoute
+  AtivacoesSmsRoute: typeof AtivacoesSmsRoute
   CadastroRoute: typeof CadastroRoute
   CarteiraRoute: typeof CarteiraRoute
   DesbanimentoRoute: typeof DesbanimentoRoute
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/api'
       fullPath: '/api'
       preLoaderRoute: typeof ApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ativacoes-sms': {
+      id: '/ativacoes-sms'
+      path: '/ativacoes-sms'
+      fullPath: '/ativacoes-sms'
+      preLoaderRoute: typeof AtivacoesSmsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro': {
@@ -340,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AlterarSenhaRoute: AlterarSenhaRoute,
   ApiRoute: ApiRoute,
+  AtivacoesSmsRoute: AtivacoesSmsRoute,
   CadastroRoute: CadastroRoute,
   CarteiraRoute: CarteiraRoute,
   DesbanimentoRoute: DesbanimentoRoute,
