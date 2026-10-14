@@ -6,7 +6,7 @@ import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 const id='00000000-0000-4000-8000-000000000001';
 const input={orderId:id,token:'temporary_token_a',paymentMethodId:'visa',issuerId:'123',installments:1,identification:{type:'CPF',number:'52998224725'}};
 beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
-function service(options:{owner?:string;status?:string;failFirst?:boolean;challenge?:boolean;live?:boolean}={}){
+function service(options:{owner?:string;status?:string;failFirst?:boolean;challenge?:boolean;live?:boolean;passwordRequired?:boolean}={}){
  let serve!:(req:Request)=>Promise<Response>;
  const order:any={id,user_id:options.owner||'own',amount_cents:1500,method:'card',card_mode:'embedded',live_mode:options.live??true,status:'creating',mp_payment_id:null,card_fingerprint:null};
  const config={enabled:true,live_mode:options.live??true,public_key:'APP_USR-public',access_token:'private',collector_id:'123',minimum_enabled:false};
@@ -17,7 +17,7 @@ function service(options:{owner?:string;status?:string;failFirst?:boolean;challe
  vi.stubGlobal('fetch',provider);
  const source=readFileSync('supabase/functions/astros-payments/index.ts','utf8').replace(/^import .*;\n/gm,'');
  const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ESNext,module:ts.ModuleKind.None}}).outputText;
- new Function('createClient','z','Deno',js)(()=>({auth:{getUser:async()=>({data:{user:{id:'own',email:'verified@example.com',email_confirmed_at:'yes'}}})},from,rpc}),z,{env:{get:()=> 'private'},serve:(fn:any)=>{serve=fn;}});
+ new Function('createClient','z','Deno',js)(()=>({auth:{getUser:async()=>({data:{user:{id:'own',email:'verified@example.com',email_confirmed_at:'yes',app_metadata:{astros_password_change_required:options.passwordRequired===true}}}})},from,rpc}),z,{env:{get:()=> 'private'},serve:(fn:any)=>{serve=fn;}});
  return{order,provider,rpc,call:(action:string,data:any)=>serve(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer session'},body:JSON.stringify({action,data})}))};
 }
 it('prepares an embedded order without charging or calling the provider',async()=>{const s=service();const r=await s.call('prepare-card',{amountCents:1500,requestId:id});expect(r.status).toBe(200);expect(await r.json()).toMatchObject({id,card_mode:'embedded',amount_cents:1500});expect(s.provider).not.toHaveBeenCalled();});
@@ -33,3 +33,5 @@ it('the embedded deployment file matches the tested Edge source',()=>{expect(rea
 it('returns only the verified authentication challenge needed by the secure status screen',async()=>{const s=service({status:'pending',challenge:true});const r=await s.call('pay-card',input);expect(await r.json()).toMatchObject({status:'pending',paymentId:'99',challenge:{externalResourceURL:'https://bank.example/challenge',creq:'challenge-token'}});});
 
 it('test approval never calls the real wallet credit RPC',async()=>{const s=service({live:false});const r=await s.call('pay-card',input);expect(await r.json()).toMatchObject({status:'test_approved'});expect(s.rpc.mock.calls.some(([name])=>name==='astros_apply_payment')).toBe(false);});
+
+it('blocks payment creation while the mandatory password change is pending',async()=>{const s=service({passwordRequired:true});expect((await s.call('prepare-card',{amountCents:1500,requestId:id})).status).toBe(403);expect(s.provider).not.toHaveBeenCalled();expect(s.rpc).not.toHaveBeenCalled();});

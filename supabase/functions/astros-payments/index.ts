@@ -51,6 +51,7 @@ Deno.serve(async req=>{
   const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
   const {data:{user},error:authError}=await db.auth.getUser(token);
   if(authError||!user||!user.email_confirmed_at)return json({error:'Sua sessão expirou ou o e-mail não foi confirmado.'},401);
+  if(user.app_metadata?.astros_password_change_required===true)return json({error:'Defina sua nova senha no painel antes de continuar.'},403);
   const {data:profile}=await db.from('painel_de_desbanimento').select('id,tipo_usuario').eq('id',user.id).single();
   if(!profile)return json({error:'Conta não encontrada.'},403);
   const {action,data}=await req.json();

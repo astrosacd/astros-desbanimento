@@ -32,3 +32,7 @@ Uma tentativa de cadastro com e-mail existente nunca substitui os dados ou a sen
 O painel de cliente exige uma sessão verificada pelo servidor e inclui Sair da conta. A sessão dura até uma hora. Solicitações, carteira e perfil operacional usam os dados reais da conta autenticada.
 
 O cadastro não pede CPF/CNPJ: o perfil inicia esse campo como NULL, permitindo preenchimento posterior e evitando colisões de valores vazios em restrições únicas. Se já aplicou a migração administrativa anterior, execute apenas `supabase/migrations/20261011_client_signup.sql` para atualizar essa regra. Se ainda não aplicou nenhuma, use a migração administrativa atualizada uma única vez.
+
+## Redefinição de contingência
+
+Gestão de contas inclui Senha e segurança para clientes confirmados. A ativação e os limites estão em [SENHA_MANUAL.md](SENHA_MANUAL.md); requer SQL e a nova função astros-admin-password. Nenhuma senha é alterada apenas por publicar a interface.

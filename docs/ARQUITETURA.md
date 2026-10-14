@@ -19,6 +19,7 @@ O n8n não é dependência interna do painel. Pode ser usado por um cliente como
 | Diretório | Recurso |
 |---|---|
 | src/routes | Rotas das páginas |
+| src/features/password-admin | Redefinição administrativa e troca obrigatória de senha |
 | src/features/auth | Login, cadastro, sessões e perfil |
 | src/features/panel | Interface do painel |
 | src/features/admin | Área administrativa |

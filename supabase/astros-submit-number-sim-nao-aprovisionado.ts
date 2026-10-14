@@ -174,6 +174,7 @@ async function handleRequest(req:Request){
    const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
    const {data,error}=await db.auth.getUser(token);user=data?.user;
    if(error||!user?.email||!user.email_confirmed_at)return json({success:false,message:'Sua sessão expirou ou o e-mail não foi confirmado.'},401);
+   if(user.app_metadata?.astros_password_change_required===true)return json({success:false,message:'Defina sua nova senha no painel antes de continuar.'},403);
   }
   let body=await req.json();
   if(apiOperation){

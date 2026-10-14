@@ -83,6 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (publicPaths.includes(location.pathname) || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) return { client: null };
     const client = await getClientSession();
     if (!client) throw redirect({ to: '/login' });
+    if(client.requiresPasswordChange && location.pathname!=='/alterar-senha')throw redirect({to:'/alterar-senha'});
     return { client };
   },
   head: () => ({

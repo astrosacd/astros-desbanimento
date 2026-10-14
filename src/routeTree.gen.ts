@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AlterarSenhaRouteImport } from './routes/alterar-senha'
 import { Route as ApiRouteImport } from './routes/api'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as CarteiraRouteImport } from './routes/carteira'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlterarSenhaRoute = AlterarSenhaRouteImport.update({
+  id: '/alterar-senha',
+  path: '/alterar-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRoute = ApiRouteImport.update({
@@ -92,6 +98,7 @@ const TermosRoute = TermosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/cadastro': typeof CadastroRoute
   '/carteira': typeof CarteiraRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/alterar-senha'
     | '/api'
     | '/cadastro'
     | '/carteira'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/alterar-senha'
     | '/api'
     | '/cadastro'
     | '/carteira'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/alterar-senha'
     | '/api'
     | '/cadastro'
     | '/carteira'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AlterarSenhaRoute: typeof AlterarSenhaRoute
   ApiRoute: typeof ApiRoute
   CadastroRoute: typeof CadastroRoute
   CarteiraRoute: typeof CarteiraRoute
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alterar-senha': {
+      id: '/alterar-senha'
+      path: '/alterar-senha'
+      fullPath: '/alterar-senha'
+      preLoaderRoute: typeof AlterarSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api': {
@@ -298,6 +318,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AlterarSenhaRoute: AlterarSenhaRoute,
   ApiRoute: ApiRoute,
   CadastroRoute: CadastroRoute,
   CarteiraRoute: CarteiraRoute,

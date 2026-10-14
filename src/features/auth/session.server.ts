@@ -2,14 +2,14 @@ import { getCookie, setCookie, deleteCookie, getRequestUrl, setResponseHeader } 
 import { request } from '../admin/auth.server';
 import { customMail, customMailEnabled } from './custom-mail.server';
 const COOKIE = 'astros_client_session';
-export type ClientIdentity = { id: string; email: string; name: string };
+export type ClientIdentity = { id: string; email: string; name: string; requiresPasswordChange?:boolean };
 function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
 export async function currentClient(): Promise<ClientIdentity | null> {
  noCache(); const token = getCookie(COOKIE); if (!token) return null;
  try {
-  const r = await request('/auth/v1/user', token); if (!r.ok) return null;
+  const r = await request('/auth/v1/user', token,{allowTemporaryPassword:true}); if (!r.ok) return null;
   const u = await r.json(); if (!u.id) return null;
-  return { id: u.id, email: u.email || '', name: u.user_metadata?.nome || 'Cliente' };
+  return { id: u.id, email: u.email || '', name: u.user_metadata?.nome || 'Cliente', ...(u.app_metadata?.astros_password_change_required===true?{requiresPasswordChange:true}:{}) };
  } catch { return null; }
 }
 function remember(token: string, expires: number) {
@@ -47,7 +47,7 @@ export async function recover(email: string) {
 }
 export async function reset(data: { token: string; password: string }) {
  noCache();
- const verified = await request('/auth/v1/user', data.token);
+ const verified = await request('/auth/v1/user', data.token,{allowTemporaryPassword:true});
  if (!verified.ok) throw new Error('O link expirou ou é inválido. Solicite uma nova recuperação.');
  const r = await request('/auth/v1/user', data.token, { method: 'PUT', body: JSON.stringify({ password: data.password }) });
  if (!r.ok) throw new Error('Não foi possível alterar a senha. Verifique os requisitos ou solicite outro link.');

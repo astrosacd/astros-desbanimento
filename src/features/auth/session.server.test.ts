@@ -49,3 +49,5 @@ describe('client entrance', () => {
   await logout(); expect(server.deleteCookie).toHaveBeenCalledWith('astros_client_session', { path: '/' });
  });
 });
+
+it('redirect state comes from verified app_metadata, not editable user metadata',async()=>{server.getCookie.mockReturnValue('token');api.request.mockResolvedValueOnce(response({id:'uuid',email:'own@example.com',app_metadata:{astros_password_change_required:true},user_metadata:{astros_password_change_required:false}}));expect(await currentClient()).toMatchObject({requiresPasswordChange:true});expect(api.request.mock.calls[0][2]).toMatchObject({allowTemporaryPassword:true});});

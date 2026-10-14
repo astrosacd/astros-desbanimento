@@ -41,6 +41,7 @@ Use os arquivos de supabase/migrations, respeitando as dependências abaixo. Reg
 | Cartão | embedded_card, após pagamentos |
 | Faixa | overview_banner → overview_banner_history |
 | API | client_api → api_logs, após perfis e solicitações |
+| Contingência de senha | admin_password_reset, após perfis e client_api; seguir SENHA_MANUAL.md |
 
 Cada nome corresponde ao sufixo de um arquivo datado. Confira o SQL inteiro e seus pré-requisitos; a lista não substitui a revisão do esquema inicial. O cron precisa da URL e da chave pública da nova instalação e das extensões necessárias descritas no próprio SQL. Não copie o segredo do worker atual.
 
@@ -48,6 +49,7 @@ Cada nome corresponde ao sufixo de um arquivo datado. Confira o SQL inteiro e se
 
 | Função | Fonte/guia |
 |---|---|
+| astros-admin-password | supabase/functions/astros-admin-password/index.ts; SENHA_MANUAL.md |
 | astros-auth-email | supabase/functions/astros-auth-email/index.ts; GMAIL_SETUP.md |
 | astros-payments | supabase/functions/astros-payments/index.ts; ../PAYMENTS_SETUP.md |
 | astros-submit-number | supabase/functions/astros-submit-number; ../SUBMISSIONS_SETUP.md e ../API_SETUP.md |

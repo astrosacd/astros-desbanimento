@@ -33,3 +33,7 @@ describe('admin authorization', () => {
   fetchMock.mockRejectedValueOnce(new Error('offline')); expect((await getSession()).admin).toBeNull();
  });
 });
+
+it('blocks operational requests with a service-owned mandatory password flag',async()=>{const {request}=await import('./auth.server');fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({id:'uuid',app_metadata:{astros_password_change_required:true}})));await expect(request('/auth/v1/user','token')).rejects.toThrow('nova senha');});
+it('allows only the explicit recovery/session gate to inspect a temporary-password identity',async()=>{const {request}=await import('./auth.server');fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({id:'uuid',app_metadata:{astros_password_change_required:true}})));expect(await(await request('/auth/v1/user','token',{allowTemporaryPassword:true})).json()).toMatchObject({id:'uuid'});expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('allowTemporaryPassword');});
+it('checks a client identity before forwarding an Edge Function operation',async()=>{const {request}=await import('./auth.server');fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({id:'uuid',app_metadata:{astros_password_change_required:true}})));await expect(request('/functions/v1/astros-payments','token',{method:'POST',body:'{}'})).rejects.toThrow('nova senha');expect(fetchMock).toHaveBeenCalledTimes(1);});

@@ -11,6 +11,7 @@ Este repositório contém a aplicação real. As instruções antigas de demonst
 | Entender a estrutura e os fluxos | [Mapa do projeto](docs/ARQUITETURA.md) |
 | Preparar outra instalação em outra conta | [Instalação e replicação](docs/INSTALACAO.md) |
 | Planejar manutenção e próximos recursos | [Plano de evolução](docs/PLANO_DE_EVOLUCAO.md) |
+| Senha temporária para contingência | [Redefinição manual](docs/SENHA_MANUAL.md) |
 | Acesso e permissões | [Administradores](docs/ADMIN_SETUP.md) |
 | E-mails personalizados | [Gmail](docs/GMAIL_SETUP.md) |
 | Carteira e pagamentos | [Pagamentos](PAYMENTS_SETUP.md) |

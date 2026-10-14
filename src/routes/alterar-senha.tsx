@@ -1,0 +1,2 @@
+import {createFileRoute,redirect} from '@tanstack/react-router';import {RequiredPasswordPage} from '@/features/password-admin/required-page';import {pageHead} from '@/features/demo/meta';
+export const Route=createFileRoute('/alterar-senha')({beforeLoad:({context})=>{if(!context.client?.requiresPasswordChange)throw redirect({to:'/'});},head:()=>pageHead('Definir nova senha','Segurança da conta Astros.'),component:RequiredPasswordPage});

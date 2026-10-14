@@ -12,10 +12,14 @@ function config() {
   return { url, key };
 }
 function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
-export async function request(path: string, token?: string, init: RequestInit = {}) {
+export async function request(path: string, token?: string, init: RequestInit & {allowTemporaryPassword?:boolean} = {}) {
   const c = config();
   if (!c) throw new Error('O acesso administrativo ainda não foi conectado ao Supabase.');
-  return fetch(`${c.url}${path}`, { ...init, headers: { apikey: c.key, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...init.headers }, cache: 'no-store', signal: init.signal ?? AbortSignal.timeout(12000) });
+  const {allowTemporaryPassword,...options}=init;
+  if(token && path.startsWith('/functions/v1/') && token===getCookie('astros_client_session')){const auth=await request('/auth/v1/user',token);if(!auth.ok)throw Error('Sua sessão expirou.');}
+  const response=await fetch(`${c.url}${path}`, { ...options, headers: { apikey: c.key, ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...init.headers }, cache: 'no-store', signal: init.signal ?? AbortSignal.timeout(12000) });
+  if(path==='/auth/v1/user' && (!init.method||init.method==='GET') && !allowTemporaryPassword && response.ok){const user=await (response.clone?response.clone():response).json();if(user.app_metadata?.astros_password_change_required===true)throw Error('Defina sua nova senha antes de continuar no painel.');}
+  return response;
 }
 export async function identityForToken(token: string): Promise<AdminIdentity | null> {
   const userResponse = await request('/auth/v1/user', token);
