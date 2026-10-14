@@ -33,6 +33,25 @@ export function chooseOffer(value:unknown,service:number,country:number){
  offers.sort((a,b)=>a.usd-b.usd||a.pool-b.pool);
  if(!offers[0])throw Error('Não há números disponíveis para esse serviço neste país. Experimente outro país.');return offers[0];
 }
+export function effectiveFx(market:number,deposit:number,fixed:number,depositBps:number,conversion:number,extra:number){
+ if(![market,deposit,fixed,depositBps,conversion,extra].every(Number.isSafeInteger)||market<1||market>10000000||deposit<1000000||deposit>10000000000||fixed<0||fixed>100000000||[depositBps,conversion,extra].some(v=>v<0||v>5000))throw Error('Confira as taxas e a recarga de referência.');
+ const net=BigInt(deposit)*BigInt(10000-depositBps)-BigInt(fixed)*10000n;
+ if(net<=0n)throw Error('A recarga de referência não cobre as taxas.');
+ const credit=((net+50000000n)/100000000n)*10000n;if(credit<=0n)throw Error('A recarga de referência não cobre as taxas.');
+ const n=BigInt(market)*BigInt(10000+conversion)*BigInt(10000+extra)*BigInt(deposit),d=100000000n*credit;
+ const result=Number((n+d-1n)/d);if(result<1||result>10000000)throw Error('Cotação fora do limite.');return result;
+}
+export function marketRate(value:any,now=Date.now()){
+ const date=value?.date,rate=Number(value?.rate);const time=Date.parse(String(date)+'T00:00:00Z');
+ if(String(value?.base).toUpperCase()!=='USD'||String(value?.quote).toUpperCase()!=='BRL'||!/^\d{4}-\d{2}-\d{2}$/.test(String(date))||!Number.isFinite(time)||time>now+86400000||time<now-7*86400000||!Number.isFinite(rate)||rate<=0||rate>1000)throw Error('Cotação automática indisponível ou desatualizada.');
+ return {market:Math.ceil(rate*10000),source_date:date};
+}
+async function fetchMarket(){try{const r=await fetch('https://api.frankfurter.dev/v2/rate/USD/BRL',{redirect:'error',signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error();return marketRate(await r.json());}catch{throw Error('Não foi possível atualizar o dólar. Novas compras dependem de uma cotação válida ou do modo manual.');}}
+async function ensureFx(s:Obj,force=false):Promise<Obj>{
+ if(s['fx_mode']!=='auto')return s;
+ if(!force&&s['fx_checked_at']&&Date.now()-Date.parse(s['fx_checked_at'])<3600000&&s['fx_date']&&Date.now()-Date.parse(s['fx_date']+'T00:00:00Z')<7*86400000)return s;
+ const value=await fetchMarket();await db('rpc/astros_sms_refresh_fx','POST',value);return settings();
+}
 function env(name:string){const s=Deno.env.get(name);if(!s)throw Error('Serviço ainda não configurado.');return s;}
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
 async function db(path:string,method='GET',data?:unknown):Promise<any>{
@@ -74,6 +93,7 @@ export async function handler(req:Request):Promise<Response>{
   if(action==='worker'){
    const p=await privateSettings();if(!p['worker_secret']||req.headers.get('X-Astros-Sms-Worker')!==p['worker_secret'])return json({error:'Acesso não autorizado.'},401);
    await db('astros_sms_settings?id=eq.true','PATCH',{worker_at:new Date().toISOString()});
+   try{await ensureFx(await settings());}catch{/* FX outage never prevents reconciliation of existing orders. */}
    const rows:Obj[]=await db('astros_sms_orders?state=in.(dispatching,pending,review)&order=checked_at.asc.nullsfirst&limit=10');let checked=0;
    for(let start=0;start<rows.length;start+=5){await Promise.all(rows.slice(start,start+5).map(async(o)=>{try{if(o['provider_id']&&p['api_key']){await check(o,p['api_key']);checked++;}else if(Date.now()-Date.parse(o['created_at'])>90000){await settle(o,'review');}}catch{/* Leave durable state for next run. Never replay purchase. */}}));}
    return json({success:true,checked});
@@ -82,7 +102,7 @@ export async function handler(req:Request):Promise<Response>{
   if(!await db('rpc/astros_sms_gate','POST',{actor:user['id']}))return json({error:'Muitas consultas em sequência. Aguarde um minuto e tente novamente.'},429);
   if(action==='admin-catalog'||action==='admin-price')admin(user);
   if(action==='admin-settings'){
-   admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
+   admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),fxMode:s['fx_mode']??'manual',depositBps:s['deposit_bps']??325,conversionBps:s['conversion_bps']??400,extraBps:s['extra_bps']??0,fixedUsdUnits:Number(s['fixed_usd_units']??250000),depositUsdUnits:Number(s['deposit_usd_units']??10000000),marketUnits:s['market_units']??null,fxDate:s['fx_date']??null,fxCheckedAt:s['fx_checked_at']??null,hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
   }
   if(action==='save-settings'){
    admin(user);const p=await privateSettings();const fx=Number(data.usdBrlUnits),margin=Number(data.marginBps),fee=Number(data.feeCents);
@@ -91,8 +111,12 @@ export async function handler(req:Request):Promise<Response>{
    if(key&&key!==p['api_key']){const running=await db('astros_sms_orders?state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos em andamento antes de trocar a chave.');const test=await provider('request/balance',{},key);units(test.balance);}
    if(data.enabled&&!key&&!p['api_key'])throw Error('Configure a chave antes de ativar.');const s=await settings();
    if(data.enabled&&(!s['worker_at']||Date.now()-Date.parse(s['worker_at'])>180000))throw Error('Ative primeiro a rotina automática de acompanhamento.');
-   await db('rpc/astros_sms_configure','POST',{actor:user['id'],active:data.enabled,fx,margin,fee,new_key:key});return json({success:true});
+   const mode=data.fxMode??s['fx_mode']??'manual',deposit=Number(data.depositUsdUnits??s['deposit_usd_units']??10000000),fixed_fee=Number(data.fixedUsdUnits??s['fixed_usd_units']??250000),deposit_percent=Number(data.depositBps??s['deposit_bps']??325),conversion=Number(data.conversionBps??s['conversion_bps']??400),extra=Number(data.extraBps??s['extra_bps']??0);
+   if(!['auto','manual'].includes(mode))throw Error('Selecione o modo de cotação.');effectiveFx(50000,deposit,fixed_fee,deposit_percent,conversion,extra);
+   const market=mode==='auto'?await fetchMarket():{market:null,source_date:null};
+   await db('rpc/astros_sms_configure_fx','POST',{actor:user['id'],active:data.enabled,manual_fx:fx,margin,fee,new_key:key,mode,deposit,fixed_fee,deposit_percent,conversion,extra,...market});return json({success:true});
   }
+  if(action==='refresh-fx'){admin(user);const s=await ensureFx(await settings(),true);return json({usdBrlUnits:Number(s['usd_brl_units']),fxDate:s['fx_date']??null});}
   if(action==='admin-orders'){
    admin(user);const page=Math.max(0,Math.min(100000,Number(data.page)||0));const rows:Obj[]=await db(`astros_sms_orders?order=created_at.desc&limit=21&offset=${Math.floor(page)*20}`);
    const ids=[...new Set(rows.map(o=>o['user_id']))];const accounts:Obj[]=ids.length?await db(`painel_de_desbanimento?id=in.(${ids.join(',')})&select=id,email,nome`):[];
@@ -114,7 +138,7 @@ export async function handler(req:Request):Promise<Response>{
    // An earlier call may already have dispatched; do not require a fresh price to retrieve it.
    const previous=await db(`astros_sms_orders?id=eq.${requestId}&limit=1`);
    if(previous.length){if(previous[0].user_id!==user['id']||previous[0].quote_id!==quoteId)throw Error('Referência divergente.');return json({order:view(previous[0])});}
-   const s=await settings(),p=await privateSettings();open(s,p);
+   const s=await ensureFx(await settings()),p=await privateSettings();open(s,p);
    const q=(await db(`astros_sms_quotes?id=eq.${quoteId}&user_id=eq.${user['id']}&limit=1`))[0];if(!q)throw Error('Atualize o preço antes de comprar.');
    const live=await provider('request/price',{service:q['service_id'],country:q['country_id'],pool:q['pool_id']},p['api_key']);
    if(units(live.price)!==Number(q['usd_units'])||(live.pool!==undefined&&id(live.pool)!==q['pool_id']))throw Error('O preço mudou. Consulte novamente antes de comprar.');
@@ -137,7 +161,7 @@ export async function handler(req:Request):Promise<Response>{
    return json({available:true,services:services.map(v=>({id:id(v.ID),name:String(v.name).slice(0,160)})),countries:countries.map(v=>({id:id(v.ID),name:String(v.name).slice(0,100),iso:String(v.short_name).slice(0,2)}))});
   }
   if(action==='quote'||action==='admin-price'){
-   const s=await settings(),p=await privateSettings();if(action==='admin-price'){admin(user);if(!p['api_key']||!s['usd_brl_units'])throw Error('Salve a chave e a cotação antes de consultar.');}else open(s,p);const service=id(data.serviceId),country=id(data.countryId);
+   const s=await ensureFx(await settings()),p=await privateSettings();if(action==='admin-price'){admin(user);if(!p['api_key']||!s['usd_brl_units'])throw Error('Salve a chave e a cotação antes de consultar.');}else open(s,p);const service=id(data.serviceId),country=id(data.countryId);
    const [services,countries,availability]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all'),provider('sms/all_stock',{service,country},p['api_key'])]);
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    const serviceRow=services.find(v=>id(v.ID)===service),countryRow=countries.find(v=>id(v.ID)===country);if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo.');

@@ -58,3 +58,18 @@ O bloco **Consultar custos e preço de venda** funciona com compras desativadas.
 A origem (pool) e o custo são escolhidos entre ofertas com estoque do endpoint `sms/all_stock`, filtradas pelo serviço e país exatos. O endpoint de preço genérico pode retornar um preço sem pool; isso não significa que a seleção do cliente seja inválida. Antes da compra, o preço é reconfirmado com o pool específico e o teto continua obrigatório. Seletores de serviço/país têm pesquisa interna e lista com altura limitada nos dois painéis.
 
 Compatibilidade verificada com resposta real de estoque: `sms/all_stock` pode devolver lotes aninhados (`[[{...}]]`). A leitura normaliza essas listas antes de filtrar serviço/país e escolher oferta com estoque. Formato não reconhecido deve gerar falha de validação de estoque, nunca ser apresentado automaticamente como ausência de números.
+
+## Cotação automática opcional
+
+Ativação: execute `supabase/migrations/20261014_sms_auto_fx.sql`, atualize `astros-sms` com o arquivo de deploy e publique a interface. O modo atual permanece **manual** até o administrador escolher **Automático** e salvar. Não modifica recargas, Mercado Pago, saldos, pedidos ou regras de desbanimento.
+
+A função consulta `https://api.frankfurter.dev/v2/rate/USD/BRL`, valida par/data/limites e armazena a referência. A fonte fornece referência diária, não uma cotação de cartão em tempo real. O cron SMS existente tenta atualizá-la a cada hora, e consultas/compras também exigem atualização quando o cache tem mais de uma hora. Falha de atualização bloqueia a nova consulta/compra; a reconciliação dos pedidos existentes continua. A reserva SQL também rejeita cache com mais de 6 horas ou data de referência anterior a 7 dias (tolerância para fins de semana/feriados). Nunca muda silenciosamente para manual.
+
+Taxas editáveis, inicialmente baseadas no checkout observado: 3,25% do depósito + US$ 0,25 descontados do saldo recebido; acréscimo de conversão de 4%; outros custos percentuais inicialmente zero. O administrador informa o valor habitual da recarga (inicial US$ 10), porque a taxa fixa tem impacto proporcional diferente conforme o depósito. Não há consulta automática à conta Stripe do fornecedor nem às tarifas do cartão.
+
+Crédito USD estimado = arredondar a centavos (depósito USD × (1 − taxa percentual) − taxa fixa USD).
+Cotação efetiva estimada = dólar de referência × (1 + conversão) × (1 + outros custos) × depósito USD / crédito USD estimado.
+
+Essa cotação é usada no preço da ativação, somada aos acréscimos de venda já existentes. A recarga do cliente continua integral: R$ 50 pagos correspondem a R$ 50 de saldo. A estimativa não garante o custo exato de liquidação, impostos ou lucro líquido. O modo manual aceita o custo efetivo total informado pelo administrador e não acrescenta essas taxas novamente.
+
+Uma mudança na cotação efetiva invalida cotações de compra anteriores, exigindo nova confirmação. Repetir um pedido já reservado continua retornando o mesmo pedido, mesmo com FX indisponível. Não apaga histórico. Testes isolados verificam fórmula SQL/TypeScript, validade da fonte, bloqueio de débito com FX vencido, invalidação de ofertas, privilégios e volta ao manual.

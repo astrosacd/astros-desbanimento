@@ -1,0 +1,5 @@
+import {expect,it} from 'vitest';
+import {effectiveFx,marketRate} from '../../../supabase/functions/astros-sms/index';
+it('includes deposit, fixed and conversion costs using credited dollars',()=>{expect(effectiveFx(50500,10000000,250000,325,400,0)).toBe(55695);expect(effectiveFx(50000,10000000,0,0,0,0)).toBe(50000);expect(effectiveFx(50000,10000000,250000,325,400,100)).toBeGreaterThan(effectiveFx(50000,10000000,250000,325,400,0));});
+it('rejects fees exceeding deposit or invalid amounts',()=>{expect(()=>effectiveFx(50000,1000000,2000000,325,400,0)).toThrow();expect(()=>effectiveFx(50000,10000000,0,9999,400,0)).toThrow();});
+it('validates pair, freshness and numeric market rates',()=>{const now=Date.parse('2026-10-14T22:00:00Z');expect(marketRate({base:'USD',quote:'BRL',date:'2026-10-14',rate:5.0176},now).market).toBe(50176);for(const input of [{base:'EUR',quote:'BRL',date:'2026-10-14',rate:5},{base:'USD',quote:'BRL',date:'2026-09-01',rate:5},{base:'USD',quote:'BRL',date:'2026-10-14',rate:0}])expect(()=>marketRate(input,now)).toThrow();});

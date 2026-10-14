@@ -2,6 +2,7 @@ const {PGlite}=await import(process.env['ASTROS_PGLITE_MODULE']??'@electric-sql/
 import fs from 'node:fs';import assert from 'node:assert/strict';
 const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create table public.painel_de_desbanimento(id uuid primary key references auth.users(id),tipo_usuario text,recarga numeric(14,2));create table public.astros_wallet_movements(id uuid primary key default gen_random_uuid(),user_id uuid references public.painel_de_desbanimento(id),amount_cents bigint,kind text,reference text,unique(kind,reference));`);
 await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261014_sms_activations.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261014_sms_auto_fx.sql',import.meta.url),'utf8'));
 const admin='00000000-0000-4000-8000-000000000001',user='00000000-0000-4000-8000-000000000002',other='00000000-0000-4000-8000-000000000003';
 for(const id of [admin,user,other])await db.query('insert into auth.users values($1)',[id]);await db.query(`insert into painel_de_desbanimento values($1,'admin',0),($2,'cliente',10),($3,'cliente',0)`,[admin,user,other]);
 await db.query("select astros_sms_configure($1,false,55000,3000,0,'test-provider-key-123456789')",[admin]);
@@ -23,4 +24,18 @@ const q2=await quote(other),r2='10000000-0000-4000-8000-000000000002';await asse
 const q3=await quote(user),r3='10000000-0000-4000-8000-000000000003';await db.query('select astros_sms_reserve($1,$2,$3)',[user,r3,q3]);await db.query("select astros_sms_settle($1,'received','PROVIDER2','14155552672','123456',now())",[r3]);await db.query("select astros_sms_settle($1,'refunded')",[r3]);assert.equal(Number((await db.query('select recarga from painel_de_desbanimento where id=$1',[user])).rows[0].recarga),8.28);
 const q4=await quote(user);await db.exec("update astros_sms_settings set worker_at=now()-interval '4 minutes'");await assert.rejects(db.query('select astros_sms_reserve($1,gen_random_uuid(),$2)',[user,q4]));
 await db.exec('set role authenticated');await assert.rejects(db.query('select api_key from astros_sms_private'));await assert.rejects(db.query("select astros_sms_settle($1,'refunded')",[r3]));await db.exec('reset role');
+await db.exec('update astros_sms_settings set worker_at=now()');
+await db.query("select astros_sms_configure_fx($1,true,55700,0,0,'','auto',10000000,250000,325,400,0,50500,current_date)",[admin]);
+assert.equal(Number((await db.query('select usd_brl_units from astros_sms_settings')).rows[0].usd_brl_units),55695);
+const autoQuote=await quote(user);
+await db.exec("update astros_sms_settings set fx_checked_at=now()-interval '7 hours'");
+await assert.rejects(db.query('select astros_sms_reserve($1,gen_random_uuid(),$2)',[user,autoQuote]));
+assert.equal((await db.query('select astros_sms_reserve($1,$2,$3) result',[user,r,q])).rows[0].result.dispatch,false);
+await db.exec('select astros_sms_refresh_fx(51000,current_date)');
+await assert.rejects(db.query('select astros_sms_reserve($1,gen_random_uuid(),$2)',[user,autoQuote]));
+await db.exec('set role authenticated');await assert.rejects(db.query('select astros_sms_refresh_fx(51000,current_date)'));await db.exec('reset role');
+await db.query("select astros_sms_configure_fx($1,true,55700,0,0,'','manual',10000000,250000,325,400,0,null,null)",[admin]);
+assert.equal(Number((await db.query('select usd_brl_units from astros_sms_settings')).rows[0].usd_brl_units),55700);
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261014_sms_auto_fx.sql',import.meta.url),'utf8'));
+console.log('PASS: automatic FX SQL/TS parity, stale FX blocks debit, old request remains recoverable, FX updates invalidate old quotes, private RPC, manual fallback and idempotent migration.');
 console.log('PASS: SQL installed; admin gate, worker gate, stable request, ownership, insufficient funds, no key rotation during pending, one refund, received finality, private grants.');await db.close();
