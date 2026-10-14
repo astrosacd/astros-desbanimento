@@ -54,7 +54,7 @@ export async function signIn(email: string, password: string) {
     await request('/auth/v1/logout', session.access_token, { method: 'POST' }).catch(() => undefined);
     throw new Error('Acesso não autorizado. Confira suas credenciais e sua permissão de administrador.');
   }
-  setCookie(COOKIE, session.access_token, { httpOnly: true, secure: getRequestUrl().protocol === 'https:', sameSite: 'strict', path: '/', maxAge: Math.min(session.expires_in || 3600, 3600) });
+  setCookie(COOKIE, session.access_token, { httpOnly: true, secure: process.env['ASTROS_SECURE_COOKIES'] === 'true' || getRequestUrl().protocol === 'https:', sameSite: 'strict', path: '/', maxAge: Math.min(session.expires_in || 3600, 3600) });
   return admin;
 }
 export async function signOut() {

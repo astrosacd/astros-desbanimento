@@ -13,7 +13,7 @@ export async function currentClient(): Promise<ClientIdentity | null> {
  } catch { return null; }
 }
 function remember(token: string, expires: number) {
- setCookie(COOKIE, token, { httpOnly: true, secure: getRequestUrl().protocol === 'https:', sameSite: 'strict', path: '/', maxAge: Math.min(expires || 3600, 3600) });
+ setCookie(COOKIE, token, { httpOnly: true, secure: process.env['ASTROS_SECURE_COOKIES'] === 'true' || getRequestUrl().protocol === 'https:', sameSite: 'strict', path: '/', maxAge: Math.min(expires || 3600, 3600) });
 }
 const origin = () => getRequestUrl().origin;
 export async function login(data: { email: string; password: string }) {

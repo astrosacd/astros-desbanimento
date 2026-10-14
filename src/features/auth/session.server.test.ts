@@ -7,7 +7,7 @@ vi.mock('../admin/auth.server', () => api);
 import { signup, currentClient, reset, recover, login, logout } from './session.server';
 const response = (data: unknown, ok = true, status = 200) => ({ ok, status, json: async () => data });
 beforeEach(() => { vi.resetAllMocks(); });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 describe('client entrance', () => {
  it('normalizes WhatsApp and rejects incomplete names', () => {
   const valid = signupSchema.parse({ name: 'Maria Costa', email: 'maria@example.com', whatsapp: '(85) 99999-9999', password: '12345678' });
@@ -51,3 +51,11 @@ describe('client entrance', () => {
 });
 
 it('redirect state comes from verified app_metadata, not editable user metadata',async()=>{server.getCookie.mockReturnValue('token');api.request.mockResolvedValueOnce(response({id:'uuid',email:'own@example.com',app_metadata:{astros_password_change_required:true},user_metadata:{astros_password_change_required:false}}));expect(await currentClient()).toMatchObject({requiresPasswordChange:true});expect(api.request.mock.calls[0][2]).toMatchObject({allowTemporaryPassword:true});});
+
+it('VPS enforces Secure cookies behind the HTTPS proxy', async () => {
+ vi.stubEnv('ASTROS_SECURE_COOKIES', 'true');
+ vi.spyOn(server, 'getRequestUrl').mockReturnValue(new URL('http://internal:3000/login'));
+ api.request.mockResolvedValueOnce(response({ access_token: 'token', expires_in: 3600 }));
+ await login({ email: 'maria@example.com', password: '12345678' });
+ expect(server.setCookie).toHaveBeenCalledWith('astros_client_session', 'token', expect.objectContaining({ secure: true, httpOnly: true }));
+});

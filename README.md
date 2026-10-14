@@ -39,3 +39,5 @@ Verificações: `npm test` e `npm run build`. Testes locais usam simulações e 
 As alterações enviadas à branch main sincronizam com o projeto conectado no [Lovable](https://lovable.dev/projects/a135bd51-5c95-48af-b761-0912ca8dea47). Sincronizar código e publicar o site são etapas distintas. SQLs, Edge Functions e secrets do Supabase exigem instalação própria; um commit não os aplica automaticamente.
 
 O GitHub não é uma cópia dos dados de produção nem das credenciais privadas. Não coloque tokens, senhas de app ou chaves administrativas em commits ou exemplos.
+
+- [VPS e contingência no Lovable](docs/VPS_CONTINGENCIA.md)

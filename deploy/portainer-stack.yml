@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  painel:
+    image: ${ASTROS_IMAGE}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+      ASTROS_SECURE_COOKIES: "true"
+      ASTROS_CUSTOM_EMAIL_ENABLED: "true"
+      ASTROS_EMAIL_INTERNAL_SECRET: ${ASTROS_EMAIL_INTERNAL_SECRET}
+      BASEROW_API_TOKEN: ${BASEROW_API_TOKEN}
+    networks:
+      - AstrosNet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=AstrosNet
+        - traefik.http.routers.astros-painel.rule=Host(`desbanimento.astroscomunicacaodigital.com`)
+        - traefik.http.routers.astros-painel.entrypoints=websecure
+        - traefik.http.routers.astros-painel.tls=true
+        - traefik.http.routers.astros-painel.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.astros-painel.service=astros-painel
+        - traefik.http.services.astros-painel.loadbalancer.server.port=3000
+networks:
+  AstrosNet:
+    external: true
