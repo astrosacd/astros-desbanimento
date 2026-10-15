@@ -24,3 +24,5 @@ export const smsReleaseQuote=createServerFn({method:'POST'}).inputValidator(z.ob
 export const smsOperations=createServerFn({method:'GET'}).inputValidator(z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),until:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-dashboard',data,true));
 export const smsPause=createServerFn({method:'POST'}).handler(async()=>(await import('./server')).smsCall('admin-pause',{},true));
 export const smsSupportOrder=createServerFn({method:'GET'}).inputValidator(z.object({orderId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('support-order',data));
+
+export const smsAreaOptions=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),countryId:z.number().int().positive()})).handler(async({data})=>(await import('./server')).smsCall('area-options',data));

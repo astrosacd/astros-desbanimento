@@ -269,6 +269,15 @@ export async function handler(req:Request):Promise<Response>{
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    return json({available:true,services:services.map(v=>({id:id(v.ID),name:String(v.name).slice(0,160)})),countries:countries.map(v=>({id:id(v.ID),name:String(v.name).slice(0,100),iso:String(v.short_name).slice(0,2)}))});
   }
+  if(action==='area-options'){
+   const s=await settings(),p=await privateSettings();open(s,p);const service=id(data.serviceId),country=id(data.countryId);
+   const countries=await provider('country/retrieve_all');const row=Array.isArray(countries)?countries.find(v=>Number(v.ID)===country):null;
+   if(!row||String(row.short_name).toUpperCase()!=='BR')return json({areas:[]});
+   const {pool}=chooseOffer(await provider('sms/all_stock',{service,country},p['api_key']),service,country);
+   const value=await provider('request/areacodes',{service,country,pool},p['api_key']);
+   if(value?.success===0&&String(value?.message??'').includes('Custom areacodes is not supported for this pool'))return json({areas:[]});
+   return json({areas:availableAreas(value).filter(v=>/^[1-9][0-9]$/.test(v))});
+  }
   if(action==='quote'||action==='admin-price'){
    const s=await ensureFx(await settings()),p=await privateSettings();if(action==='admin-price'){admin(user);if(!p['api_key']||!s['usd_brl_units'])throw Error('Salve a chave e a cotação antes de consultar.');}else open(s,p);const service=id(data.serviceId),country=id(data.countryId);
    const [services,countries,availability]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all'),provider('sms/all_stock',{service,country},p['api_key'])]);

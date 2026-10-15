@@ -143,3 +143,7 @@ O cliente pode deixar Qualquer DDD ou informar dois dígitos, sem 55. A Edge ver
 
 #### Verificação de suporte, 15/10/2026
 Consulta pública real `request/areacodes` para Brasil (68), Telegram (907) e WhatsApp (1012), pool Charlie (3), responderam success=0 e “Custom areacodes is not supported for this pool.” Logo não há suporte confirmado de DDD nessa oferta; não tratar como falta de estoque. Parser distingue essa recusa conhecida de resposta desconhecida. Não foi feita compra. Nomes de países no seletor usam Intl.DisplayNames pt-BR e ISO validado; IDs e parâmetros enviados ao fornecedor não mudam. Bandeiras SVG por ISO no FlagCDN, sem credenciais/referrer, fallback para globo em erro; nomes continuam acessíveis sem imagem.
+
+### Seleção condicional e acompanhamento
+`area-options` autenticado consulta oferta atual e DDDs sem reservar/comprar. A UI mantém o campo oculto em carregamento, falha, lista vazia ou recusa de suporte; lista apenas DDDs explicitamente retornados. Consulta de preço revalida serviço/país/pool/DDD e persiste a seleção. Seleção antiga não é enviada quando não pertence à lista atual. Brasil apenas nesta versão. Atualizar Edge é necessário, sem SQL novo.
+A ativação atual aparece antes do formulário de outra compra, com instruções de pedir SMS na plataforma e acompanhamento automático com página visível a cada 10–15 segundos. Método por e-mail não é SMS. Botão manual permanece como alternativa; falha de consulta não implica cancelamento nem devolução.
