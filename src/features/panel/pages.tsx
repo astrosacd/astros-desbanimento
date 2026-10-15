@@ -47,7 +47,7 @@ export function TermsPage() {
   ],
   [
     "6. Desbanimento: cobrança e reenvios",
-    "Um número novo ou uma nova contratação para número com processo encerrado e status EXCLUÍDO exige a taxa vigente informada no painel. Em caso de novo banimento permanente após o encerramento anterior, será necessária uma nova taxa. Reenvios dos processos ainda abertos, nos demais status aceitos, seguem as regras de reenvio sem nova cobrança. Os status informam o acompanhamento do processo e não representam garantia de resultado."
+    "A contratação de um novo processo de desbanimento exige a taxa vigente informada no painel antes do envio. Se o número sofrer um novo banimento permanente após o encerramento do processo anterior, será necessária uma nova contratação, com nova taxa. O reenvio de uma solicitação cujo processo permanece aberto não gera nova cobrança. O painel verifica a situação da solicitação e informa o valor aplicável antes do envio."
   ],
   [
     "7. Ativações SMS: número temporário",
