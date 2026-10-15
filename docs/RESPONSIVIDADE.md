@@ -33,3 +33,13 @@ Verificação local desta alteração: Chromium com respostas fictícias de Auth
 
 ## Entrada geral Astros Mais
 A rota / agora apresenta os serviços disponíveis e atendimento, sem consultar ou apresentar indicadores de desbanimento. O dashboard operacional permanece em /desbanimento. Admin inicia na seção Início e acessa o dashboard por Desbanimento. Conferência local nas mesmas cinco larguras, com dados fictícios; 353 testes e builds das duas hospedagens passaram.
+
+## Revisão dos serviços compartilhados — 15/10/2026
+
+Ajustes de apresentação: campos SMS/financeiro e pesquisa de serviço com fonte de 16 px em telas pequenas; configuração de venda SMS em uma coluna até 850 px; botões que quebram texto e preservam alvos de 44 px; números/códigos longos com quebra local; ações e paginação SMS adaptadas ao celular; saldo geral e atalhos com largura limitada ao cartão; áreas de navegação com espaço inferior seguro. Eixo de valores do gráfico financeiro usa notação compacta, mantendo valores integrais nos indicadores e tooltip. Sem mudança de cobrança, permissões ou chamadas ao fornecedor.
+
+Verificação local em Chromium, usando DOM renderizado dos componentes reais com respostas sintéticas e CSS compilado. 14 estados em 8 tamanhos: 320×800, 375×812, 430×850, 667×375, 768×1024, 850×1000, 1024×768 e 1440×1000. Total de 112 combinações, sem aumento da largura da página. Estados: login, cadastro, recuperação, redefinição, Início com carteira compartilhada, desbanimento, carteira, SMS, menu do cliente, seletor de serviço SMS aberto, Início administrativo, SMS administrativo, financeiro e menu administrativo. Conferência visual adicional das capturas do Início e dos módulos SMS/financeiro em 375 px e login em 850 px. Valores altos e textos longos foram utilizados para verificar quebra e encaixe.
+
+Limites desta conferência: os snapshots avaliam layout, não executam autenticação, compras, redimensionamento dinâmico do gráfico ou testes de ponta a ponta. Gráfico e componentes externos continuam precisando da validação funcional normal. Não representa todos os aparelhos físicos. Menus e seletor foram capturados abertos; não substitui os testes prévios de foco, navegação e transição de largura. Nenhum dado real foi acessado ou saldo movimentado.
+
+A suíte passou com 393 testes; builds Lovable e VPS concluídos. Não requer SQL nem atualização de Edge Functions. O Início geral agora inclui o saldo compartilhado; somente os indicadores operacionais e a taxa de desbanimento permanecem em /desbanimento.
