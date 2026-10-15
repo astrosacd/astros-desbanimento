@@ -1,4 +1,3 @@
--- Astros Mais: ativação inicial de Redes sociais. Não inclui cron; compras começam pausadas.
 -- Módulo independente de redes sociais. Todas as operações financeiras são service-only.
 begin;
 create table if not exists public.astros_social_settings(
@@ -58,7 +57,7 @@ declare oldkey text;s public.astros_social_settings;begin
  if key_value<>'' and key_value<>oldkey then
   if exists(select 1 from public.astros_social_orders where state in ('dispatching','pending','processing','review')) or exists(select 1 from public.astros_social_actions where state in ('pending','uncertain')) then raise exception 'Conclua os pedidos antes de trocar a chave';end if;
   update public.astros_social_private set api_key=key_value,integration_id=gen_random_uuid() where id=true;
-  update public.astros_social_services set enabled=false,available=false,updated_at=clock_timestamp();
+  update public.astros_social_services set enabled=false,available=false,updated_at=clock_timestamp() where enabled or available;
   update public.astros_social_settings set catalog_at=null where id=true;s.catalog_at=null;
  end if;
  if active and (coalesce(nullif(key_value,''),nullif(oldkey,'')) is null or s.catalog_at is null or s.worker_at is null or s.worker_at<now()-interval '3 minutes') then raise exception 'Configure a integração, sincronize serviços e ative a rotina antes de liberar';end if;
@@ -70,7 +69,7 @@ declare n integer;begin
  if not exists(select 1 from public.painel_de_desbanimento where id=actor and tipo_usuario='admin') then raise exception 'Acesso restrito';end if;
  if jsonb_typeof(items)<>'array' or jsonb_array_length(items)>20000 or jsonb_array_length(items)<1 then raise exception 'Catálogo inválido';end if;
  perform 1 from public.astros_social_settings where id=true for update;
- update public.astros_social_services set available=false,updated_at=clock_timestamp();
+ update public.astros_social_services set available=false,updated_at=clock_timestamp() where available;
  insert into public.astros_social_services(id,provider_name,provider_category,description,rate_units,minimum,maximum,refill,cancel)
  select id,left(name,180),left(category,180),left(description,4000),rate,minimum,maximum,refill,cancel from jsonb_to_recordset(items) as x(id bigint,name text,category text,description text,rate bigint,minimum integer,maximum integer,refill boolean,cancel boolean)
  on conflict(id) do update set provider_name=excluded.provider_name,provider_category=excluded.provider_category,description=excluded.description,rate_units=excluded.rate_units,minimum=excluded.minimum,maximum=excluded.maximum,refill=excluded.refill,cancel=excluded.cancel,available=true,updated_at=clock_timestamp();
