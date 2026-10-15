@@ -1,0 +1,9 @@
+export const networks={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',tiktok:'TikTok',x:'X / Twitter',telegram:'Telegram'};
+export type Network=keyof typeof networks;
+export type SocialService={id:number;title:string;network:Network|'';category:string;description:string;minimum:number;maximum:number;refill:boolean;cancel:boolean;providerName?:string;enabled?:boolean;available?:boolean;rateUnits?:number};
+export type SocialQuote={description?:string;refill?:boolean;cancel?:boolean;id:string;title:string;network:Network;link:string;quantity:number;priceCents:number;expiresAt:string};
+export type SocialOrder={description?:string;id:string;title:string;network:Network;link:string;quantity:number;priceCents:number;refundCents:number;state:'dispatching'|'pending'|'processing'|'completed'|'partial'|'refunded'|'review';remains:number|null;startCount:number|null;refill:boolean;cancel:boolean;createdAt:string;updatedAt:string;email?:string;name?:string;diagnostic?:string;hasProvider?:boolean};
+export const states={dispatching:'Confirmando pedido',pending:'Na fila',processing:'Em andamento',completed:'Concluído',partial:'Entrega parcial',refunded:'Saldo devolvido',review:'Em conferência'};
+export type SocialAction={kind:'cancel'|'refill';state:'pending'|'accepted'|'rejected'|'uncertain'|'resolved';created_at:string};
+export const actionStates={pending:'Em confirmação',accepted:'Solicitação recebida pelo fornecedor',rejected:'Solicitação não aceita',uncertain:'Aguardando confirmação do fornecedor',resolved:'Pedido encerrado; confira o resultado acima'};
+export const money=(value:number)=>(value/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});

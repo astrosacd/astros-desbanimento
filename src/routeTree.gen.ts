@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as NovaSolicitacaoRouteImport } from './routes/nova-solicitacao'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as RedesSociaisRouteImport } from './routes/redes-sociais'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SolicitacoesRouteImport } from './routes/solicitacoes'
 import { Route as SuporteRouteImport } from './routes/suporte'
@@ -86,6 +87,11 @@ const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
   path: '/recuperar-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RedesSociaisRoute = RedesSociaisRouteImport.update({
+  id: '/redes-sociais',
+  path: '/redes-sociais',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
   '/suporte': typeof SuporteRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
   '/suporte': typeof SuporteRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
   '/suporte': typeof SuporteRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/nova-solicitacao'
     | '/perfil'
     | '/recuperar-senha'
+    | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
     | '/suporte'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/nova-solicitacao'
     | '/perfil'
     | '/recuperar-senha'
+    | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
     | '/suporte'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/nova-solicitacao'
     | '/perfil'
     | '/recuperar-senha'
+    | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
     | '/suporte'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   NovaSolicitacaoRoute: typeof NovaSolicitacaoRoute
   PerfilRoute: typeof PerfilRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
+  RedesSociaisRoute: typeof RedesSociaisRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SolicitacoesRoute: typeof SolicitacoesRoute
   SuporteRoute: typeof SuporteRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecuperarSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/redes-sociais': {
+      id: '/redes-sociais'
+      path: '/redes-sociais'
+      fullPath: '/redes-sociais'
+      preLoaderRoute: typeof RedesSociaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -368,6 +388,7 @@ const rootRouteChildren: RootRouteChildren = {
   NovaSolicitacaoRoute: NovaSolicitacaoRoute,
   PerfilRoute: PerfilRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
+  RedesSociaisRoute: RedesSociaisRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SolicitacoesRoute: SolicitacoesRoute,
   SuporteRoute: SuporteRoute,

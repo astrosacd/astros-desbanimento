@@ -1,0 +1,4 @@
+# Cron uses a private header; authenticated calls are verified inside the function.
+# Applies only to the new social function, never changes Supabase Auth globally.
+[functions.astros-social]
+verify_jwt = false

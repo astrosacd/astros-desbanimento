@@ -1,0 +1,8 @@
+import {it,expect,vi,afterEach} from 'vitest';import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:vi.fn()}),useQuery:({queryKey}:any)=>({data:queryKey[0]==='social-admin-settings'?{enabled:false,hasKey:true,workerReady:true,fxUnits:50000,marginBps:5000,feeCents:100}:queryKey[0]==='social-admin-catalog'?{services:[],hasMore:false}:queryKey[0]==='social-balance'?{balanceUnits:10000000}:null,isPending:false,isError:false,refetch:vi.fn()})}));
+vi.mock('./orders',()=>({SocialHistory:()=> <p>Pedidos do módulo separado</p>}));
+vi.mock('./actions',()=>({socialAdminSettings:vi.fn(),socialSaveSettings:vi.fn(),socialAdminBalance:vi.fn(),socialSync:vi.fn(),socialAdminCatalog:vi.fn(),socialCurate:vi.fn()}));
+import {SocialAdmin} from './admin';
+afterEach(cleanup);
+async function tab(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});await waitFor(()=>expect(screen.getByRole('tab',{name}).getAttribute('aria-selected')).toBe('true'));}
+it('keeps social settings separate and preserves unsaved markup between tabs',async()=>{render(<SocialAdmin adminId="admin"/>);expect(screen.getByText('Saldo e disponibilidade')).toBeTruthy();await tab('Configurações');fireEvent.change(screen.getByLabelText('Acréscimo sobre o custo (%)'),{target:{value:'70'}});await tab('Pedidos');expect(screen.getByText('Pedidos do módulo separado')).toBeTruthy();await tab('Configurações');expect((screen.getByLabelText('Acréscimo sobre o custo (%)') as HTMLInputElement).value).toBe('70');expect(screen.queryByDisplayValue('PRIVATE-PROVIDER')).toBeNull();});

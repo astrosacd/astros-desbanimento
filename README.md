@@ -45,3 +45,6 @@ O GitHub não é uma cópia dos dados de produção nem das credenciais privadas
 - [Endereço principal compartilhado](docs/ENDERECO_PRINCIPAL.md)
 
 - [Domínio Astros Mais](docs/ASTROS_MAIS.md)
+
+### Redes sociais (SMMRaja)
+Módulo próprio de cliente/admin, mesma carteira e gateway. Ativação guiada, limites da API v3, recuperação de pedidos e testes em [docs/REDES_SOCIAIS.md](docs/REDES_SOCIAIS.md). Começa pausado; requer setup SQL, nova Edge Function e cron antes de liberar compras. Validar primeiro no Lovable.
