@@ -43,7 +43,7 @@ export function TermsPage() {
   ],
   [
     "5. Desbanimento: execução e ausência de garantia",
-    "O serviço consiste no encaminhamento e acompanhamento de solicitações de revisão de banimento permanente. A Astros não é o WhatsApp, a Meta ou representante dessas plataformas. O pagamento remunera a execução do serviço; não garante desbloqueio, prazo de resposta ou permanência do número desbloqueado. Confira o número e o país antes de enviar. Após o encaminhamento, não há garantia de interrupção ou reversão do processo."
+    "A Astros Comunicação Digital® realiza o encaminhamento e o acompanhamento de solicitações de revisão de banimento permanente diretamente com a Meta. Esse contato não significa que a Astros seja o WhatsApp ou a Meta, nem que controle as decisões dessas plataformas. O pagamento remunera a execução do serviço; não garante desbloqueio, prazo de resposta ou permanência do número desbloqueado. Confira o número e o país antes de enviar. Após o encaminhamento, não há garantia de interrupção ou reversão do processo."
   ],
   [
     "6. Desbanimento: cobrança e reenvios",
