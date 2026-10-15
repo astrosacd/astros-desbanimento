@@ -41,6 +41,13 @@ assert.equal(r.receivedCents,6000);assert.equal(r.paymentRefundsCents,400);asser
 assert.deepEqual(r.desban,{debitsCents:500,refundsCents:500,netCents:0,paidCount:1,freeCount:1,completedSalesCents:500,openCents:500});
 assert.equal(r.sms.netCents,1753);assert.equal(r.sms.knownCostCents,1102);assert.equal(r.sms.knownGainCents,651);assert.equal(r.sms.missingCostCount,1);assert.equal(r.sms.openCents,1000);assert.equal(r.daily.length,1);assert.equal(r.daily[0].receivedCents,6000);assert.equal(r.daily[0].consumedCents,3253);assert.equal(r.daily[0].returnedCents,1500);
 await assert.rejects(db.query("select astros_financial_dashboard('2026-10-14','2026-10-13')"));await assert.rejects(db.query("select astros_financial_dashboard('2020-01-01','2026-10-14')"));
+// A rejected SMS with immediate wallet reversal has zero sales, zero cost/gain and zero net consumption.
+await db.exec(`insert into astros_wallet_movements(user_id,amount_cents,reference,kind,created_at) values
+('00000000-0000-4000-8000-000000000001',-1765,'sms:declined-example','debit','2026-10-12T14:46:15Z'),
+('00000000-0000-4000-8000-000000000001',1765,'sms-refund:declined-example','credit','2026-10-12T14:46:16Z');
+insert into astros_sms_orders values('10000000-0000-4000-8000-000000000005',1990000,1765,'refunded','2026-10-12T14:46:15Z',null);`);
+const declined=(await db.query("select astros_financial_dashboard('2026-10-12','2026-10-12') r")).rows[0].r;
+assert.equal(declined.receivedCents,0);assert.equal(declined.sms.completedSalesCents,0);assert.equal(declined.sms.completedCount,0);assert.equal(declined.sms.knownCostCents,0);assert.equal(declined.sms.knownGainCents,0);assert.equal(declined.sms.netCents,0);assert.equal(declined.sms.debitsCents,1765);assert.equal(declined.sms.refundsCents,1765);
 const empty=(await db.query("select astros_financial_dashboard('2026-01-01','2026-01-03') r")).rows[0].r;assert.equal(empty.receivedCents,0);assert.equal(empty.daily.length,3);
 await db.exec(migration);assert.equal((await db.query("select estimated_cost_cents from astros_sms_orders where id='10000000-0000-4000-8000-000000000004'")).rows[0].estimated_cost_cents,null);
 await db.exec('set role anon');await assert.rejects(db.query("select astros_financial_dashboard('2026-10-14','2026-10-14')"));await db.exec('reset role');

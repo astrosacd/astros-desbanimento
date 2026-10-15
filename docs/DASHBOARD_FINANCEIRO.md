@@ -21,3 +21,7 @@ Datas em America/Fortaleza; máximo 366 dias por consulta. Agregação integral 
 ## Verificação
 
 `ASTROS_PGLITE_MODULE=/caminho/pglite/dist/index.js node scripts/check-finance-sql.mjs` valida permissões, limites de datas, créditos reais, estornos, créditos manuais, fronteiras de horário, ausência de dupla contagem, snapshot histórico, gráfico sem lacunas e repetição da migração. Testes do servidor verificam autorização e erros sem falsos zeros. Fixtures sintéticas; não efetua pagamentos nem compra números.
+
+## Tentativas SMS devolvidas
+
+Pedidos SMS com situação `refunded` não entram nas vendas concluídas, no custo dessas vendas nem no ganho estimado. O gráfico de participação entre módulos usa valores de vendas concluídas, não débitos brutos. As movimentações reais de débito e devolução continuam no histórico e na evolução diária, identificadas como movimentações de carteira. No mesmo intervalo, uma tentativa de R$ 17,65 debitada e devolvida tem consumo líquido zero; não representa nova receita. Se a devolução ocorrer em outro período, os movimentos seguem suas datas reais. O script de banco inclui esse cenário isolado para verificar vendas, custo e ganho iguais a zero. Esta mudança de apresentação não exige SQL nem nova função.
