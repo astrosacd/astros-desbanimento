@@ -1,0 +1,11 @@
+import {afterEach,it,expect,vi} from 'vitest';
+import {render,screen,fireEvent,cleanup,within} from '@testing-library/react';
+const row={id:'own',service:'Telegram',country:'Brasil',priceCents:267,state:'pending' as const,phone:'5541999999999',code:null,expiresAt:null,createdAt:'2026-10-15T16:00:00Z'};
+vi.mock('@tanstack/react-query',()=>({useQuery:()=>({data:{orders:[row],hasMore:false},isPending:false,isError:false,refetch:vi.fn()})}));
+vi.mock('@tanstack/react-router',()=>({useRouteContext:()=>({client:{id:'client'}}),Link:({children}:any)=><a>{children}</a>}));
+vi.mock('./actions',()=>({smsHistory:vi.fn(),smsAdminOrders:vi.fn(),smsCheck:vi.fn()}));
+vi.mock('./admin-review',()=>({SmsAdminReview:()=>null}));
+import {SmsHistory} from './orders';
+afterEach(cleanup);
+it('keeps history compact and opens order details explicitly',()=>{render(<SmsHistory/>);expect(screen.queryByText('Aguardando seu código SMS')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Ver detalhes'}));const dialog=screen.getByRole('dialog');expect(within(dialog).getByText('Aguardando seu código SMS')).toBeTruthy();expect(within(dialog).getByText(/automaticamente quando for recebido/)).toBeTruthy();});
+it('lets the customer focus an existing activation without purchasing',()=>{const track=vi.fn();render(<SmsHistory onTrack={track}/>);fireEvent.click(screen.getByRole('button',{name:'Acompanhar'}));expect(track).toHaveBeenCalledExactlyOnceWith(row);});
