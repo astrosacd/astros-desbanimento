@@ -5,6 +5,7 @@ function setup({role='cliente',failure=false,reject=false,previous=false,low=fal
  if(url.includes('/auth/v1/user'))value={id:owner,email_confirmed_at:'2026-01-01'};
  else if(url.includes('painel_de_desbanimento'))value=[{id:owner,tipo_usuario:role}];
  else if(url.includes('astros_social_gate'))value=true;
+ else if(url.includes('astros_social_configure'))value=null;
  else if(url.includes('astros_social_settings'))value=[{enabled:true,fx_units:50000,margin_bps:5000,fee_cents:0,worker_at:new Date().toISOString()}];
  else if(url.includes('astros_social_private'))value=[{api_key:'PRIVATE-PROVIDER',integration_id:'private-generation',worker_secret:'PRIVATE-WORKER'}];
  else if(url.includes('astros_social_services'))value=[{id:1,enabled:true,available:true,network:'instagram',title:'Example',provider_name:'Example',updated_at:'2026-01-01'}];
@@ -28,3 +29,6 @@ it('ignores another user order id instead of exposing it',async()=>{setup();cons
 it('requires the private worker secret before doing any reconciliation',async()=>{const calls=setup();const r=await handler(request('worker'));expect(r.status).toBe(401);expect(calls.some(v=>v.url.includes('astros_social_orders')||v.url.includes('smmraja'))).toBe(false);});
 
 it('quotes only an enabled service using live rates and keeps supplier cost private',async()=>{const calls=setup();const r=await handler(request('quote',{serviceId:1,quantity:1000,link:'https://instagram.com/example'}));expect(r.status).toBe(200);const q=await r.json();expect(q.priceCents).toBe(750);expect(q.link).toBe('https://instagram.com/example');expect(q.cost_units).toBeUndefined();expect(q.integration_id).toBeUndefined();const saved=calls.find(v=>v.url.includes('astros_social_quotes')&&String(v.body).includes('integration_id'));expect(JSON.parse(saved!.body).integration_id).toBe('private-generation');});
+
+it('accepts symbol-bearing provider keys and form-encodes them without changing their value',async()=>{const calls=setup({role:'admin'});const key='Example+(API)*&=Key!42';const r=await handler(request('admin-configure',{apiKey:key,enabled:false,fxUnits:60000,marginBps:5000,feeCents:0}));expect(r.status).toBe(200);const call=calls.find(v=>v.url==='https://www.smmraja.com/api/v3');expect(new URLSearchParams(call?.body).get('key')).toBe(key);expect(calls.some(v=>v.url.includes('astros_social_configure'))).toBe(true);expect(JSON.stringify(await r.json())).not.toContain(key);});
+it('rejects control characters in provider keys before contacting the provider',async()=>{const calls=setup({role:'admin'});const r=await handler(request('admin-configure',{apiKey:'ExampleKey\nBadKey42',enabled:false,fxUnits:60000,marginBps:5000,feeCents:0}));expect(r.status).toBe(400);expect(calls.some(v=>v.url.includes('smmraja'))).toBe(false);});
