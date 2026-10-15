@@ -89,6 +89,11 @@ async function purchaseSms(data:Obj,key:string){
 async function recordPurchaseDiagnostic(orderId:string,diagnostic:{category:string;httpStatus:number|null;detail:string}){
  try{await db('rpc/astros_sms_record_purchase_diagnostic','POST',{request_id:orderId,kind:diagnostic.category,status_code:diagnostic.httpStatus,detail_text:diagnostic.detail});}catch{/* Diagnostics must never change wallet settlement or trigger another purchase. */}
 }
+export function consultedStock(value:Obj){
+ const raw=value?.['amount'];
+ if(value?.['success']!==1||!['string','number'].includes(typeof raw)||!/^\d+$/.test(String(raw)))throw Error('Não foi possível confirmar o estoque agora. Tente consultar novamente.');
+ const count=Number(raw);if(!Number.isSafeInteger(count)||count<0)throw Error('Não foi possível confirmar o estoque agora. Tente consultar novamente.');return count;
+}
 async function supplierBalance(key:string){const value=await provider('request/balance',{},key);if(value?.success===0)throw Error('Saldo do fornecedor indisponível.');return units(value?.balance);}
 export function historyQuery(data:Obj,owner:string,adminView=false){
  const allowed=['page','search','state','from','until','email'];if(Object.keys(data).some(k=>!allowed.includes(k)))throw Error('Filtro inválido.');
@@ -261,11 +266,11 @@ export async function handler(req:Request):Promise<Response>{
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    const serviceRow=services.find(v=>id(v.ID)===service),countryRow=countries.find(v=>id(v.ID)===country);if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo.');
    const {pool,usd}=chooseOffer(availability,service,country);
-   const stock=await provider('sms/stock',{service,country,pool},p['api_key']);if(stock['success']!==1||Number(stock['amount'])<1)throw Error('Sem números disponíveis para esse serviço e país.');
+   const stock=consultedStock(await provider('sms/stock',{service,country,pool},p['api_key']));const stockCheckedAt=new Date().toISOString();if(stock<1)throw Error('Sem números disponíveis para esse serviço e país.');
    const cents=saleCents(usd,Number(s['usd_brl_units']),s['margin_bps'],Number(s['fee_cents']));
-   if(action==='admin-price'){const costCents=saleCents(usd,Number(s['usd_brl_units']),0,0);return json({service:String(serviceRow['name']),country:String(countryRow['name']),costUsd:usd/1000000,costCents,priceCents:cents,differenceCents:cents-costCents,stock:Number(stock['amount'])});}
+   if(action==='admin-price'){const costCents=saleCents(usd,Number(s['usd_brl_units']),0,0);return json({service:String(serviceRow['name']),country:String(countryRow['name']),costUsd:usd/1000000,costCents,priceCents:cents,differenceCents:cents-costCents,stock,stockCheckedAt});}
    const rows=await db('astros_sms_quotes','POST',{user_id:user['id'],service_id:service,country_id:country,pool_id:pool,service_name:String(serviceRow['name']).slice(0,160),country_name:String(countryRow['name']).slice(0,100),usd_units:usd,price_cents:cents,settings_version:s['updated_at']});
-   return json({quoteId:rows[0].id,priceCents:cents,expiresAt:rows[0].expires_at,service:rows[0].service_name,country:rows[0].country_name});
+   return json({quoteId:rows[0].id,priceCents:cents,expiresAt:rows[0].expires_at,service:rows[0].service_name,country:rows[0].country_name,stock,stockCheckedAt});
   }
   return json({error:'Operação não disponível.'},400);
  }catch(e){return json({error:e instanceof Error?e.message:'Não foi possível concluir. Tente atualizar.'},400);}

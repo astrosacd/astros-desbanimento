@@ -128,3 +128,11 @@ A documentação oficial foi revisada em 15/10/2026: `https://api.smspool.net/re
 O recurso corrige o descarte de recusas estruturadas em HTTP 400/422: success igual a 0, sem sinal de ativação entregue, pode seguir o protocolo de devolução única existente, como a recusa em HTTP 200. HTTP 5xx, timeout, JSON inválido ou resposta contraditória permanecem incertos, sem estorno automático e sem nova tentativa de compra. Categorias documentadas incluem OUT_OF_STOCK, PRICE_NOT_FOUND e BALANCE_ERROR; outras recusas aparecem como genéricas, com texto sanitizado para investigação. A categoria não é inferida a partir do saldo mostrado ou de suposição sobre estoque.
 
 Pedidos anteriores não tiveram o motivo original salvo; não é possível reconstruí-lo a partir de refunded. Não inventar diagnóstico nem repetir pedidos antigos para tentar descobri-lo. Após ativar, um novo teste controlado permitirá examinar o retorno real se houver recusa. A ausência de diagnóstico não comprova qualquer causa.
+
+## Estoque exibido na consulta
+
+A resposta de cotação e da consulta administrativa inclui `stock` e `stockCheckedAt`, obtidos de `sms/stock` para o mesmo serviço/país/pool selecionados na oferta. A Edge valida sucesso e quantidade inteira não negativa; valor ausente, inválido ou fracionário não é apresentado como zero. Estoque zero bloqueia a criação de cotação. Não expõe pool, chave ou custo privado na cotação do cliente.
+
+Cliente e admin mostram a quantidade e horário de Fortaleza. A confirmação de compra repete esse contexto. A quantidade não reserva números e não comprova autorização para o serviço (por exemplo, whitelist). Após a expiração da cotação, a interface pede nova consulta; não atualiza o horário localmente para aparentar dado recente. Uma versão antiga da função sem esses campos aparece como estoque não confirmado, nunca como quantidade fictícia. Não há compra automática nem consultas adicionais por polling.
+
+Ativação: atualizar `astros-sms` com o arquivo integral `supabase/astros-sms.deploy.ts` e publicar o frontend; não exige novo SQL. Testes são simulados, sem compra real.
