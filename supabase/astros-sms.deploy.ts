@@ -98,6 +98,7 @@ export function selectedArea(value:unknown){
  const area=String(value??'').trim();if(area&&!/^[1-9][0-9]$/.test(area))throw Error('Informe um DDD brasileiro com dois dígitos, sem o 55.');return area;
 }
 export function availableAreas(value:any){
+ if(value?.success===0&&String(value?.message??'').includes('Custom areacodes is not supported for this pool'))throw Error('Esta oferta não permite escolher o DDD. Deixe o campo vazio para receber um número com qualquer DDD.');
  const rows=Array.isArray(value)?value:Array.isArray(value?.areacodes)?value.areacodes:null;
  if(!rows||!rows.every((v:unknown)=>['string','number'].includes(typeof v)&&/^\d{1,6}$/.test(String(v))))throw Error('Não foi possível confirmar os DDDs disponíveis. Use Qualquer DDD ou tente novamente.');
  return [...new Set(rows.map(String))];
