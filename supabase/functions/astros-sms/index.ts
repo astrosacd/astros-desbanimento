@@ -94,6 +94,14 @@ export function consultedStock(value:Obj){
  if(value?.['success']!==1||!['string','number'].includes(typeof raw)||!/^\d+$/.test(String(raw)))throw Error('Não foi possível confirmar o estoque agora. Tente consultar novamente.');
  const count=Number(raw);if(!Number.isSafeInteger(count)||count<0)throw Error('Não foi possível confirmar o estoque agora. Tente consultar novamente.');return count;
 }
+export function selectedArea(value:unknown){
+ const area=String(value??'').trim();if(area&&!/^[1-9][0-9]$/.test(area))throw Error('Informe um DDD brasileiro com dois dígitos, sem o 55.');return area;
+}
+export function availableAreas(value:any){
+ const rows=Array.isArray(value)?value:Array.isArray(value?.areacodes)?value.areacodes:null;
+ if(!rows||!rows.every((v:unknown)=>['string','number'].includes(typeof v)&&/^\d{1,6}$/.test(String(v))))throw Error('Não foi possível confirmar os DDDs disponíveis. Use Qualquer DDD ou tente novamente.');
+ return [...new Set(rows.map(String))];
+}
 async function supplierBalance(key:string){const value=await provider('request/balance',{},key);if(value?.success===0)throw Error('Saldo do fornecedor indisponível.');return units(value?.balance);}
 export function historyQuery(data:Obj,owner:string,adminView=false){
  const allowed=['page','search','state','from','until','email'];if(Object.keys(data).some(k=>!allowed.includes(k)))throw Error('Filtro inválido.');
@@ -245,7 +253,7 @@ export async function handler(req:Request):Promise<Response>{
    if(!reservation.dispatch)return json({order:view(await orderById(requestId,user))});
    const o=await orderById(requestId,user);
    try{
-    const purchase=await purchaseSms({country:q['country_id'],service:q['service_id'],pool:q['pool_id'],max_price:(q['usd_units']/1000000).toFixed(6),pricing_option:0,quantity:1,activation_type:'SMS',create_token:0},p['api_key']);
+    const purchase=await purchaseSms({country:q['country_id'],service:q['service_id'],pool:q['pool_id'],max_price:(q['usd_units']/1000000).toFixed(6),pricing_option:0,quantity:1,activation_type:'SMS',create_token:0,...(q['area_code']?{areacode:JSON.stringify([q['area_code']]),exclude:0}:{})},p['api_key']);
     const v=purchase.result;
     if(definitePurchaseRejection(v,purchase.status)){await recordPurchaseDiagnostic(requestId,purchaseDiagnostic(v,p['api_key'],purchase.status));await settle(o,'refunded');return json({order:view(await orderById(requestId,user))});}
     const a=parseActivation(v);
@@ -266,11 +274,12 @@ export async function handler(req:Request):Promise<Response>{
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
    const serviceRow=services.find(v=>id(v.ID)===service),countryRow=countries.find(v=>id(v.ID)===country);if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo.');
    const {pool,usd}=chooseOffer(availability,service,country);
+   const areaCode=selectedArea(data.areaCode);if(areaCode){if(String(countryRow['short_name']).toUpperCase()!=='BR')throw Error('A escolha de DDD está disponível somente para o Brasil.');const areas=availableAreas(await provider('request/areacodes',{service,country,pool},p['api_key']));if(!areas.includes(areaCode))throw Error('Esse DDD não está disponível nesta oferta. Escolha outro DDD ou Qualquer DDD.');}
    const stock=consultedStock(await provider('sms/stock',{service,country,pool},p['api_key']));const stockCheckedAt=new Date().toISOString();if(stock<1)throw Error('Sem números disponíveis para esse serviço e país.');
    const cents=saleCents(usd,Number(s['usd_brl_units']),s['margin_bps'],Number(s['fee_cents']));
    if(action==='admin-price'){const costCents=saleCents(usd,Number(s['usd_brl_units']),0,0);return json({service:String(serviceRow['name']),country:String(countryRow['name']),costUsd:usd/1000000,costCents,priceCents:cents,differenceCents:cents-costCents,stock,stockCheckedAt});}
-   const rows=await db('astros_sms_quotes','POST',{user_id:user['id'],service_id:service,country_id:country,pool_id:pool,service_name:String(serviceRow['name']).slice(0,160),country_name:String(countryRow['name']).slice(0,100),usd_units:usd,price_cents:cents,settings_version:s['updated_at']});
-   return json({quoteId:rows[0].id,priceCents:cents,expiresAt:rows[0].expires_at,service:rows[0].service_name,country:rows[0].country_name,stock,stockCheckedAt});
+   const rows=await db('astros_sms_quotes','POST',{user_id:user['id'],service_id:service,country_id:country,pool_id:pool,service_name:String(serviceRow['name']).slice(0,160),country_name:String(countryRow['name']).slice(0,100),usd_units:usd,price_cents:cents,settings_version:s['updated_at'],area_code:areaCode||null});
+   return json({quoteId:rows[0].id,priceCents:cents,expiresAt:rows[0].expires_at,service:rows[0].service_name,country:rows[0].country_name,areaCode:areaCode||null,stock,stockCheckedAt});
   }
   return json({error:'Operação não disponível.'},400);
  }catch(e){return json({error:e instanceof Error?e.message:'Não foi possível concluir. Tente atualizar.'},400);}

@@ -136,3 +136,7 @@ A resposta de cotação e da consulta administrativa inclui `stock` e `stockChec
 Cliente e admin mostram a quantidade e horário de Fortaleza. A confirmação de compra repete esse contexto. A quantidade não reserva números e não comprova autorização para o serviço (por exemplo, whitelist). Após a expiração da cotação, a interface pede nova consulta; não atualiza o horário localmente para aparentar dado recente. Uma versão antiga da função sem esses campos aparece como estoque não confirmado, nunca como quantidade fictícia. Não há compra automática nem consultas adicionais por polling.
 
 Ativação: atualizar `astros-sms` com o arquivo integral `supabase/astros-sms.deploy.ts` e publicar o frontend; não exige novo SQL. Testes são simulados, sem compra real.
+
+### DDD opcional (Brasil)
+Aplicar `20261015_sms_area_code.sql` antes do novo `astros-sms.deploy.ts`.
+O cliente pode deixar Qualquer DDD ou informar dois dígitos, sem 55. A Edge verifica o país no catálogo e consulta `request/areacodes` com serviço/país/pool da oferta. Respostas desconhecidas falham sem cobrar; nunca presumimos suporte brasileiro. A compra usa apenas o DDD salvo na cotação privada (`areacode` como JSON e `exclude=0`), mantendo UUID, limite de preço e uma única compra. O estoque exibido continua sendo geral da oferta, explicitamente identificado quando há filtro de DDD. Não promete estoque específico ou sucesso na plataforma. Não altera pedidos antigos nem saldo. Sem teste real de compra com DDD; requer validação controlada pelo usuário.

@@ -3,7 +3,7 @@ import {z} from 'zod';
 import {smsHistoryFilter} from './history-validation';
 const page=smsHistoryFilter;
 export const smsCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('catalog'));
-export const smsQuote=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),countryId:z.number().int().positive()})).handler(async({data})=>(await import('./server')).smsCall('quote',data));
+export const smsQuote=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),countryId:z.number().int().positive(),areaCode:z.string().regex(/^$|^[1-9][0-9]$/).optional()})).handler(async({data})=>(await import('./server')).smsCall('quote',data));
 export const smsBuy=createServerFn({method:'POST'}).inputValidator(z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()})).handler(async({data})=>(await import('./server')).smsCall('buy',data));
 export const smsCheck=createServerFn({method:'POST'}).inputValidator(z.object({orderId:z.string().uuid(),cancel:z.boolean().default(false)})).handler(async({data})=>(await import('./server')).smsCall(data.cancel?'cancel':'check',{orderId:data.orderId}));
 export const smsHistory=createServerFn({method:'GET'}).inputValidator(page).handler(async({data})=>(await import('./server')).smsCall('history',data));
