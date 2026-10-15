@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const mock=vi.hoisted(()=>({admin:vi.fn(),request:vi.fn(),cookie:vi.fn()}));
+vi.mock('../admin/auth.server',()=>({requireAdmin:mock.admin,request:mock.request}));
+vi.mock('@tanstack/react-start/server',()=>({getCookie:mock.cookie,setResponseHeader:vi.fn()}));
+import {financialDashboard} from './server';
+import {financialFilter} from './validation';
+beforeEach(()=>{vi.resetAllMocks();mock.cookie.mockReturnValue('admin-session');});
+it('denies clients before querying any financial data',async()=>{mock.admin.mockRejectedValue(Error('Acesso restrito'));await expect(financialDashboard({from:'2026-10-01',until:'2026-10-14'})).rejects.toThrow('restrito');expect(mock.request).not.toHaveBeenCalled();});
+it('uses only the administrative session and validated dates for the aggregate RPC',async()=>{mock.request.mockResolvedValue({ok:false,status:404});await expect(financialDashboard({from:'2026-10-01',until:'2026-10-14'})).rejects.toThrow('SQL');expect(mock.request).toHaveBeenCalledWith('/rest/v1/rpc/astros_financial_dashboard','admin-session',{method:'POST',body:JSON.stringify({date_from:'2026-10-01',date_until:'2026-10-14'})});});
+it('rejects impossible, reversed and excessive date ranges',()=>{for(const value of [{from:'2026-02-30',until:'2026-03-01'},{from:'2026-10-02',until:'2026-10-01'},{from:'2024-01-01',until:'2026-01-01'}])expect(financialFilter.safeParse(value).success).toBe(false);expect(financialFilter.safeParse({from:'2026-01-01',until:'2026-12-31'}).success).toBe(true);});
+it('does not report fake zero indicators on query failure',async()=>{mock.request.mockResolvedValue({ok:false,status:500});await expect(financialDashboard({from:'2026-10-01',until:'2026-10-14'})).rejects.toThrow('consultar');});
