@@ -20,3 +20,7 @@ export const smsAdminBalance=createServerFn({method:'GET'}).handler(async()=>(aw
 export const smsReviewDetail=createServerFn({method:'GET'}).inputValidator(z.object({orderId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-review-detail',data,true));
 export const smsReviewAction=createServerFn({method:'POST'}).inputValidator(z.object({orderId:z.string().uuid(),actionId:z.string().uuid(),mode:z.enum(['check','cancel','note']),reason:z.string().trim().min(10).max(500)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-review',data,true));
 export const smsReleaseQuote=createServerFn({method:'POST'}).inputValidator(z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('release-quote',data));
+
+export const smsOperations=createServerFn({method:'GET'}).inputValidator(z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),until:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-dashboard',data,true));
+export const smsPause=createServerFn({method:'POST'}).handler(async()=>(await import('./server')).smsCall('admin-pause',{},true));
+export const smsSupportOrder=createServerFn({method:'GET'}).inputValidator(z.object({orderId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('support-order',data));

@@ -123,6 +123,14 @@ export async function handler(req:Request):Promise<Response>{
    admin(user);const p=await privateSettings();if(!p['api_key'])throw Error('Configure a chave do SMSPool para consultar o saldo.');
    try{const balanceUnits=await supplierBalance(p['api_key']);return json({balanceUnits,currency:'USD',lowBalance:balanceUnits<5000000,lowThresholdUnits:5000000,checkedAt:new Date().toISOString()});}catch{throw Error('Não foi possível consultar o saldo do fornecedor. Tente atualizar.');}
   }
+  if(action==='admin-dashboard'){
+   admin(user);const f=String(data.from??''),u=String(data.until??'');
+   const valid=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
+   if(!valid(f)||!valid(u)||u<f||(Date.parse(u)-Date.parse(f))/86400000>365)throw Error('Escolha um período válido de até 366 dias.');
+   return json(await db('rpc/astros_sms_dashboard','POST',{actor:user['id'],date_from:f,date_until:u}));
+  }
+  if(action==='admin-pause'){admin(user);return json(await db('rpc/astros_sms_pause','POST',{actor:user['id']}));}
+  if(action==='support-order'){const o=await orderById(data.orderId,user);return json({id:o['id'],service:o['service_name'],country:o['country_name'],state:o['state'],priceCents:Number(o['price_cents']),createdAt:o['created_at']});}
   if(action==='admin-settings'){
    admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),fxMode:s['fx_mode']??'manual',depositBps:s['deposit_bps']??325,conversionBps:s['conversion_bps']??400,extraBps:s['extra_bps']??0,fixedUsdUnits:Number(s['fixed_usd_units']??250000),depositUsdUnits:Number(s['deposit_usd_units']??10000000),marketUnits:s['market_units']??null,fxDate:s['fx_date']??null,fxCheckedAt:s['fx_checked_at']??null,hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
   }

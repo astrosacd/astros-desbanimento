@@ -100,3 +100,20 @@ Em Conferir pedido, o admin pode consultar o estado, solicitar cancelamento conf
 Pedidos sem identificação confirmada no fornecedor continuam em investigação: permitem registrar observação, mas não associar IDs por suposição nem devolver sem prova. Não há botão de estorno arbitrário. A auditoria é privada e acessível somente por operações administrativas verificadas.
 
 Validação: 409 testes da aplicação passaram e o build foi concluído. O script `scripts/check-sms-review-sql.mjs` verificou a migração em PostgreSQL isolado, incluindo privilégios, repetição, cancelamento incerto, devolução única e proteção de pedidos recebidos. Testes da integração usam respostas simuladas; nenhuma compra real foi realizada nesta etapa.
+
+
+## Operação, pausa rápida e suporte por pedido
+
+Ativação: após as migrações SMS anteriores e `20261015_financial_dashboard.sql`, execute `supabase/migrations/20261015_sms_operations.sql`. Depois substitua integralmente a função `astros-sms` por `supabase/astros-sms.deploy.ts`. Publique e teste no Lovable antes de trocar a imagem da VPS. Não exige novas credenciais, mudança no webhook ou depósito automático.
+
+No cliente, os avisos antes da compra explicam que o número é temporário, não garante aceitação na plataforma e não deve ser usado para recuperação futura de contas. Copiar número/código confirma o resultado visualmente e orienta a cópia manual quando o navegador recusa acesso à área de transferência. As situações continuam usando mensagens do cliente, sem fornecedor ou códigos técnicos.
+
+Cada ativação oferece Suporte deste pedido. A Central consulta a referência na conta autenticada, mostra resumo e permite copiá-lo sem incluir o código SMS. Ao abrir o chat, a preparação verifica novamente a propriedade no servidor e associa pedido/serviço/país aos atributos de identificação do contato. Não cria uma conversa nem envia mensagem automaticamente; o cliente continua pelo chat existente. Atendimento geral limpa esses atributos contextuais. A referência em URL não concede acesso a pedidos de outra conta. A operação usa a mesma caixa de atendimento, preservando a identificação já existente.
+
+O início do admin mostra o saldo privado do fornecedor (e alerta abaixo de US$ 5) e um resumo de atenção SMS. No módulo, indicadores usam os pedidos criados no período, com a situação atual: quantidade, recebidos, abertos, devolvidos, vendas com código recebido, devoluções à carteira, custo conhecido e margem bruta estimada. Não são recebimentos bancários do período. Custo só usa a estimativa histórica salva; se faltar custo em pedidos recebidos, a margem é marcada parcial. Não é lucro líquido e não soma recargas com vendas. Datas seguem Fortaleza e o período máximo é de 366 dias.
+
+A fila atual independe do filtro de datas: inclui conferência, preparação há mais de 90 segundos e pendentes com prazo vencido. Mostra os 20 pedidos mais antigos e o total completo, com cliente e botão para a conferência auditada existente. Não expõe código SMS nem ID privado do fornecedor. O cron continua responsável por verificar os resultados; o contador ou a inclusão na fila não autoriza devolução.
+
+Pausar compras é uma ação administrativa dedicada, com confirmação. Não consulta câmbio/fornecedor, não salva preços nem altera saldo ou pedidos. A função SQL bloqueia a configuração, desabilita novas reservas e registra quem pausou; repetir a pausa não duplica o evento. Pedidos já registrados continuam sendo recuperados, consultados e reconciliados. Reservas novas são barradas no SQL, mesmo com catálogo aberto em outra aba. Uma compra já reservada antes da pausa pode terminar normalmente. Para retomar, habilite compras nas configurações e salve; as verificações de chave/rotina continuam obrigatórias.
+
+Permissões: servidor requireAdmin, papel verificado na Edge e RPCs SQL somente service_role com actor admin. Auditoria de pausa privada. Atualizações automáticas somente enquanto a tela está visível, sem processamento de compras pelo dashboard. Testes usam banco isolado e respostas simuladas; a compra real continua pendente de teste controlado pelo usuário.
