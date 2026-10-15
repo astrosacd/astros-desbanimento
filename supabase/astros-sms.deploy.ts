@@ -65,6 +65,30 @@ async function provider(path:string,data:Obj={},key?:string):Promise<any>{
  try{const r=await fetch(`https://api.smspool.net/${path}`,{method:'POST',body:form,redirect:'error',signal:AbortSignal.timeout(path==='sms/check'?8000:20000)});
  const v=await r.json();if(!r.ok)throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');return v;}catch{throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');}
 }
+export function definitePurchaseRejection(v:Obj,status:number){
+ if(!v||v['success']!==0||![200,400,422].includes(status))return false;
+ const delivered=(row:Obj)=>row&&(row['success']===1||row['order_id']||row['number']||row['phonenumber']||row['token']||row['url']);
+ return !v['order_id']&&!v['number']&&!v['phonenumber']&&!v['token']&&!v['url']&&!Object.values(v['pools']??{}).some(row=>delivered(row as Obj));
+}
+export function purchaseDiagnostic(v:Obj,key:string,status:number|null,uncertain=false){
+ const known=['OUT_OF_STOCK','PRICE_NOT_FOUND','BALANCE_ERROR','PARAMETER_ERROR','AUTH_ERROR','RATE_LIMITED'];
+ const kind=String(v?.['type']??'');const category=uncertain?'RESPONSE_UNCONFIRMED':known.includes(kind)?kind:'PROVIDER_REJECTED';
+ const raw=typeof v?.['message']==='string'?v['message']:'';
+ // Text only, strip markup and redact the actual integration secret plus likely credentials/contact data.
+ const detail=raw.slice(0,6000).split(key||'\u0000').join('[redigido]').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<[^>]*>/g,' ').replace(/(key|api[_-]?key|token|access[_-]?token|authorization|password|secret)\s*[:=]\s*[^\s,;]+/gi,'$1=[redigido]').replace(/Bearer\s+\S+/gi,'Bearer [redigido]').replace(/https?:\/\/\S+/gi,'[link removido]').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[e-mail removido]').replace(/\b[A-Za-z0-9_-]{20,}\b/g,'[identificador removido]').replace(/\b\d{7,}\b/g,'[número removido]').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
+ return {category,httpStatus:status,detail};
+}
+class UnconfirmedPurchase extends Error{constructor(readonly status:number|null=null){super('Confirmação da compra pendente.');}}
+async function purchaseSms(data:Obj,key:string){
+ const form=new FormData();for(const[k,v]of Object.entries(data))form.set(k,String(v));form.set('key',key);
+ let r:Response;try{r=await fetch('https://api.smspool.net/purchase/sms',{method:'POST',body:form,redirect:'error',signal:AbortSignal.timeout(20000)});}catch{throw new UnconfirmedPurchase();}
+ const result=await r.json().catch(()=>null);
+ if(!result||typeof result!=='object'||Array.isArray(result)||!r.ok&&!definitePurchaseRejection(result,r.status))throw new UnconfirmedPurchase(r.status);
+ return {result,status:r.status};
+}
+async function recordPurchaseDiagnostic(orderId:string,diagnostic:{category:string;httpStatus:number|null;detail:string}){
+ try{await db('rpc/astros_sms_record_purchase_diagnostic','POST',{request_id:orderId,kind:diagnostic.category,status_code:diagnostic.httpStatus,detail_text:diagnostic.detail});}catch{/* Diagnostics must never change wallet settlement or trigger another purchase. */}
+}
 async function supplierBalance(key:string){const value=await provider('request/balance',{},key);if(value?.success===0)throw Error('Saldo do fornecedor indisponível.');return units(value?.balance);}
 export function historyQuery(data:Obj,owner:string,adminView=false){
  const allowed=['page','search','state','from','until','email'];if(Object.keys(data).some(k=>!allowed.includes(k)))throw Error('Filtro inválido.');
@@ -156,7 +180,8 @@ export async function handler(req:Request):Promise<Response>{
    admin(user);const orderId=uuid(data.orderId),o=(await db(`astros_sms_orders?id=eq.${orderId}&limit=1`))[0];if(!o)throw Error('Ativação não encontrada.');
    const audit=await db(`astros_sms_review_actions?order_id=eq.${orderId}&select=id,actor_id,operation,reason,state,previous_state,result_state,result,created_at,finished_at&order=created_at.desc&limit=20`);
    const ids=[...new Set(audit.map((a:Obj)=>a['actor_id']))];const actors:Obj[]=ids.length?await db(`painel_de_desbanimento?id=in.(${ids.join(',')})&select=id,nome`):[];
-   return json({order:{...view(o),code:null,hasProvider:Boolean(o['provider_id'])},audit:audit.map(({actor_id,...a}:Obj)=>({...a,actorName:actors.find(v=>v['id']===actor_id)?.['nome']??'Administrador'}))});
+   const diagnosis=(await db(`astros_sms_purchase_diagnostics?order_id=eq.${orderId}&select=category,http_status,detail,created_at&limit=1`))[0]??null;
+   return json({order:{...view(o),code:null,hasProvider:Boolean(o['provider_id'])},diagnosis,audit:audit.map(({actor_id,...a}:Obj)=>({...a,actorName:actors.find(v=>v['id']===actor_id)?.['nome']??'Administrador'}))});
   }
   if(action==='admin-review'){
    admin(user);const orderId=uuid(data.orderId),actionId=uuid(data.actionId),mode=String(data.mode),reason=String(data.reason??'').trim();
@@ -215,12 +240,13 @@ export async function handler(req:Request):Promise<Response>{
    if(!reservation.dispatch)return json({order:view(await orderById(requestId,user))});
    const o=await orderById(requestId,user);
    try{
-    const v=await provider('purchase/sms',{country:q['country_id'],service:q['service_id'],pool:q['pool_id'],max_price:(q['usd_units']/1000000).toFixed(6),pricing_option:0,quantity:1,activation_type:'SMS',create_token:0},p['api_key']);
-    if(v.success===0){await settle(o,'refunded');return json({order:view(await orderById(requestId,user))});}
+    const purchase=await purchaseSms({country:q['country_id'],service:q['service_id'],pool:q['pool_id'],max_price:(q['usd_units']/1000000).toFixed(6),pricing_option:0,quantity:1,activation_type:'SMS',create_token:0},p['api_key']);
+    const v=purchase.result;
+    if(definitePurchaseRejection(v,purchase.status)){await recordPurchaseDiagnostic(requestId,purchaseDiagnostic(v,p['api_key'],purchase.status));await settle(o,'refunded');return json({order:view(await orderById(requestId,user))});}
     const a=parseActivation(v);
     // A positive purchase is recorded even if its cost differs; never refund a delivered activation blindly.
     await settle(o,'pending',{provider:a.provider,number_value:a.phone,expiry:a.expiry});
-   }catch{await settle(o,'review').catch(()=>undefined);}
+   }catch(e){await recordPurchaseDiagnostic(requestId,{category:e instanceof UnconfirmedPurchase&&e.status===null?'TRANSPORT_UNCONFIRMED':'RESPONSE_UNCONFIRMED',httpStatus:e instanceof UnconfirmedPurchase?e.status:null,detail:''});await settle(o,'review').catch(()=>undefined);}
    return json({order:view(await orderById(requestId,user))});
   }
   if(action==='catalog'||action==='admin-catalog'){
