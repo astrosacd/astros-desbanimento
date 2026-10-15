@@ -13,3 +13,5 @@ export const smsAdminCatalog=createServerFn({method:'GET'}).handler(async()=>(aw
 export const smsAdminPrice=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),countryId:z.number().int().positive()})).handler(async({data})=>(await import('./server')).smsCall('admin-price',data,true));
 
 export const smsRefreshFx=createServerFn({method:'POST'}).handler(async()=>(await import('./server')).smsCall('refresh-fx',{},true));
+
+export const smsAdminBalance=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-balance',{},true));

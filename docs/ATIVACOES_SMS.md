@@ -73,3 +73,13 @@ Cotação efetiva estimada = dólar de referência × (1 + conversão) × (1 + o
 Essa cotação é usada no preço da ativação, somada aos acréscimos de venda já existentes. A recarga do cliente continua integral: R$ 50 pagos correspondem a R$ 50 de saldo. A estimativa não garante o custo exato de liquidação, impostos ou lucro líquido. O modo manual aceita o custo efetivo total informado pelo administrador e não acrescenta essas taxas novamente.
 
 Uma mudança na cotação efetiva invalida cotações de compra anteriores, exigindo nova confirmação. Repetir um pedido já reservado continua retornando o mesmo pedido, mesmo com FX indisponível. Não apaga histórico. Testes isolados verificam fórmula SQL/TypeScript, validade da fonte, bloqueio de débito com FX vencido, invalidação de ofertas, privilégios e volta ao manual.
+
+## Saldo do fornecedor e verificação antes da compra
+
+A administração exibe o saldo em USD consultado por `request/balance`, com data da consulta, atualização manual e consulta a cada 60 segundos somente enquanto a tela está aberta. O aviso abaixo de US$ 5 é um indicador fixo, não um mínimo de compra nem de depósito. Erros são exibidos como saldo não confirmado, nunca zero fictício. A chave permanece privada e o cliente não recebe o saldo do fornecedor. A consulta administrativa passa por requireAdmin e verificação do papel na Edge Function. Salvar uma chave atualiza a consulta do saldo.
+
+Antes de `astros_sms_reserve`, a compra consulta novamente o saldo do fornecedor e o compara em unidades inteiras de USD ao custo do pedido, não ao preço de venda em BRL. Saldo insuficiente, resposta inválida ou falha de rede bloqueiam essa tentativa antes do débito. A mensagem ao cliente não menciona fornecedor ou saldo empresarial. Repetição de um pedido já existente retorna o pedido sem exigir saldo no fornecedor. Se o preflight falhar, há uma segunda leitura do request ID para recuperar uma criação concorrente antes de apresentar a mensagem.
+
+O preflight não reserva o saldo do fornecedor e não elimina corridas com outras compras ou uso externo da mesma conta. Depois da reserva, continuam valendo as regras existentes: recusa explícita devolve uma única vez; timeout/resultado incerto permanece em conferência, sem repetir a compra nem devolver às cegas. Verificação/cancelamento/reconciliação dos pedidos existentes não dependem do saldo do fornecedor. Nenhum depósito automático é realizado.
+
+Ativação: atualizar o código completo da Edge Function `astros-sms` usando `supabase/astros-sms.deploy.ts` e publicar a interface. Esta alteração não requer SQL nem novas credenciais. Os testes usam fornecedor simulado, sem compra ou consulta autenticada real.

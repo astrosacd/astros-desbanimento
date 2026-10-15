@@ -65,6 +65,7 @@ async function provider(path:string,data:Obj={},key?:string):Promise<any>{
  try{const r=await fetch(`https://api.smspool.net/${path}`,{method:'POST',body:form,redirect:'error',signal:AbortSignal.timeout(path==='sms/check'?8000:20000)});
  const v=await r.json();if(!r.ok)throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');return v;}catch{throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');}
 }
+async function supplierBalance(key:string){const value=await provider('request/balance',{},key);if(value?.success===0)throw Error('Saldo do fornecedor indisponível.');return units(value?.balance);}
 async function identity(req:Request){
  const token=req.headers.get('Authorization')?.replace(/^Bearer /,'');if(!token)throw Error('Entre novamente para continuar.');
  const r=await fetch(`${env('SUPABASE_URL')}/auth/v1/user`,{headers:{apikey:env('SUPABASE_ANON_KEY'),Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});
@@ -101,6 +102,10 @@ export async function handler(req:Request):Promise<Response>{
   const user=await identity(req);
   if(!await db('rpc/astros_sms_gate','POST',{actor:user['id']}))return json({error:'Muitas consultas em sequência. Aguarde um minuto e tente novamente.'},429);
   if(action==='admin-catalog'||action==='admin-price')admin(user);
+  if(action==='admin-balance'){
+   admin(user);const p=await privateSettings();if(!p['api_key'])throw Error('Configure a chave do SMSPool para consultar o saldo.');
+   try{const balanceUnits=await supplierBalance(p['api_key']);return json({balanceUnits,currency:'USD',lowBalance:balanceUnits<5000000,lowThresholdUnits:5000000,checkedAt:new Date().toISOString()});}catch{throw Error('Não foi possível consultar o saldo do fornecedor. Tente atualizar.');}
+  }
   if(action==='admin-settings'){
    admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),fxMode:s['fx_mode']??'manual',depositBps:s['deposit_bps']??325,conversionBps:s['conversion_bps']??400,extraBps:s['extra_bps']??0,fixedUsdUnits:Number(s['fixed_usd_units']??250000),depositUsdUnits:Number(s['deposit_usd_units']??10000000),marketUnits:s['market_units']??null,fxDate:s['fx_date']??null,fxCheckedAt:s['fx_checked_at']??null,hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
   }
@@ -142,6 +147,15 @@ export async function handler(req:Request):Promise<Response>{
    const q=(await db(`astros_sms_quotes?id=eq.${quoteId}&user_id=eq.${user['id']}&limit=1`))[0];if(!q)throw Error('Atualize o preço antes de comprar.');
    const live=await provider('request/price',{service:q['service_id'],country:q['country_id'],pool:q['pool_id']},p['api_key']);
    if(units(live.price)!==Number(q['usd_units'])||(live.pool!==undefined&&id(live.pool)!==q['pool_id']))throw Error('O preço mudou. Consulte novamente antes de comprar.');
+   // Fresh supplier balance is a preflight, never a substitute for atomic wallet reservation.
+   // A concurrent purchase can still exhaust provider funds; explicit rejection keeps the existing refund protocol.
+   let funded=false;try{funded=await supplierBalance(p['api_key'])>=Number(q['usd_units']);}catch{/* Fail closed before reserving client funds. */}
+   if(!funded){
+    // A parallel retry of this same request may already have reserved/dispatched: recover it instead of claiming no debit.
+    const existing=await db(`astros_sms_orders?id=eq.${requestId}&limit=1`);
+    if(existing.length){if(existing[0].user_id!==user['id']||existing[0].quote_id!==quoteId)throw Error('Referência divergente.');return json({order:view(existing[0])});}
+    throw Error('Ativações SMS temporariamente indisponíveis. Nenhum valor foi descontado nesta tentativa. Tente novamente mais tarde.');
+   }
    const reservation=await db('rpc/astros_sms_reserve','POST',{actor:user['id'],request_id:requestId,quote:quoteId});
    if(!reservation.dispatch)return json({order:view(await orderById(requestId,user))});
    const o=await orderById(requestId,user);
