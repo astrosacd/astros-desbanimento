@@ -83,3 +83,20 @@ Antes de `astros_sms_reserve`, a compra consulta novamente o saldo do fornecedor
 O preflight não reserva o saldo do fornecedor e não elimina corridas com outras compras ou uso externo da mesma conta. Depois da reserva, continuam valendo as regras existentes: recusa explícita devolve uma única vez; timeout/resultado incerto permanece em conferência, sem repetir a compra nem devolver às cegas. Verificação/cancelamento/reconciliação dos pedidos existentes não dependem do saldo do fornecedor. Nenhum depósito automático é realizado.
 
 Ativação: atualizar o código completo da Edge Function `astros-sms` usando `supabase/astros-sms.deploy.ts` e publicar a interface. Esta alteração não requer SQL nem novas credenciais. Os testes usam fornecedor simulado, sem compra ou consulta autenticada real.
+
+
+## Confirmação, prazo, filtros e conferência administrativa
+
+Ativação desta etapa: execute `supabase/migrations/20261015_sms_review.sql`, atualize a Edge Function `astros-sms` com o conteúdo integral de `supabase/astros-sms.deploy.ts` e publique a interface. Teste primeiro no Lovable; a imagem da VPS pode ser atualizada depois. A migração preserva pedidos e saldo e acrescenta auditoria privada e funções restritas ao serviço.
+
+Antes de comprar, a confirmação mostra serviço, país, preço integral e saldo estimado após a compra. O número é temporário. Uma tentativa incerta conserva o mesmo UUID e não libera outra compra às cegas. Consultar novamente invalida a cotação antiga sob bloqueio transacional, ou recupera o pedido já existente; não altera saldo nem faz compra.
+
+O contador de validade da oferta é separado do prazo para receber SMS. Chegar a zero no contador não confirma cancelamento nem devolução: o resultado depende da conferência do fornecedor. O relógio da interface não autoriza operações financeiras.
+
+O histórico oferece busca por número, serviço e país, situação e intervalo de datas, com paginação de 20 registros no servidor. O admin também filtra e-mail. O cliente permanece limitado ao próprio UUID confirmado, sem poder consultar outra conta por filtros. Códigos SMS não são expostos no histórico administrativo.
+
+Em Conferir pedido, o admin pode consultar o estado, solicitar cancelamento confirmado ou registrar uma observação, com justificativa e auditoria de administrador/data/resultado. Uma ação possui UUID estável; repetir a mesma ação não repete a chamada externa. Cancelamento incerto bloqueia outro cancelamento até conferência, sem impedir consultas. Devolução exige confirmação do fornecedor e usa a regra atômica de devolução única. Pedido concluído com SMS não é estornado por esse fluxo.
+
+Pedidos sem identificação confirmada no fornecedor continuam em investigação: permitem registrar observação, mas não associar IDs por suposição nem devolver sem prova. Não há botão de estorno arbitrário. A auditoria é privada e acessível somente por operações administrativas verificadas.
+
+Validação: 409 testes da aplicação passaram e o build foi concluído. O script `scripts/check-sms-review-sql.mjs` verificou a migração em PostgreSQL isolado, incluindo privilégios, repetição, cancelamento incerto, devolução única e proteção de pedidos recebidos. Testes da integração usam respostas simuladas; nenhuma compra real foi realizada nesta etapa.

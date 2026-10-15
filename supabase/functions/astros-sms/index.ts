@@ -56,7 +56,7 @@ function env(name:string){const s=Deno.env.get(name);if(!s)throw Error('Serviço
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
 async function db(path:string,method='GET',data?:unknown):Promise<any>{
  const r=await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}`,{method,headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:`Bearer ${env('SUPABASE_SERVICE_ROLE_KEY')}`,'Content-Type':'application/json',Prefer:'return=representation'},...(data===undefined?{}:{body:JSON.stringify(data)}),signal:AbortSignal.timeout(12000)});
- const v=await r.json().catch(()=>null);if(!r.ok)throw Error(path.startsWith('rpc/astros_sms_reserve')&&typeof v?.message==='string'&&['Saldo insuficiente. Faça uma recarga','Atualize o preço antes de comprar','Referência divergente','Cotação já utilizada','Conclua suas ativações em andamento','Serviço indisponível'].includes(v.message)?v.message:'Não foi possível confirmar os dados. Tente atualizar.');return v;
+ const v=await r.json().catch(()=>null);if(!r.ok)throw Error((path.startsWith('rpc/astros_sms_reserve')||path==='rpc/astros_sms_review_begin')&&typeof v?.message==='string'&&['Saldo insuficiente. Faça uma recarga','Atualize o preço antes de comprar','Referência divergente','Cotação já utilizada','Conclua suas ativações em andamento','Serviço indisponível','Um cancelamento já aguarda confirmação. Consulte o fornecedor sem repetir o cancelamento','Não há confirmação do fornecedor para esta ação'].includes(v.message)?v.message:'Não foi possível confirmar os dados. Tente atualizar.');return v;
 }
 async function settings(){return (await db('astros_sms_settings?id=eq.true'))[0] as Obj;}
 async function privateSettings(){return (await db('astros_sms_private?id=eq.true'))[0] as Obj;}
@@ -66,6 +66,23 @@ async function provider(path:string,data:Obj={},key?:string):Promise<any>{
  const v=await r.json();if(!r.ok)throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');return v;}catch{throw Error('Não foi possível consultar o serviço de SMS. Tente novamente.');}
 }
 async function supplierBalance(key:string){const value=await provider('request/balance',{},key);if(value?.success===0)throw Error('Saldo do fornecedor indisponível.');return units(value?.balance);}
+export function historyQuery(data:Obj,owner:string,adminView=false){
+ const allowed=['page','search','state','from','until','email'];if(Object.keys(data).some(k=>!allowed.includes(k)))throw Error('Filtro inválido.');
+ const page=Number(data.page??0);if(!Number.isSafeInteger(page)||page<0||page>100000)throw Error('Página inválida.');
+ const clean=(v:unknown,max:number)=>{const text=String(v??'').trim().normalize('NFC');if(text.length>max||!/^[\p{L}\p{N} @._+\-]*$/u.test(text))throw Error('Use letras, números ou e-mail na busca.');return text;};
+ let search=String(data.search??'').trim();if(/^[+\d ()-]+$/.test(search))search=search.replace(/\D/g,'');search=clean(search,80);
+ const email=clean(data.email,254);if(email&&!adminView)throw Error('Filtro inválido.');
+ const state=String(data.state??'all');if(!['all','dispatching','pending','received','refunded','review'].includes(state))throw Error('Situação inválida.');
+ const date=(v:unknown)=>{const text=String(v??''),parsed=new Date(text+'T00:00:00Z');if(text&&(!/^\d{4}-\d{2}-\d{2}$/.test(text)||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==text))throw Error('Data inválida.');return text;};
+ const from=date(data.from),until=date(data.until);if(from&&until&&from>until)throw Error('A data inicial deve ser anterior à final.');
+ const fields='id,user_id,service_name,country_name,price_cents,state,phone,code,expires_at,created_at'+(adminView?',provider_id,painel_de_desbanimento!inner(nome,email)':'');
+ const params=new URLSearchParams({select:fields,order:'created_at.desc,id.desc',limit:'21',offset:String(page*20)});
+ if(!adminView)params.set('user_id','eq.'+owner);if(state!=='all')params.set('state','eq.'+state);
+ if(search)params.set('or',`(phone.ilike.*${search}*,service_name.ilike.*${search}*,country_name.ilike.*${search}*)`);
+ if(email)params.set('painel_de_desbanimento.email','ilike.*'+email+'*');
+ const dates=[];if(from)dates.push('created_at.gte.'+new Date(from+'T00:00:00-03:00').toISOString());if(until)dates.push('created_at.lte.'+new Date(until+'T23:59:59.999-03:00').toISOString());if(dates.length)params.set('and','('+dates.join(',')+')');
+ return params;
+}
 async function identity(req:Request){
  const token=req.headers.get('Authorization')?.replace(/^Bearer /,'');if(!token)throw Error('Entre novamente para continuar.');
  const r=await fetch(`${env('SUPABASE_URL')}/auth/v1/user`,{headers:{apikey:env('SUPABASE_ANON_KEY'),Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});
@@ -122,13 +139,39 @@ export async function handler(req:Request):Promise<Response>{
    await db('rpc/astros_sms_configure_fx','POST',{actor:user['id'],active:data.enabled,manual_fx:fx,margin,fee,new_key:key,mode,deposit,fixed_fee,deposit_percent,conversion,extra,...market});return json({success:true});
   }
   if(action==='refresh-fx'){admin(user);const s=await ensureFx(await settings(),true);return json({usdBrlUnits:Number(s['usd_brl_units']),fxDate:s['fx_date']??null});}
-  if(action==='admin-orders'){
-   admin(user);const page=Math.max(0,Math.min(100000,Number(data.page)||0));const rows:Obj[]=await db(`astros_sms_orders?order=created_at.desc&limit=21&offset=${Math.floor(page)*20}`);
-   const ids=[...new Set(rows.map(o=>o['user_id']))];const accounts:Obj[]=ids.length?await db(`painel_de_desbanimento?id=in.(${ids.join(',')})&select=id,email,nome`):[];
-   return json({orders:rows.slice(0,20).map(o=>({...view(o),code:null,email:accounts.find(a=>a['id']===o['user_id'])?.['email']??'',name:accounts.find(a=>a['id']===o['user_id'])?.['nome']??''})),hasMore:rows.length>20});
+  if(action==='admin-orders'||action==='history'){
+   const adminView=action==='admin-orders';if(adminView)admin(user);
+   const rows:Obj[]=await db('astros_sms_orders?'+historyQuery(data,user['id'],adminView));
+   return json({orders:rows.slice(0,20).map(o=>adminView?{...view(o),code:null,hasProvider:Boolean(o['provider_id']),email:o['painel_de_desbanimento']?.['email']??'',name:o['painel_de_desbanimento']?.['nome']??''}:view(o)),hasMore:rows.length>20});
   }
-  if(action==='history'){
-   const page=Math.max(0,Math.min(100000,Number(data.page)||0));const rows:Obj[]=await db(`astros_sms_orders?user_id=eq.${encodeURIComponent(user['id'])}&order=created_at.desc&limit=21&offset=${Math.floor(page)*20}`);return json({orders:rows.slice(0,20).map(view),hasMore:rows.length>20});
+  if(action==='admin-review-detail'){
+   admin(user);const orderId=uuid(data.orderId),o=(await db(`astros_sms_orders?id=eq.${orderId}&limit=1`))[0];if(!o)throw Error('Ativação não encontrada.');
+   const audit=await db(`astros_sms_review_actions?order_id=eq.${orderId}&select=id,actor_id,operation,reason,state,previous_state,result_state,result,created_at,finished_at&order=created_at.desc&limit=20`);
+   const ids=[...new Set(audit.map((a:Obj)=>a['actor_id']))];const actors:Obj[]=ids.length?await db(`painel_de_desbanimento?id=in.(${ids.join(',')})&select=id,nome`):[];
+   return json({order:{...view(o),code:null,hasProvider:Boolean(o['provider_id'])},audit:audit.map(({actor_id,...a}:Obj)=>({...a,actorName:actors.find(v=>v['id']===actor_id)?.['nome']??'Administrador'}))});
+  }
+  if(action==='admin-review'){
+   admin(user);const orderId=uuid(data.orderId),actionId=uuid(data.actionId),mode=String(data.mode),reason=String(data.reason??'').trim();
+   if(!['check','cancel','note'].includes(mode)||reason.length<10||reason.length>500)throw Error('Selecione uma ação e informe uma justificativa de 10 a 500 caracteres.');
+   const o=(await db(`astros_sms_orders?id=eq.${orderId}&limit=1`))[0];if(!o)throw Error('Ativação não encontrada.');
+   if(mode!=='note'&&!o['provider_id'])throw Error('Pedido sem confirmação do fornecedor. Registre a análise e confira com o suporte do fornecedor; não repita a compra.');
+   const claim=await db('rpc/astros_sms_review_begin','POST',{actor:user['id'],action_id:actionId,request_id:orderId,mode,note:reason});
+   if(!claim.execute)return json({success:true,replayed:true,operationState:claim.state});
+   const finish=(target:string,outcome:string,code_value:string|null=null)=>db('rpc/astros_sms_review_finish','POST',{actor:user['id'],action_id:actionId,target,expected_provider:o['provider_id']??null,code_value,outcome});
+   if(mode==='note'){await finish('note','noted');return json({success:true,operationState:'completed'});}
+   try{
+    const p=await privateSettings();if(!p['api_key'])throw Error();
+    let v=await provider('sms/check',{orderid:o['provider_id']},p['api_key']),target=stateFromCheck(v),outcome='checked';
+    if(mode==='cancel'&&target==='pending'){
+     const cancelled=await provider('sms/cancel',{orderid:o['provider_id']},p['api_key']);
+     if(cancelled.success===1){target='refunded';outcome='cancel_confirmed';}else{v=await provider('sms/check',{orderid:o['provider_id']},p['api_key']);target=stateFromCheck(v);outcome='cancel_not_confirmed';}
+    }
+    await finish(target,outcome,target==='received'?v.sms:null);
+    return json({success:true,operationState:'completed'});
+   }catch{
+    await finish('review','unconfirmed').catch(()=>undefined);
+    return json({success:false,operationState:'uncertain',message:'A confirmação ainda não foi obtida. A ação foi registrada; consulte novamente sem repetir o cancelamento.'});
+   }
   }
   if(action==='check'||action==='cancel'){
    const o=await orderById(data.orderId,user);const p=await privateSettings();if(!p['api_key'])throw Error('Acompanhamento temporariamente indisponível.');
@@ -137,6 +180,10 @@ export async function handler(req:Request):Promise<Response>{
     if(v.success===1)await settle(o,'refunded');else await check(o,p['api_key']);
    }else await check(o,p['api_key']);
    return json({order:view(await orderById(o['id'],user))});
+  }
+  if(action==='release-quote'){
+   const requestId=uuid(data.requestId),quoteId=uuid(data.quoteId);const result=await db('rpc/astros_sms_release_quote','POST',{actor:user['id'],request_id:requestId,quote:quoteId});
+   return json(result.released?{released:true}:{released:false,order:view(await orderById(requestId,user))});
   }
   if(action==='buy'){
    const requestId=uuid(data.requestId),quoteId=uuid(data.quoteId);

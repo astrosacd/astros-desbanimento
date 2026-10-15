@@ -1,6 +1,7 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
-const page=z.object({page:z.number().int().min(0).max(100000).default(0)});
+import {smsHistoryFilter} from './history-validation';
+const page=smsHistoryFilter;
 export const smsCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('catalog'));
 export const smsQuote=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),countryId:z.number().int().positive()})).handler(async({data})=>(await import('./server')).smsCall('quote',data));
 export const smsBuy=createServerFn({method:'POST'}).inputValidator(z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()})).handler(async({data})=>(await import('./server')).smsCall('buy',data));
@@ -15,3 +16,7 @@ export const smsAdminPrice=createServerFn({method:'POST'}).inputValidator(z.obje
 export const smsRefreshFx=createServerFn({method:'POST'}).handler(async()=>(await import('./server')).smsCall('refresh-fx',{},true));
 
 export const smsAdminBalance=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-balance',{},true));
+
+export const smsReviewDetail=createServerFn({method:'GET'}).inputValidator(z.object({orderId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-review-detail',data,true));
+export const smsReviewAction=createServerFn({method:'POST'}).inputValidator(z.object({orderId:z.string().uuid(),actionId:z.string().uuid(),mode:z.enum(['check','cancel','note']),reason:z.string().trim().min(10).max(500)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-review',data,true));
+export const smsReleaseQuote=createServerFn({method:'POST'}).inputValidator(z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()}).strict()).handler(async({data})=>(await import('./server')).smsCall('release-quote',data));

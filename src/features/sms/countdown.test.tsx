@@ -1,0 +1,4 @@
+import {afterEach,expect,it,vi} from 'vitest';import {render,screen,act,cleanup} from '@testing-library/react';import {SmsCountdown,secondsLeft,timeLabel} from './countdown';
+afterEach(()=>{cleanup();vi.useRealTimers();});
+it('counts down to the provider deadline and does not treat expiration as a refund',()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-15T12:00:00Z'));render(<SmsCountdown expiresAt="2026-10-15T12:00:02Z"/>);expect(screen.getByRole('timer').textContent).toBe('00:02');act(()=>vi.advanceTimersByTime(2000));expect(screen.getByRole('timer').textContent).toBe('00:00');expect(screen.getByText(/sozinho, não confirma cancelamento ou devolução/)).toBeTruthy();});
+it('handles long deadlines, invalid dates and expired periods',()=>{expect(timeLabel(3661)).toBe('01:01:01');expect(secondsLeft('invalid',Date.now())).toBeNull();expect(secondsLeft('2026-01-01T00:00:00Z',Date.parse('2026-02-01'))).toBe(0);});
