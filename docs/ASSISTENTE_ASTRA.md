@@ -34,3 +34,9 @@ Testes: `npm test -- src/features/assistant`; SQL isolado: `node scripts/check-a
 +O servidor consulta as ações **admin-balance** existentes de **astros-social** e **astros-sms**, sem comprar, sincronizar catálogo ou alterar pedidos. Cada resposta valida moeda USD, unidades e horário e projeta somente o saldo e seus metadados. Falhas individuais não se transformam em saldo zero. Essas duas fontes são saldos atuais externos; nunca são substituídas pelo saldo interno da carteira. Não é necessário republicar astros-admin-context para esta ampliação. Um e-mail explícito na pergunta ativa automaticamente o filtro de cliente quando o campo está vazio; para nomes, use o campo de filtro.
 +
 +O retrato usa a malha canônica do MediaPipe com partículas amostradas, projeção 3D e animação local em canvas. Arquivo e origem em `face-mesh.ts`, licença Apache-2.0 em `public/licenses/mediapipe-Apache-2.0.txt`. Nenhuma imagem de câmera é capturada. Respostas têm renderização restrita de negrito e parágrafos; HTML do modelo nunca é executado.
+
+### Leitura e articulação
++
++A voz recebe uma versão sem Markdown: asteriscos, crases, títulos, marcações de link e HTML não são pronunciados. Datas e valores em real/dólar são preparados como texto falado. A apresentação escrita mantém negrito.
++
++O rosto usa partículas brancas, contornos da malha e deformação de lábios e mandíbula. A articulação acompanha início, pausa, fim e limites de palavras informados pelo SpeechSynthesis; entre eventos, estima a posição das letras para interpolar formatos de vogais e consoantes. Navegadores sem eventos de palavra usam estimativa temporal. Não há análise do áudio nem sincronização fonética garantida. A voz disponível depende do navegador e sistema operacional. Uma reprodução literalmente idêntica do avatar e da voz da referência exigiria os ativos e o motor originais; esta implementação é uma reconstrução própria.

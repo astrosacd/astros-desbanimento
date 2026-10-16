@@ -1,7 +1,7 @@
 import { vertices, triangles } from "./face-mesh";
+import type { Articulation } from "./voice";
 export type FaceMode = "idle" | "listening" | "thinking" | "speaking" | "error";
 type Point = [number, number, number];
-// Fixed seed keeps the portrait stable through hydration and state changes.
 let seed = 127;
 const random = () => {
   seed = (seed * 16807) % 2147483647;
@@ -11,16 +11,15 @@ const points: Point[] = vertices.map((v) => [v[0]!, v[1]!, v[2]!] as Point);
 for (const face of triangles) {
   const a = vertices[face[0]!]!,
     b = vertices[face[1]!]!,
-    c = vertices[face[2]!]!;
-  const u = b.map((x, i) => x - a[i]!),
+    c = vertices[face[2]!]!,
+    u = b.map((x, i) => x - a[i]!),
     v = c.map((x, i) => x - a[i]!);
   const cross = [
     u[1]! * v[2]! - u[2]! * v[1]!,
     u[2]! * v[0]! - u[0]! * v[2]!,
     u[0]! * v[1]! - u[1]! * v[0]!,
   ];
-  const count = Math.max(3, Math.ceil(Math.hypot(...cross) * 17));
-  for (let j = 0; j < count; j++) {
+  for (let j = 0, n = Math.max(2, Math.ceil(Math.hypot(...cross) * 13)); j < n; j++) {
     let p = random(),
       q = random();
     if (p + q > 1) {
@@ -30,7 +29,18 @@ for (const face of triangles) {
     points.push(a.map((x, i) => x + u[i]! * p + v[i]! * q) as Point);
   }
 }
-const dust = Array.from({ length: 70 }, () => [random(), random(), random(), random()]);
+const contours = [
+  [
+    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152,
+    148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10,
+  ],
+  [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246, 33],
+  [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398, 362],
+  [61, 40, 37, 0, 267, 270, 291, 321, 314, 17, 84, 91, 61],
+  [78, 81, 82, 13, 312, 311, 308, 402, 317, 14, 87, 178, 78],
+  [168, 6, 197, 195, 5, 4, 1, 19, 94, 2],
+];
+const dust = Array.from({ length: 65 }, () => [random(), random(), random()]);
 export function drawPortrait(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -38,34 +48,42 @@ export function drawPortrait(
   time: number,
   mode: FaceMode,
   reduced = false,
+  articulation: Articulation = { jaw: 0, round: 0, width: 1 },
 ) {
   const t = reduced ? 0 : time / 1000,
-    scale = Math.min(width / 17, height / 21),
+    scale = Math.min(width / 16.7, height / 19.8),
     cx = width * 0.5,
-    cy = height * 0.49;
+    cy = height * 0.47,
+    yaw = -0.18 + Math.sin(t * 0.28) * 0.08,
+    pitch = 0.03 + Math.sin(t * 0.21) * 0.018;
+  const jaw = mode === "speaking" && !reduced ? articulation.jaw : 0,
+    round = mode === "speaking" ? articulation.round : 0;
   ctx.clearRect(0, 0, width, height);
-  const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.5);
-  halo.addColorStop(0, "rgba(19,99,109,.2)");
-  halo.addColorStop(0.62, "rgba(12,47,63,.08)");
-  halo.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = halo;
-  ctx.fillRect(0, 0, width, height);
-  const yaw = -0.22 + Math.sin(t * 0.34) * 0.11,
-    pitch = 0.035 + Math.sin(t * 0.27) * 0.025;
   function project(x: number, y: number, z: number): Point {
+    const lip = Math.exp(-(((y + 4.4) / 1.5) ** 2)) * Math.exp(-((x / 3.1) ** 4)),
+      lower = Math.max(0, Math.min(1, (-y - 3.9) / 1.2));
+    x *= 1 - 0.1 * Math.max(0, Math.min(1, (-y - 2) / 7));
+    x *= 1 + lip * ((mode === "speaking" ? articulation.width : 1) - 1);
+    z += lip * round * 0.6;
+    y -= jaw * 1.6 * lower * Math.exp(-((x / 5.6) ** 4));
+    z -= jaw * 0.35 * lower;
+    if (y > 4) y = 4 + (y - 4) * 0.78;
+    const eye = Math.exp(-(((Math.abs(x) - 3.2) / 1.5) ** 4));
+    const blink = reduced ? 0 : Math.exp(-((((t % 5.8) - 5.55) / 0.075) ** 2));
+    if (y > 1.8 && y < 3.5) y = 2.65 + (y - 2.65) * (1 - blink * eye * 0.85);
     const xx = x * Math.cos(yaw) + (z - 3) * Math.sin(yaw),
-      zz = (z - 3) * Math.cos(yaw) - x * Math.sin(yaw);
-    const yy = (y + 0.6) * Math.cos(pitch) - zz * Math.sin(pitch);
-    const perspective = 1 + zz * 0.014;
+      zz = (z - 3) * Math.cos(yaw) - x * Math.sin(yaw),
+      yy = (y + 0.5) * Math.cos(pitch) - zz * Math.sin(pitch),
+      perspective = 1 + zz * 0.012;
     return [cx + xx * scale * perspective, cy - yy * scale * perspective, zz];
   }
   ctx.lineWidth = 0.45;
-  ctx.strokeStyle = "rgba(137,231,242,.065)";
+  ctx.strokeStyle = "rgba(233,244,248,.18)";
   ctx.beginPath();
-  for (const face of triangles) {
+  for (const f of triangles) {
     for (let k = 0; k < 3; k++) {
-      const a = vertices[face[k]!]!,
-        b = vertices[face[(k + 1) % 3]!]!,
+      const a = vertices[f[k]!]!,
+        b = vertices[f[(k + 1) % 3]!]!,
         p = project(a[0]!, a[1]!, a[2]!),
         q = project(b[0]!, b[1]!, b[2]!);
       ctx.moveTo(p[0], p[1]);
@@ -73,42 +91,45 @@ export function drawPortrait(
     }
   }
   ctx.stroke();
-  // Small bright particles reveal the real geometry of nose, eyelids, cheekbones and lips.
   for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const lip =
-      mode === "speaking" && a[1] < -2.6 && a[1] > -5
-        ? Math.sin(t * 14) * 0.07 * Math.exp(-(a[0] ** 2) * 0.3)
-        : 0;
-    const p = project(a[0], a[1] - lip, a[2]);
-    const rim = Math.min(1, Math.abs(a[0]) / 6.5),
-      shimmer = 0.85 + 0.15 * Math.sin(i * 0.7 + t * 0.5);
-    const alpha = Math.min(0.93, (0.26 + (p[2] + 3) * 0.065) * shimmer);
-    ctx.fillStyle =
-      mode === "error"
-        ? `rgba(255,190,150,${alpha})`
-        : rim > 0.65
-          ? `rgba(99,218,239,${alpha * 0.85})`
-          : `rgba(220,247,250,${alpha})`;
-    const r = (0.43 + (i % 5) * 0.085) * (width < 220 ? 0.8 : 1);
+    const a = points[i]!,
+      p = project(a[0], a[1], a[2]),
+      brightness = 0.67 + (i % 7) / 22;
+    ctx.fillStyle = `rgba(244,250,255,${brightness})`;
     ctx.beginPath();
-    ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
+    ctx.arc(p[0], p[1], (0.55 + (i % 5) * 0.13) * (width < 220 ? 0.75 : 1), 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "rgba(111,220,236,.35)";
-  for (const [x, y, speed, size] of dust) {
-    const yy = reduced ? y! : (y! + t * 0.006 * speed!) % 1;
-    ctx.fillRect(x! * width, yy * height, 0.5 + size!, 0.5 + size!);
+  ctx.strokeStyle = "rgba(248,253,255,.73)";
+  ctx.lineWidth = 0.65;
+  ctx.beginPath();
+  for (const contour of contours) {
+    contour.forEach((index, i) => {
+      const a = vertices[index]!,
+        p = project(a[0]!, a[1]!, a[2]!);
+      if (i === 0) ctx.moveTo(p[0], p[1]);
+      else ctx.lineTo(p[0], p[1]);
+    });
   }
-  const active = mode === "speaking" || mode === "listening" || mode === "thinking";
-  const base = height - 20;
-  const bars = 33;
-  for (let i = 0; i < bars; i++) {
-    const envelope = Math.sin(((i + 1) / (bars + 1)) * Math.PI),
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(203,227,238,.24)";
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (const [x, y, s] of dust) {
+    const yy = reduced ? y! : (y! + t * 0.008 * s!) % 1;
+    ctx.moveTo(x! * width, yy * height);
+    ctx.lineTo(x! * width + 1 + s! * 2, yy * height - 2 - s! * 4);
+  }
+  ctx.stroke();
+  const active = mode === "speaking" || mode === "listening" || mode === "thinking",
+    base = height - 14;
+  for (let i = 0; i < 39; i++) {
+    const envelope = Math.sin(((i + 1) / 40) * Math.PI),
       h = active
-        ? (3 + Math.abs(Math.sin(t * (mode === "thinking" ? 3 : 10) + i * 0.8)) * 18) * envelope
-        : 2 + envelope * 3;
-    ctx.fillStyle = `rgba(100,225,217,${active ? 0.7 : 0.3})`;
-    ctx.fillRect(cx + (i - bars / 2) * 4, base - h / 2, 1.5, h);
+        ? (2 + (mode === "speaking" ? jaw * 22 : 8) * Math.abs(Math.sin(t * 9 + i * 0.9))) *
+          envelope
+        : 1.5;
+    ctx.fillStyle = `rgba(46,238,162,${active ? 0.85 : 0.25})`;
+    ctx.fillRect(cx + (i - 19.5) * 3, base - h / 2, 1.4, h);
   }
 }

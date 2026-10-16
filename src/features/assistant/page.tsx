@@ -1,3 +1,4 @@
+import { speechPlainText, type SpeechMotion } from "./voice";
 import { AssistantAnswer } from "./answer";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, Mic, MicOff, Send, ShieldCheck, Volume2, VolumeX, Trash2 } from "lucide-react";
@@ -37,13 +38,17 @@ export function AssistantAdmin() {
     alive = useRef(true),
     recognition = useRef<SpeechInput | null>(null),
     end = useRef<HTMLDivElement>(null),
-    seq = useRef(0);
+    seq = useRef(0),
+    speechMotion = useRef<SpeechMotion | null>(null),
+    speechSequence = useRef(0);
   useEffect(() => {
     alive.current = true;
     setMicAvailable(!!speechInput());
     return () => {
       alive.current = false;
       recognition.current?.stop();
+      speechMotion.current = null;
+      speechSequence.current++;
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -51,21 +56,64 @@ export function AssistantAdmin() {
     end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [messages, busy]);
   function stopVoice() {
+    speechSequence.current++;
+    speechMotion.current = null;
     window.speechSynthesis?.cancel();
     setMode("idle");
   }
   function speak(text: string) {
     if (!voice || !window.speechSynthesis) return;
-    const speech = new SpeechSynthesisUtterance(text);
+    const clean = speechPlainText(text);
+    if (!clean) return;
+    const current = ++speechSequence.current;
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(clean);
     speech.lang = "pt-BR";
-    speech.rate = 1.02;
+    speech.rate = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const chosenVoice =
+      voices.find(
+        (v) =>
+          /^pt[-_]BR$/i.test(v.lang) &&
+          /Antonio|Antônio|Daniel|Ricardo|Natural|Google/i.test(v.name),
+      ) ?? voices.find((v) => /^pt[-_]BR$/i.test(v.lang));
+    if (chosenVoice) speech.voice = chosenVoice;
     speech.onstart = () => {
-      if (alive.current) setMode("speaking");
+      if (alive.current && current === speechSequence.current) {
+        speechMotion.current = {
+          active: true,
+          paused: false,
+          text: clean,
+          charIndex: 0,
+          anchorAt: performance.now(),
+        };
+        setMode("speaking");
+      }
+    };
+    speech.onboundary = (e) => {
+      if (current !== speechSequence.current || !speechMotion.current) return;
+      speechMotion.current = {
+        ...speechMotion.current,
+        charIndex: e.charIndex,
+        anchorAt: performance.now(),
+      };
+    };
+    speech.onpause = () => {
+      if (speechMotion.current && current === speechSequence.current)
+        speechMotion.current.paused = true;
+    };
+    speech.onresume = () => {
+      if (speechMotion.current && current === speechSequence.current) {
+        speechMotion.current.paused = false;
+        speechMotion.current.anchorAt = performance.now();
+      }
     };
     speech.onend = speech.onerror = () => {
-      if (alive.current) setMode("idle");
+      if (alive.current && current === speechSequence.current) {
+        speechMotion.current = null;
+        setMode("idle");
+      }
     };
-    window.speechSynthesis.cancel();
     window.speechSynthesis.speak(speech);
   }
   async function send(event?: FormEvent, prompt?: string) {
@@ -73,6 +121,8 @@ export function AssistantAdmin() {
     const text = (prompt ?? question).trim();
     if (text.length < 2 || lock.current) return;
     recognition.current?.stop();
+    speechSequence.current++;
+    speechMotion.current = null;
     window.speechSynthesis?.cancel();
     lock.current = true;
     setBusy(true);
@@ -113,6 +163,8 @@ export function AssistantAdmin() {
       setError("Seu navegador não oferece entrada por voz. Use o campo de texto.");
       return;
     }
+    speechSequence.current++;
+    speechMotion.current = null;
     window.speechSynthesis?.cancel();
     recognition.current = r;
     r.lang = "pt-BR";
@@ -156,7 +208,7 @@ export function AssistantAdmin() {
             <span>ASTROS MAIS / INTELLIGENCE</span>
             <span className="astra-online-dot" />
           </div>
-          <AssistantFace mode={mode} />
+          <AssistantFace mode={mode} speechMotion={speechMotion} />
           <div className="astra-avatar-label">
             <span>INTELIGÊNCIA A SERVIÇO DA ASTROS</span>
             <h3>
