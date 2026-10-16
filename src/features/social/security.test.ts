@@ -4,6 +4,8 @@ function setup({role='cliente',failure=false,reject=false,previous=false,low=fal
  const fetcher=vi.fn(async(url:string,options:any={})=>{calls.push({url,body:options.body});let value:unknown;
  if(url.includes('/auth/v1/user'))value={id:owner,email_confirmed_at:'2026-01-01'};
  else if(url.includes('painel_de_desbanimento'))value=[{id:owner,tipo_usuario:role}];
+ else if(url.includes('astros_social_record_incident'))value=true;
+ else if(url.includes('astros_social_incident_list'))value={incidents:[],total:0,hasMore:false};
  else if(url.includes('astros_social_gate'))value=true;
  else if(url.includes('rpc/astros_social_platforms'))value=[{id:'soundcloud',name:'SoundCloud'}];
  else if(url.includes('rpc/astros_social_source_list'))value={services:[],total:0,catalogTotal:0,hasMore:false,types:[]};
@@ -61,3 +63,6 @@ it('saves average delivery through an administrator-only atomic RPC',async()=>{c
 it('rejects quantities below supplier minimum without creating quotes or charging',async()=>{const calls=setup();for(const action of ['estimate','quote']){expect((await handler(request(action,{serviceId:1,quantity:9,link:'https://instagram.com/example'}))).status).toBe(400);}expect(calls.some(c=>c.url.includes('quotes')||c.url.includes('reserve')||c.url.includes('settle'))).toBe(false);});
 
 it('blocks low supplier balance before reserving money, creating an order or sending add',async()=>{const calls=setup({low:true});const response=await handler(request('buy'));expect(response.status).toBe(400);expect((await response.json()).error).toBe('Redes sociais está temporariamente indisponível. Nenhum valor foi descontado nesta tentativa.');expect(calls.some(c=>c.url.includes('reserve')||c.url.includes('settle'))).toBe(false);expect(calls.filter(c=>c.url==='https://www.smmraja.com/api/v3').some(c=>new URLSearchParams(c.body).get('action')==='add')).toBe(false);});
+
+it('records the owned preflight incident privately and never leaks the internal reason to the client',async()=>{const calls=setup({low:true});const response=await handler(request('buy'));expect(JSON.stringify(await response.json())).not.toContain('supplier_balance_insufficient');expect(JSON.parse(calls.find(c=>c.url.includes('record_incident'))!.body)).toEqual({actor:owner,request:requestId,quote:quoteId});});
+it('restricts incident history to verified administrators',async()=>{let calls=setup();expect((await handler(request('admin-incidents',{page:0,search:''}))).status).toBe(400);expect(calls.some(c=>c.url.includes('incident_list'))).toBe(false);calls=setup({role:'admin'});expect((await handler(request('admin-incidents',{page:1,search:'1124'}))).status).toBe(200);expect(JSON.parse(calls.find(c=>c.url.includes('incident_list'))!.body)).toEqual({actor:owner,filters:{page:1,search:'1124'}});});
