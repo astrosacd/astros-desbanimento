@@ -8,4 +8,4 @@
 
 # Correção de compilação
 - [x] Corrigir tipagem estrita em importação, administração, API e telas de senha.
-- [ ] Validar testes de regressão e compilação automática.
+- [x] Validar testes de regressão e compilação automática.
