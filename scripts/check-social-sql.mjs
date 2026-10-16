@@ -56,4 +56,18 @@ await db.query('select astros_social_catalog_finish($1,$2,$3)',[job.token,job.ge
 const manualRow=(await db.query('select * from astros_social_services where id=2000')).rows[0];assert.equal(manualRow.title,'Meu nome personalizado');assert.equal(manualRow.provider_name,'twitch Likes');assert.equal(manualRow.customer_description,'Texto personalizado');assert.equal(Number(manualRow.rate_units),2000000);assert.equal(manualRow.enabled,true);assert.equal(manualRow.provider_metrics.start_time,'31 minutes');
 assert.equal((await db.query('select enabled from astros_social_services where id=3000')).rows[0].enabled,false);
 assert.equal(await balance(),84);
+await db.exec(sql('20261016_social_client_preferences.sql'));
+await db.query("update astros_social_services set provider_metrics='{\"reliability\":\"Low\",\"drop_rate\":\"30%\"}' where id=2000");
+for(const [id,rate,reliability,drop] of [[4000,3000000,'High','5%'],[4001,500000,'Medium','N/A']]){await db.query("insert into astros_social_services(id,provider_name,provider_category,title,network,description,rate_units,minimum,maximum,enabled,manual_visibility,provider_metrics) values($1,'Instagram Brazil','Instagram Brazil','Nome de teste','instagram','Brazil', $2,100,10000,true,true,$3)",[id,rate,JSON.stringify({reliability,drop_rate:drop})]);}
+const prefs=async f=>(await db.query('select astros_social_client_catalog($1) r',[JSON.stringify(f)])).rows[0].r;
+let preferred=await prefs({sort:'cheapest'});assert.deepEqual(preferred.rows.map(r=>Number(r.id)),[4001,2000,4000]);
+assert.deepEqual((await prefs({sort:'reliability'})).rows.map(r=>Number(r.id)),[4000,4001,2000]);
+assert.deepEqual((await prefs({sort:'drop'})).rows.map(r=>Number(r.id)),[4000,2000,4001]);
+assert.equal((await prefs({region:'Brazil',minQuantity:20000})).total,0);assert.equal((await prefs({region:'Brazil',maxPriceCents:1000})).total,1);
+assert.equal((await prefs({region:'unknown'})).total,0);await assert.rejects(prefs({minPriceCents:2000,maxPriceCents:1}));
+assert.equal(await balance(),84);
+await db.exec('set role authenticated');await assert.rejects(prefs({}));await db.exec('reset role');
+// Prove ordering is global, not limited to a first client page.
+await db.exec("insert into astros_social_services(id,provider_name,provider_category,title,network,rate_units,minimum,maximum,enabled,manual_visibility) select 5000+g,'Instagram A','Instagram','A service '||g,'instagram',5000000,100,1000,true,true from generate_series(1,510) g;insert into astros_social_services(id,provider_name,provider_category,title,network,rate_units,minimum,maximum,enabled,manual_visibility) values(5555,'Instagram Z','Instagram','Z cheapest','instagram',1000,100,1000,true,true)");
+const globalPage=await prefs({sort:'cheapest'});assert.equal(Number(globalPage.rows[0].id),5555);assert.equal(globalPage.rows.length,500);assert.equal(globalPage.hasMore,true);assert.equal((await prefs({sort:'cheapest',page:1})).rows.length,14);assert.equal(await balance(),84);
 console.log('Social SQL passed: private access, wallet guards, idempotency, partial/full refund once, terminal protection, safe actions, quote release, financial separation.');await db.close();

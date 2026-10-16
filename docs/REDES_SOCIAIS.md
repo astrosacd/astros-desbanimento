@@ -91,3 +91,11 @@ A atualização `20261016_social_manual_release.sql` substitui a liberação aut
 O nome de venda, a descrição personalizada e as decisões manuais persistem nas sincronizações. Nome e categoria originais ficam no administrador para referência. Mudanças só de custo atualizam preços, preservando o nome e a liberação; mudanças relevantes nas condições exigem revisão. A compra continua validando o custo atual no fornecedor e a carteira no servidor.
 
 “Ver detalhes” abre a referência original, ID, custo USD por mil, limites e informações de início, velocidade, quedas, confiabilidade e prazo disponíveis na API/descrição. Metadados opcionais são guardados sem cálculos de prazo. A API pode não fornecer as estatísticas históricas/gráficos exibidos no site; campos ausentes são identificados e nunca estimados pelo painel.
+
+
+## Preferências do cliente e referência de suporte
+Aplicar `20261016_social_client_preferences.sql` e atualizar a função. A consulta é somente leitura, service-role, com autenticação da função; sempre restringe a serviços liberados/disponíveis e sem revisão pendente. Ordenação/filtros são aplicados sobre todo o catálogo antes das páginas de 500. Mais barato usa o preço de referência para pedido de mil unidades em reais, calculado com câmbio/margem/taxa atuais, sem expor o custo do fornecedor. A cotação real continua independente e valida quantidade/preço antes de cobrar.
+
+Confiabilidade ordena apenas os níveis explicitamente reconhecidos da API; quedas só ordenam percentuais individuais comparáveis, não estimam faixas. Dados ausentes ficam por último. Região é busca textual por menções originais, não certificação de geolocalização. Quantidades filtram serviços cujo intervalo permite alguma quantidade na faixa desejada. Nada altera nomes, liberações ou carteira.
+
+A referência do serviço é o ID original `service_id`, exposto no catálogo, cotação e pedidos. Não confundir com o pedido do fornecedor (privado ao administrador) ou com o UUID do pedido Astros. A cópia para suporte inclui a referência do serviço e o pedido Astros quando disponível. O histórico também permite buscar o número da referência, mantendo o filtro de proprietário.
