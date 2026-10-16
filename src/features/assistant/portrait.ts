@@ -19,7 +19,7 @@ for (const face of triangles) {
     u[2]! * v[0]! - u[0]! * v[2]!,
     u[0]! * v[1]! - u[1]! * v[0]!,
   ];
-  for (let j = 0, n = Math.max(2, Math.ceil(Math.hypot(...cross) * 13)); j < n; j++) {
+  for (let j = 0, n = Math.max(2, Math.ceil(Math.hypot(...cross) * 18)); j < n; j++) {
     let p = random(),
       q = random();
     if (p + q > 1) {
@@ -51,10 +51,10 @@ export function drawPortrait(
   articulation: Articulation = { jaw: 0, round: 0, width: 1 },
 ) {
   const t = reduced ? 0 : time / 1000,
-    scale = Math.min(width / 16.7, height / 19.8),
+    scale = Math.min(width / 16.7, height / 22),
     cx = width * 0.5,
-    cy = height * 0.47,
-    yaw = -0.12 + Math.sin(t * 0.48) * 0.28,
+    cy = height * 0.5,
+    yaw = -0.27 + Math.sin(t * 0.48) * 0.18,
     pitch = 0.06 + Math.sin(t * 0.37) * 0.07;
   const jaw = mode === "speaking" && !reduced ? articulation.jaw : 0,
     round = mode === "speaking" ? articulation.round : 0;
@@ -62,12 +62,15 @@ export function drawPortrait(
   function project(x: number, y: number, z: number): Point {
     const lip = Math.exp(-(((y + 4.4) / 1.5) ** 2)) * Math.exp(-((x / 3.1) ** 4)),
       lower = Math.max(0, Math.min(1, (-y - 3.9) / 1.2));
+    x *= 0.93;
     x *= 1 - 0.1 * Math.max(0, Math.min(1, (-y - 2) / 7));
     x *= 1 + lip * ((mode === "speaking" ? articulation.width : 1) - 1);
     z += lip * round * 0.6;
+    y += 0.32 * Math.exp(-(((y + 4.6) / 0.8) ** 2)) * Math.exp(-((x * x) / 6)) * (1 - jaw);
+    y += 0.18 * Math.exp(-(((Math.abs(x) - 2) / 0.7) ** 2)) * Math.exp(-(((y + 4.3) / 0.8) ** 2));
     y -= jaw * 1.6 * lower * Math.exp(-((x / 5.6) ** 4));
     z -= jaw * 0.35 * lower;
-    if (y > 4) y = 4 + (y - 4) * 0.78;
+    if (y > 3.5) y = 3.5 + (y - 3.5) * 1.35;
     const eye = Math.exp(-(((Math.abs(x) - 3.2) / 1.5) ** 4));
     const blink = reduced ? 0 : Math.exp(-((((t % 5.8) - 5.55) / 0.075) ** 2));
     if (y > 1.8 && y < 3.5) y = 2.65 + (y - 2.65) * (1 - blink * eye * 0.85);
@@ -86,7 +89,7 @@ export function drawPortrait(
     "181,119,255",
     "255,207,116",
   ];
-  const glass = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * 0.65));
+  const glass = reduced ? 0 : Math.pow(0.5 + 0.5 * Math.sin(t * 0.55 - 1.4), 6);
   triangles.forEach((f, i) => {
     const a = vertices[f[0]!]!,
       b = vertices[f[1]!]!,
@@ -95,11 +98,11 @@ export function drawPortrait(
       q = project(b[0]!, b[1]!, b[2]!),
       r = project(c[0]!, c[1]!, c[2]!);
     const phase = 0.5 + 0.5 * Math.sin(t * 0.8 + i * 1.73);
-    const coloured = i % 13 < 2;
+    const coloured = i % 23 === 0;
     const shine = Math.max(0, Math.sin((a[0]! + a[1]!) * 0.25 - t * 0.45)) ** 12;
     ctx.fillStyle = coloured
-      ? `rgba(${palette[i % palette.length]},${glass * (0.2 + phase * 0.36)})`
-      : `rgba(195,229,246,${0.008 + shine * 0.075})`;
+      ? `rgba(${palette[i % palette.length]},${glass * (0.35 + phase * 0.5)})`
+      : `rgba(195,229,246,${0.003 + glass * (0.01 + shine * 0.08)})`;
     ctx.beginPath();
     ctx.moveTo(p[0], p[1]);
     ctx.lineTo(q[0], q[1]);
@@ -108,7 +111,7 @@ export function drawPortrait(
     ctx.fill();
   });
   ctx.lineWidth = 0.45;
-  ctx.strokeStyle = "rgba(233,244,248,.18)";
+  ctx.strokeStyle = `rgba(233,244,248,${0.06 + glass * 0.23})`;
   ctx.beginPath();
   for (const f of triangles) {
     for (let k = 0; k < 3; k++) {
@@ -121,9 +124,22 @@ export function drawPortrait(
     }
   }
   ctx.stroke();
+  ctx.fillStyle = "#030509";
+  for (const eye of [contours[1]!, contours[2]!]) {
+    ctx.beginPath();
+    eye.forEach((index, i) => {
+      const a = vertices[index]!,
+        p = project(a[0]!, a[1]!, a[2]!);
+      if (i === 0) ctx.moveTo(p[0], p[1]);
+      else ctx.lineTo(p[0], p[1]);
+    });
+    ctx.closePath();
+    ctx.fill();
+  }
   for (let i = 0; i < points.length; i++) {
-    const a = points[i]!,
-      p = project(a[0], a[1], a[2]),
+    const a = points[i]!;
+    if (((Math.abs(a[0]) - 3.16) / 1.13) ** 2 + ((a[1] - 2.64) / 0.23) ** 2 < 1) continue;
+    const p = project(a[0], a[1], a[2]),
       brightness = 0.43 + (i % 7) / 18;
     ctx.fillStyle = `rgba(244,250,255,${brightness})`;
     ctx.beginPath();
