@@ -54,8 +54,15 @@ export function drawPortrait(
     scale = Math.min(width / 16.7, height / 22),
     cx = width * 0.5,
     cy = height * 0.5,
-    yaw = -0.27 + Math.sin(t * 0.48) * 0.18,
-    pitch = 0.06 + Math.sin(t * 0.37) * 0.07;
+    yaw =
+      -0.2 +
+      Math.sin(t * 0.31) * 0.11 +
+      Math.sin(t * 0.67) * 0.035 +
+      (mode === "speaking" && !reduced ? articulation.jaw * 0.035 : 0),
+    pitch =
+      0.045 +
+      Math.sin(t * 0.27) * 0.035 +
+      (mode === "speaking" && !reduced ? articulation.jaw * 0.04 : 0);
   const jaw = mode === "speaking" && !reduced ? articulation.jaw : 0,
     round = mode === "speaking" ? articulation.round : 0;
   ctx.clearRect(0, 0, width, height);
@@ -99,10 +106,24 @@ export function drawPortrait(
       r = project(c[0]!, c[1]!, c[2]!);
     const phase = 0.5 + 0.5 * Math.sin(t * 0.8 + i * 1.73);
     const coloured = i % 23 === 0;
-    const shine = Math.max(0, Math.sin((a[0]! + a[1]!) * 0.25 - t * 0.45)) ** 12;
+    const ux = b[0]! - a[0]!,
+      uy = b[1]! - a[1]!,
+      uz = b[2]! - a[2]!,
+      vx = c[0]! - a[0]!,
+      vy = c[1]! - a[1]!,
+      vz = c[2]! - a[2]!,
+      nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx,
+      length = Math.hypot(nx, ny, nz) || 1;
+    const light = Math.max(
+      0,
+      Math.abs((nx * Math.sin(t * 0.22) * 0.4 + ny * 0.2 + nz * 0.84) / length),
+    );
+    const shine = light ** 18;
     ctx.fillStyle = coloured
       ? `rgba(${palette[i % palette.length]},${glass * (0.35 + phase * 0.5)})`
-      : `rgba(195,229,246,${0.003 + glass * (0.01 + shine * 0.08)})`;
+      : `rgba(195,229,246,${0.008 + light * 0.018 + shine * 0.16 + glass * 0.025})`;
     ctx.beginPath();
     ctx.moveTo(p[0], p[1]);
     ctx.lineTo(q[0], q[1]);

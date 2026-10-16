@@ -1,3 +1,12 @@
+const audioMock = vi.hoisted(() => ({ play: vi.fn().mockResolvedValue(true) }));
+vi.mock("./audio-player", () => ({
+  NaturalVoicePlayer: class {
+    unlock = vi.fn().mockResolvedValue(undefined);
+    stop = vi.fn();
+    close = vi.fn();
+    play = audioMock.play;
+  },
+}));
 import { it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 vi.mock("./face", () => ({ AssistantFace: () => <div>Rosto digital</div> }));
@@ -42,26 +51,21 @@ it("keeps failed questions editable without a fabricated answer", async () => {
   await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Fonte indisponível"));
   expect(screen.getByLabelText("Sua pergunta para a ASTRA")).toHaveValue("Resumo de hoje");
 });
-it("sends plain text rather than Markdown to the speech engine", async () => {
+it("requests and plays natural audio without the browser speech engine", async () => {
   Element.prototype.scrollIntoView = vi.fn();
-  const speak = vi.fn(),
-    cancel = vi.fn();
-  vi.stubGlobal("speechSynthesis", { speak, cancel, getVoices: () => [] });
-  vi.stubGlobal(
-    "SpeechSynthesisUtterance",
-    class {
-      text: string;
-      constructor(text: string) {
-        this.text = text;
-      }
-    },
-  );
+  const naturalAudio = {
+    base64: "fixture",
+    mimeType: "audio/wav" as const,
+    spokenText: "Hoje, dez reais.",
+    shortened: false,
+  };
   vi.mocked(askAssistant).mockResolvedValueOnce({
-    text: "Hoje **16/10/2026**: **R$ 10,00**.",
+    text: "Hoje **R$ 10,00**.",
     from: "2026-10-16",
     until: "2026-10-16",
     generatedAt: "2026-10-16T20:00:00Z",
     sources: [],
+    naturalAudio,
   });
   render(<AssistantAdmin />);
   fireEvent.click(screen.getByRole("button", { name: "Ativar resposta por voz" }));
@@ -69,11 +73,28 @@ it("sends plain text rather than Markdown to the speech engine", async () => {
     target: { value: "Quanto entrou hoje?" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
-  await waitFor(() => expect(speak).toHaveBeenCalledTimes(1));
-  const utterance = speak.mock.calls[0]![0];
-  expect(utterance.text).not.toContain("*");
-  expect(utterance.text).toContain("16 de outubro de 2026");
-  expect(utterance.text).toContain("dez reais");
-  cleanup();
-  vi.unstubAllGlobals();
+  await waitFor(() => expect(audioMock.play).toHaveBeenCalledTimes(1));
+  expect(askAssistant).toHaveBeenCalledWith({
+    data: expect.objectContaining({ voiceRequested: true }),
+  });
+  expect(audioMock.play.mock.calls[0]![0]).toEqual(naturalAudio);
+});
+it("keeps the written answer visible if natural voice is unavailable", async () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  vi.mocked(askAssistant).mockResolvedValueOnce({
+    text: "Nenhuma recarga hoje.",
+    from: "2026-10-16",
+    until: "2026-10-16",
+    generatedAt: "2026-10-16T20:00:00Z",
+    sources: [],
+    voiceError: "Créditos de voz indisponíveis.",
+  });
+  render(<AssistantAdmin />);
+  fireEvent.click(screen.getByRole("button", { name: "Ativar resposta por voz" }));
+  fireEvent.change(screen.getByLabelText("Sua pergunta para a ASTRA"), {
+    target: { value: "Resumo" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+  await screen.findByText("Nenhuma recarga hoje.");
+  expect(screen.getByRole("alert").textContent).toContain("Créditos de voz");
 });

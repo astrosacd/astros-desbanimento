@@ -1,6 +1,7 @@
 import { z } from "zod";
 export const assistantInput = z
   .object({
+    voiceRequested: z.boolean().default(false),
     question: z.string().trim().min(2).max(1000),
     from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

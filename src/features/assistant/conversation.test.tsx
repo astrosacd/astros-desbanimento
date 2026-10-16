@@ -1,16 +1,33 @@
+const sound = vi.hoisted(() => ({ spoken: [] as any[] }));
+vi.mock("./audio-player", () => ({
+  NaturalVoicePlayer: class {
+    unlock = vi.fn().mockResolvedValue(undefined);
+    stop = vi.fn();
+    close = vi.fn();
+    play = async (audio: any, onStart: () => void, onEnd: () => void) => {
+      sound.spoken.push({ text: audio.spokenText, onend: onEnd });
+      onStart();
+      return true;
+    };
+  },
+}));
 import { it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 vi.mock("./face", () => ({ AssistantFace: () => <div /> }));
 vi.mock("./actions", () => ({
-  askAssistant: vi
-    .fn()
-    .mockResolvedValue({
-      text: "Hoje não entrou nenhuma recarga. 😊",
-      from: "2026-10-16",
-      until: "2026-10-16",
-      generatedAt: "2026-10-16T20:00:00Z",
-      sources: [],
-    }),
+  askAssistant: vi.fn().mockResolvedValue({
+    text: "Hoje não entrou nenhuma recarga. 😊",
+    from: "2026-10-16",
+    until: "2026-10-16",
+    generatedAt: "2026-10-16T20:00:00Z",
+    sources: [],
+    naturalAudio: {
+      base64: "fixture",
+      mimeType: "audio/wav",
+      spokenText: "Hoje não entrou nenhuma recarga.",
+      shortened: false,
+    },
+  }),
 }));
 import { AssistantAdmin } from "./page";
 import { askAssistant } from "./actions";
@@ -21,7 +38,9 @@ afterEach(() => {
 });
 function browser() {
   const inputs: any[] = [],
-    spoken: any[] = [];
+    spoken = sound.spoken;
+  spoken.length = 0;
+  vi.stubGlobal("AudioContext", class {});
   class Recognition {
     onresult: any;
     onend: any;

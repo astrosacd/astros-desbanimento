@@ -1,4 +1,4 @@
-import { speechPlainText, type SpeechMotion } from "./voice";
+import { NaturalVoicePlayer, type NaturalAudio } from "./audio-player";
 import { AssistantAnswer } from "./answer";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, Mic, MicOff, Send, ShieldCheck, Volume2, VolumeX, Trash2 } from "lucide-react";
@@ -40,7 +40,7 @@ export function AssistantAdmin() {
     recognition = useRef<SpeechInput | null>(null),
     end = useRef<HTMLDivElement>(null),
     seq = useRef(0),
-    speechMotion = useRef<SpeechMotion | null>(null),
+    player = useRef<NaturalVoicePlayer | null>(null),
     speechSequence = useRef(0),
     conversationActive = useRef(false),
     restartTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
@@ -54,9 +54,8 @@ export function AssistantAdmin() {
       conversationActive.current = false;
       if (restartTimer.current) clearTimeout(restartTimer.current);
       recognition.current?.stop();
-      speechMotion.current = null;
+      player.current?.close();
       speechSequence.current++;
-      window.speechSynthesis?.cancel();
     };
   }, []);
   useEffect(() => {
@@ -68,79 +67,47 @@ export function AssistantAdmin() {
     if (restartTimer.current) clearTimeout(restartTimer.current);
     recognition.current?.stop();
     speechSequence.current++;
-    speechMotion.current = null;
-    window.speechSynthesis?.cancel();
+    player.current?.stop();
+
     setMode("idle");
   }
-  function speak(text: string) {
-    if ((!voice && !conversationActive.current) || !window.speechSynthesis) {
-      resumeListening();
-      return;
-    }
-    const clean = speechPlainText(text);
-    if (!clean) {
-      resumeListening();
+  function unlockAudio() {
+    if (!player.current) player.current = new NaturalVoicePlayer();
+    return player.current.unlock();
+  }
+  async function speak(audio?: NaturalAudio, voiceError?: string) {
+    if (!voice && !conversationActive.current) return;
+    if (!audio) {
+      stopVoice();
+      setError(
+        voiceError ||
+          "A voz natural está indisponível. A resposta continua disponível por escrito.",
+      );
       return;
     }
     const current = ++speechSequence.current;
-    window.speechSynthesis.cancel();
-    const speech = new SpeechSynthesisUtterance(clean);
-    speech.lang = "pt-BR";
-    speech.rate = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const chosenVoice =
-      voices.find(
-        (v) =>
-          /^pt[-_]BR$/i.test(v.lang) &&
-          /Antonio|Antônio|Daniel|Ricardo|Natural|Google/i.test(v.name),
-      ) ?? voices.find((v) => /^pt[-_]BR$/i.test(v.lang));
-    if (chosenVoice) speech.voice = chosenVoice;
-    speech.onstart = () => {
-      if (alive.current && current === speechSequence.current) {
-        speechMotion.current = {
-          active: true,
-          paused: false,
-          text: clean,
-          charIndex: 0,
-          anchorAt: performance.now(),
-        };
-        setMode("speaking");
-      }
-    };
-    speech.onboundary = (e) => {
-      if (current !== speechSequence.current || !speechMotion.current) return;
-      speechMotion.current = {
-        ...speechMotion.current,
-        charIndex: e.charIndex,
-        anchorAt: performance.now(),
-      };
-    };
-    speech.onpause = () => {
-      if (speechMotion.current && current === speechSequence.current)
-        speechMotion.current.paused = true;
-    };
-    speech.onresume = () => {
-      if (speechMotion.current && current === speechSequence.current) {
-        speechMotion.current.paused = false;
-        speechMotion.current.anchorAt = performance.now();
-      }
-    };
-    speech.onend = () => {
-      if (alive.current && current === speechSequence.current) {
-        speechMotion.current = null;
-        setMode("idle");
-        resumeListening();
-      }
-    };
-    speech.onerror = () => {
+    try {
+      if (!player.current) player.current = new NaturalVoicePlayer();
+      await player.current.play(
+        audio,
+        () => {
+          if (alive.current && current === speechSequence.current) setMode("speaking");
+        },
+        () => {
+          if (alive.current && current === speechSequence.current) {
+            setMode("idle");
+            resumeListening();
+          }
+        },
+      );
+    } catch {
       if (alive.current && current === speechSequence.current) {
         stopVoice();
         setError(
-          "A leitura por voz foi interrompida. Você pode continuar por texto ou iniciar a conversa novamente.",
+          "Não foi possível reproduzir a voz natural. Continue por texto ou inicie novamente a conversa.",
         );
       }
-    };
-    window.speechSynthesis.speak(speech);
+    }
   }
   async function send(event?: FormEvent, prompt?: string) {
     event?.preventDefault();
@@ -148,8 +115,8 @@ export function AssistantAdmin() {
     if (text.length < 2 || lock.current) return;
     recognition.current?.stop();
     const speechRequest = ++speechSequence.current;
-    speechMotion.current = null;
-    window.speechSynthesis?.cancel();
+    player.current?.stop();
+
     lock.current = true;
     setBusy(true);
     setError("");
@@ -159,14 +126,22 @@ export function AssistantAdmin() {
     setMessages((old) => [...old, { id: ++seq.current, role: "user", text }]);
     try {
       const answer = await askAssistant({
-        data: { question: text, from, until, clientSearch, history },
+        data: {
+          question: text,
+          from,
+          until,
+          clientSearch,
+          history,
+          voiceRequested: voice || conversationActive.current,
+        },
       });
       if (!alive.current) return;
       setFrom(answer.from);
       setUntil(answer.until);
-      setMessages((old) => [...old, { id: ++seq.current, role: "assistant", ...answer }]);
+      const { naturalAudio, voiceError, ...written } = answer;
+      setMessages((old) => [...old, { id: ++seq.current, role: "assistant", ...written }]);
       setMode("idle");
-      if (speechSequence.current === speechRequest) speak(answer.text);
+      if (speechSequence.current === speechRequest) void speak(naturalAudio, voiceError);
     } catch (e) {
       if (alive.current) {
         setError(e instanceof Error ? e.message : "Não foi possível consultar agora.");
@@ -241,10 +216,14 @@ export function AssistantAdmin() {
       stopVoice();
       return;
     }
-    if (!window.speechSynthesis) {
+    if (!window.AudioContext) {
       setError("A conversa por voz não está disponível neste navegador. Continue por texto.");
       return;
     }
+    void unlockAudio().catch(() => {
+      stopVoice();
+      setError("Não foi possível habilitar o áudio. Continue por texto.");
+    });
     conversationActive.current = true;
     setConversation(true);
     beginListening();
@@ -268,7 +247,7 @@ export function AssistantAdmin() {
             <span>ASTROS MAIS / INTELLIGENCE</span>
             <span className="astra-online-dot" />
           </div>
-          <AssistantFace mode={mode} speechMotion={speechMotion} />
+          <AssistantFace mode={mode} audioMotion={player} />
           <div className="astra-avatar-label">
             <span>INTELIGÊNCIA A SERVIÇO DA ASTROS</span>
             <h3>
@@ -317,6 +296,11 @@ export function AssistantAdmin() {
                 }
                 onClick={() => {
                   if (voice || conversation) stopVoice();
+                  else
+                    void unlockAudio().catch(() => {
+                      setVoice(false);
+                      setError("Não foi possível habilitar a voz neste navegador.");
+                    });
                   setVoice(conversation ? false : !voice);
                 }}
               >

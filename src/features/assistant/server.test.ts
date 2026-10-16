@@ -1,8 +1,10 @@
+vi.mock("./voice-transport.server", () => ({ synthesizeAssistantVoice: mocks.audio }));
 import { it, expect, vi, beforeEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   admin: vi.fn(),
   request: vi.fn(),
   model: vi.fn(),
+  audio: vi.fn(),
   cookie: vi.fn(() => "admin-token"),
 }));
 vi.mock("../admin/auth.server", () => ({ requireAdmin: mocks.admin, request: mocks.request }));
@@ -80,4 +82,19 @@ it("rejects caller-supplied system roles, excessive history and invalid periods"
   ).rejects.toThrow();
   await expect(answerAssistant({ ...input, until: "2027-01-01" })).rejects.toThrow();
   expect(mocks.model).not.toHaveBeenCalled();
+});
+
+it("generates natural voice only when requested after the same verified read-only query", async () => {
+  mocks.model.mockResolvedValueOnce("Hoje **R$ 0,00**. 😊");
+  mocks.audio.mockResolvedValueOnce({ base64: "wav-fixture", mimeType: "audio/wav" });
+  const r = await answerAssistant({ ...input, voiceRequested: true });
+  expect(mocks.audio).toHaveBeenCalledWith("Hoje zero reais.");
+  expect(r.naturalAudio?.mimeType).toBe("audio/wav");
+});
+it("does not lose the answer when speech generation fails", async () => {
+  mocks.audio.mockRejectedValueOnce(Error("private-provider-debug"));
+  const r = await answerAssistant({ ...input, voiceRequested: true });
+  expect(r.text).toBe("Dados consultados.");
+  expect(r.voiceError).toContain("voz natural");
+  expect(r.voiceError).not.toContain("private-provider");
 });

@@ -1,18 +1,18 @@
-import { speechArticulation, type SpeechMotion } from "./voice";
+import type { AudioMotion } from "./audio-player";
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { drawPortrait, type FaceMode } from "./portrait";
 export type { FaceMode } from "./portrait";
 export function AssistantFace({
   mode,
-  speechMotion,
+  audioMotion,
 }: {
   mode: FaceMode;
-  speechMotion?: MutableRefObject<SpeechMotion | null>;
+  audioMotion?: MutableRefObject<AudioMotion | null>;
 }) {
   const ref = useRef<HTMLCanvasElement>(null),
     modeRef = useRef(mode),
-    speechRef = useRef(speechMotion);
-  speechRef.current = speechMotion;
+    audioRef = useRef(audioMotion);
+  audioRef.current = audioMotion;
   modeRef.current = mode;
   useEffect(() => {
     const canvas = ref.current,
@@ -38,7 +38,7 @@ export function AssistantFace({
         canvas!.height = Math.round(height * dpr);
       }
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const target = speechArticulation(speechRef.current?.current ?? null, time);
+      const target = audioRef.current?.current?.sample() ?? { jaw: 0, round: 0, width: 1 };
       smooth.jaw += (target.jaw - smooth.jaw) * 0.4;
       smooth.round += (target.round - smooth.round) * 0.4;
       smooth.width += (target.width - smooth.width) * 0.4;

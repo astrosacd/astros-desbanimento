@@ -1,3 +1,5 @@
+import { speechPlainText } from "./voice";
+import type { NaturalAudio } from "./audio-player";
 import { supplierBalance, extendedContext } from "./sources.server";
 import { getCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { requireAdmin, request } from "../admin/auth.server";
@@ -58,8 +60,38 @@ export async function answerAssistant(input: unknown) {
   ]);
   if (typeof text !== "string" || !text.trim() || text.length > 12000)
     throw Error("O modelo não retornou uma resposta válida. Tente uma pergunta mais específica.");
+  const voiceResult: { naturalAudio?: NaturalAudio; voiceError?: string } = {};
+  if (data.voiceRequested) {
+    const clean = speechPlainText(text);
+    const shortened = clean.length > 1000;
+    let spokenText = clean;
+    if (shortened) {
+      const start = clean.slice(0, 850),
+        stop = Math.max(start.lastIndexOf(". "), start.lastIndexOf("! "), start.lastIndexOf("? "));
+      spokenText =
+        (stop > 400 ? start.slice(0, stop + 1) : start) +
+        " Os demais detalhes estão na resposta escrita.";
+    }
+    try {
+      const { synthesizeAssistantVoice } = await import("./voice-transport.server");
+      voiceResult.naturalAudio = {
+        ...(await synthesizeAssistantVoice(spokenText)),
+        spokenText,
+        shortened,
+      };
+    } catch (e) {
+      voiceResult.voiceError =
+        e instanceof Error &&
+        /^(A voz natural precisa|Os créditos de IA|O limite temporário|A integração de voz|Não foi possível gerar a voz|A voz retornou|Áudio acima|Texto de voz)/.test(
+          e.message,
+        )
+          ? e.message
+          : "Não foi possível gerar a voz natural agora. A resposta está disponível por escrito.";
+    }
+  }
   return {
     text,
+    ...voiceResult,
     from: period.from,
     until: period.until,
     generatedAt: String(context.snapshot.generatedAt),

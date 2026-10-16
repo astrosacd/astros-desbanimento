@@ -61,46 +61,7 @@ export function speechPlainText(text: string) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-export type SpeechMotion = {
-  active: boolean;
-  paused: boolean;
-  text: string;
-  charIndex: number;
-  anchorAt: number;
-};
 export type Articulation = { jaw: number; round: number; width: number };
-export function speechArticulation(s: SpeechMotion | null, time: number): Articulation {
-  if (!s?.active || s.paused) return { jaw: 0, round: 0, width: 1 };
-  const position = Math.min(
-      s.text.length - 1,
-      s.charIndex + (Math.max(0, time - s.anchorAt) / 1000) * 13,
-    ),
-    index = Math.floor(position),
-    fraction = position - index;
-  function pose(index: number): Articulation {
-    const char = (s!.text[index] || " ")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-    if (/[\s.,!?;:]/.test(char)) return { jaw: 0, round: 0, width: 1 };
-    if (/[mbp]/.test(char)) return { jaw: 0, round: 0, width: 0.95 };
-    if (char === "a") return { jaw: 0.9, round: 0, width: 1.05 };
-    if (char === "o") return { jaw: 0.65, round: 0.8, width: 0.8 };
-    if (char === "u") return { jaw: 0.35, round: 1, width: 0.74 };
-    if (char === "e") return { jaw: 0.5, round: 0, width: 1.07 };
-    if (char === "i") return { jaw: 0.23, round: 0, width: 1.12 };
-    return { jaw: 0.22, round: 0.1, width: 1 };
-  }
-  const a = pose(index),
-    b = pose(index + 1),
-    blend = fraction * fraction * (3 - 2 * fraction);
-  return {
-    jaw: a.jaw + (b.jaw - a.jaw) * blend,
-    round: a.round + (b.round - a.round) * blend,
-    width: a.width + (b.width - a.width) * blend,
-  };
-}
-
 function integerSpeech(n: number): string {
   const small = [
     "zero",
