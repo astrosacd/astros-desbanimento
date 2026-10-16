@@ -117,3 +117,9 @@ Na amostra real também havia muitos `type: Default` com a flag `subscription: t
 
 ### Distribuição da tela do cliente
 A apresentação divide o novo pedido em catálogo, detalhes e destino/quantidade. Em telas largas, os detalhes ficam ao lado; até 1.150px, ficam antes do formulário do pedido. Referência do serviço, limites e preço para mil unidades têm hierarquia própria; entrega/condições e orientações são expansíveis. A confirmação e as regras de saldo, cotação, expiração e recuperação de tentativas permanecem iguais. Sem SQL ou atualização de função nesta mudança visual. Validação: testes do módulo e layout antes/depois de selecionar serviço em oito tamanhos, 320 a 1440px.
+
+
+### Comparação administrativa antes da liberação
+Aplicar `20261016_social_admin_preferences.sql` e atualizar a função. Em Catálogo → Serviços para publicação, “Mais baratos primeiro” ordena o catálogo operacional inteiro antes das páginas de 100. “Preferências para liberação” aplica preço de venda de referência em reais para mil unidades, faixa de quantidade, região e métricas disponíveis. Rede e situação (inclusive ocultos) continuam sendo respeitadas. A pausa global de compras não impede comparação administrativa. Sem câmbio configurado, a ordenação barata usa o custo original; limites explícitos de preço em reais não incluem valores desconhecidos.
+
+A consulta é somente leitura, restrita a admin tanto na função quanto no RPC de service-role. Mudar filtros limpa a seleção pendente; não publica serviços, não muda nomes, preços configurados ou carteira. Selecionar e confirmar a liberação permanece uma operação separada. O inventário de formatos especiais continua para consulta, sem comparar preços de pacotes e assinaturas como se todos fossem por mil unidades.
