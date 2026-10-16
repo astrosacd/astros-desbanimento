@@ -1,4 +1,4 @@
-export const networks={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',tiktok:'TikTok',x:'X / Twitter',telegram:'Telegram'};
+export const networks={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',tiktok:'TikTok',x:'X / Twitter',telegram:'Telegram',twitch:'Twitch',linkedin:'LinkedIn',spotify:'Spotify',threads:'Threads',website:'Sites / Website',snapchat:'Snapchat',whatsapp:'WhatsApp',kick:'Kick',pinterest:'Pinterest'};
 export type Network=keyof typeof networks;
 export type SocialService={id:number;title:string;network:Network|'';category:string;description:string;minimum:number;maximum:number;refill:boolean;cancel:boolean;providerName?:string;enabled?:boolean;available?:boolean;rateUnits?:number;providerCategory?:string;originalDescription?:string;customerDescription?:string;categoryCode?:string;needsReview?:boolean;serviceType?:string;details?:string};
 export type SocialQuote={details?:string;description?:string;refill?:boolean;cancel?:boolean;id:string;title:string;network:Network;link:string;quantity:number;priceCents:number;expiresAt:string};

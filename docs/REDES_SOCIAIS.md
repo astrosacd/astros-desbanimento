@@ -73,3 +73,7 @@ Aplicar `20261016_social_automatic_catalog.sql` e publicar `astros-social.deploy
 O cliente filtra rede → tipo de serviço → categoria/origem original do fornecedor → serviço. As opções de categorias são agrupadas no servidor sobre todo o catálogo liberado, antes da paginação. Instagram, Facebook, YouTube, TikTok, X e Telegram são reconhecidos pelo início do nome/categoria; serviços não reconhecidos ficam ocultos. Serviços especiais não compatíveis com pedidos simples continuam excluídos.
 
 A descrição original e suas informações de início, velocidade e quedas aparecem quando fornecidas pela API. Métricas exclusivas do site não são inventadas; campos ausentes exibem “Não informado pelo fornecedor”. O preço final continua calculado no servidor e debitado da carteira única, pelas regras existentes.
+
+
+### Ampliação de redes
+Aplicar `20261016_social_more_networks.sql`, atualizar a função e sincronizar o catálogo. Também reconhece Twitch, LinkedIn, Spotify, Threads, Website, Snapchat, WhatsApp, Kick e Pinterest, além das seis redes iniciais. Categorias/nomes sem reconhecimento continuam ocultos. As mesmas validações de pedidos Default, saldo, preços e idempotência permanecem. Website aceita apenas URL HTTPS de domínio público com nome DNS; nenhum destino é acessado pelo servidor. Os demais destinos permanecem limitados aos domínios da plataforma. Não equivale a importar todos os formatos especiais do fornecedor.
