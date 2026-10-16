@@ -123,3 +123,7 @@ A apresentação divide o novo pedido em catálogo, detalhes e destino/quantidad
 Aplicar `20261016_social_admin_preferences.sql` e atualizar a função. Em Catálogo → Serviços para publicação, “Mais baratos primeiro” ordena o catálogo operacional inteiro antes das páginas de 100. “Preferências para liberação” aplica preço de venda de referência em reais para mil unidades, faixa de quantidade, região e métricas disponíveis. Rede e situação (inclusive ocultos) continuam sendo respeitadas. A pausa global de compras não impede comparação administrativa. Sem câmbio configurado, a ordenação barata usa o custo original; limites explícitos de preço em reais não incluem valores desconhecidos.
 
 A consulta é somente leitura, restrita a admin tanto na função quanto no RPC de service-role. Mudar filtros limpa a seleção pendente; não publica serviços, não muda nomes, preços configurados ou carteira. Selecionar e confirmar a liberação permanece uma operação separada. O inventário de formatos especiais continua para consulta, sem comparar preços de pacotes e assinaturas como se todos fossem por mil unidades.
+
+
+### Consulta administrativa por referência
+A busca em Serviços para publicação aceita o ID exato do serviço, como `2881` ou `#2881`, além de nome e categoria. A consulta ocorre antes da paginação e respeita os demais filtros. Ativar `20261016_social_admin_reference_search.sql`; sem alteração de saldo, preços ou publicação.

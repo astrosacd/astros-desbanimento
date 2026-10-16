@@ -94,4 +94,10 @@ const adminPrefs=async f=>(await db.query('select astros_social_admin_catalog($1
 const cheapestHidden=await adminPrefs({network:'compare-test',state:'hidden',sort:'cheapest'});assert.equal(cheapestHidden.total,121);assert.equal(Number(cheapestHidden.rows[0].id),11000);assert.equal(cheapestHidden.rows.length,100);assert.equal(cheapestHidden.hasMore,true);assert.equal((await adminPrefs({network:'compare-test',state:'hidden',sort:'cheapest',page:1})).rows.length,21);
 assert.equal((await adminPrefs({network:'compare-test',state:'enabled'})).total,0);assert.equal((await adminPrefs({network:'compare-test',minPriceCents:500,maxPriceCents:2000})).total,120);assert.equal(await balance(),84);assert.equal(Number((await db.query("select count(*) n from astros_social_services where network='compare-test' and enabled")).rows[0].n),0);
 await assert.rejects(db.query('select astros_social_admin_catalog($1,$2)',[user,'{}']));await db.exec('set role authenticated');await assert.rejects(db.query('select astros_social_admin_catalog($1,$2)',[admin,'{}']));await db.exec('reset role');
+await db.exec(sql('20261016_social_admin_reference_search.sql'));
+for(const search of ['11000','#11000','# 11000']){const found=await adminPrefs({search});assert.equal(found.total,1);assert.equal(Number(found.rows[0].id),11000);}
+assert.equal((await adminPrefs({search:'99999999'})).total,0);
+assert.equal((await adminPrefs({search:'11000',network:'instagram'})).total,0);
+assert.equal((await adminPrefs({search:'Cheap original'})).total,1);
+assert.equal(await balance(),84);
 console.log('Social SQL passed: private access, wallet guards, idempotency, partial/full refund once, terminal protection, safe actions, quote release, financial separation.');await db.close();
