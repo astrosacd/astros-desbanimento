@@ -5,3 +5,7 @@
 - [ ] Carteira, API, perfil, autenticação visual, suporte, termos e administração demo.
 - [ ] Testes de regras, navegação e fluxos desktop/mobile; verificar sinais de build.
 - [x] Executar diretamente sem nova pausa de plano; não publicar ou conectar serviços.
+
+# Correção de compilação
+- [x] Corrigir tipagem estrita em importação, administração, API e telas de senha.
+- [ ] Validar testes de regressão e compilação automática.
