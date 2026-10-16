@@ -75,6 +75,8 @@ const completeOnServer = createServerOnlyFn(async (messages: AssistantMessage[])
     messages: messages.filter(message => message.role === 'user'),
     maxOutputTokens: OUTPUT_TOKENS,
     maxRetries: 0,
+    // SDK's default callback logs raw upstream errors. Handle them below instead.
+    onError: () => {},
     providerOptions: {
       openai: {
         forceReasoning: true,
