@@ -20,6 +20,7 @@ Este repositório contém a aplicação real. As instruções antigas de demonst
 | Atendimento | [Suporte](SUPPORT_SETUP.md) |
 | Trazer clientes e saldos do painel antigo | [Migração de clientes](docs/MIGRACAO_CLIENTES.md) |
 | API, chaves e logs | [API](API_SETUP.md) |
+| Assistente administrativo com IA | [ASTRA: ativação, fontes e limites](docs/ASSISTENTE_ASTRA.md) |
 
 Os guias por recurso registram também etapas históricas da implementação. Para uma nova instalação, comece por INSTALACAO.md. Não execute novamente SQLs já aplicados na instalação em produção.
 
