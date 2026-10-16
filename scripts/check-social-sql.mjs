@@ -42,4 +42,18 @@ await db.query('select astros_social_auto_catalog($1,true)',[admin]);
 assert.equal(Number((await db.query('select count(*) n from astros_social_services where id>=2000 and enabled and auto_classified')).rows[0].n),9);
 await db.exec('update astros_social_settings set enabled=true where id=true');
 const facets=(await db.query('select astros_social_catalog_facets() r')).rows[0].r;assert.equal(facets.filter(g=>['twitch','linkedin','spotify','threads','website','snapchat','whatsapp','kick','pinterest'].includes(g.network)).length,9);assert.equal(await balance(),84);
+// Manual-publication policy supersedes the earlier automatic-release behavior.
+await db.exec(sql('20261016_social_manual_release.sql'));
+assert.equal(Number((await db.query('select count(*) n from astros_social_services where enabled')).rows[0].n),0);
+await assert.rejects(db.query('select astros_social_auto_catalog($1,true)',[admin]));
+await db.query("select astros_social_present($1,2000,true,'twitch','Meu nome personalizado','Texto personalizado','likes')",[admin]);
+await db.exec(sql('20261016_social_manual_release.sql'));
+assert.equal((await db.query('select enabled from astros_social_services where id=2000')).rows[0].enabled,true);
+await db.exec("update astros_social_settings set catalog_lease_at=now()-interval '91 seconds' where id=true");
+job=(await db.query('select astros_social_catalog_claim($1,true) r',[admin])).rows[0].r;
+const manualCatalog=[{id:2000,name:'twitch Likes',category:'twitch Likes',description:'Provider description',rate:2000000,minimum:100,maximum:1000,refill:false,cancel:false,auto_network:'twitch',auto_type:'likes',metrics:{start_time:'31 minutes'}},{id:3000,name:'Instagram New Likes',category:'Instagram Likes Korea',description:'Original description',rate:1000000,minimum:100,maximum:1000,refill:false,cancel:false,auto_network:'instagram',auto_type:'likes'}];
+await db.query('select astros_social_catalog_finish($1,$2,$3)',[job.token,job.generation,JSON.stringify(manualCatalog)]);
+const manualRow=(await db.query('select * from astros_social_services where id=2000')).rows[0];assert.equal(manualRow.title,'Meu nome personalizado');assert.equal(manualRow.provider_name,'twitch Likes');assert.equal(manualRow.customer_description,'Texto personalizado');assert.equal(Number(manualRow.rate_units),2000000);assert.equal(manualRow.enabled,true);assert.equal(manualRow.provider_metrics.start_time,'31 minutes');
+assert.equal((await db.query('select enabled from astros_social_services where id=3000')).rows[0].enabled,false);
+assert.equal(await balance(),84);
 console.log('Social SQL passed: private access, wallet guards, idempotency, partial/full refund once, terminal protection, safe actions, quote release, financial separation.');await db.close();

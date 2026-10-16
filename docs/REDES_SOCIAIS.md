@@ -83,3 +83,11 @@ Aplicar `20261016_social_more_networks.sql`, atualizar a função e sincronizar 
 O botão administrativo “Exportar catálogo original da API” usa leitura autenticada/admin do endpoint oficial services, sem filtrar tipos, redes ou categorias e sem executar compra. O JSON preserva valores de campos documentados e metadados de entrega opcionais presentes, mas nunca exporta chave/headers. Permite comparar o que a API fornece com o site antes de ampliar formulários e taxonomia. A lista comercial continua com os limites explicitados; a exportação não significa suporte de compra a todos os formatos. Filtro de rede usa busca com altura limitada ao viewport.
 
 A listagem comercial do cliente agora permite avançar/voltar nas páginas de 500 serviços de cada filtro, sem descartar permanentemente os demais resultados. A seleção é limpa ao trocar de página; cotação em aberto bloqueia essa troca.
+
+
+## Política atual: publicação exclusivamente manual
+A atualização `20261016_social_manual_release.sql` substitui a liberação automática anterior. Na primeira execução oculta os serviços atuais para nova revisão administrativa, sem alterar saldos ou pedidos. Um marcador torna a reaplicação segura: liberações manuais posteriores não são ocultadas novamente. Serviços novos permanecem ocultos; identificação de rede/tipo continua automática. A antiga ação de habilitar publicação automática é rejeitada no servidor e no banco.
+
+O nome de venda, a descrição personalizada e as decisões manuais persistem nas sincronizações. Nome e categoria originais ficam no administrador para referência. Mudanças só de custo atualizam preços, preservando o nome e a liberação; mudanças relevantes nas condições exigem revisão. A compra continua validando o custo atual no fornecedor e a carteira no servidor.
+
+“Ver detalhes” abre a referência original, ID, custo USD por mil, limites e informações de início, velocidade, quedas, confiabilidade e prazo disponíveis na API/descrição. Metadados opcionais são guardados sem cálculos de prazo. A API pode não fornecer as estatísticas históricas/gráficos exibidos no site; campos ausentes são identificados e nunca estimados pelo painel.
