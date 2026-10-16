@@ -77,3 +77,9 @@ A descrição original e suas informações de início, velocidade e quedas apar
 
 ### Ampliação de redes
 Aplicar `20261016_social_more_networks.sql`, atualizar a função e sincronizar o catálogo. Também reconhece Twitch, LinkedIn, Spotify, Threads, Website, Snapchat, WhatsApp, Kick e Pinterest, além das seis redes iniciais. Categorias/nomes sem reconhecimento continuam ocultos. As mesmas validações de pedidos Default, saldo, preços e idempotência permanecem. Website aceita apenas URL HTTPS de domínio público com nome DNS; nenhum destino é acessado pelo servidor. Os demais destinos permanecem limitados aos domínios da plataforma. Não equivale a importar todos os formatos especiais do fornecedor.
+
+
+### Conferência do catálogo original
+O botão administrativo “Exportar catálogo original da API” usa leitura autenticada/admin do endpoint oficial services, sem filtrar tipos, redes ou categorias e sem executar compra. O JSON preserva valores de campos documentados e metadados de entrega opcionais presentes, mas nunca exporta chave/headers. Permite comparar o que a API fornece com o site antes de ampliar formulários e taxonomia. A lista comercial continua com os limites explicitados; a exportação não significa suporte de compra a todos os formatos. Filtro de rede usa busca com altura limitada ao viewport.
+
+A listagem comercial do cliente agora permite avançar/voltar nas páginas de 500 serviços de cada filtro, sem descartar permanentemente os demais resultados. A seleção é limpa ao trocar de página; cotação em aberto bloqueia essa troca.

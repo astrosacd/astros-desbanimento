@@ -26,3 +26,5 @@ export const socialAdminOperations=createServerFn({method:'GET'}).handler(async(
 export const socialAutoCatalog=createServerFn({method:'POST'}).inputValidator(z.object({enabled:z.boolean()})).handler(async({data})=>(await import('./server')).socialCall('admin-auto-catalog',data,true));
 
 export const socialCatalogFacets=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).socialCall('catalog-facets'));
+
+export const socialSourceCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).socialCall('admin-source-catalog',{},true));
