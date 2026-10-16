@@ -1,5 +1,5 @@
 import {createServerFn} from '@tanstack/react-start';import {z} from 'zod';
-const catalog=z.object({page:z.number().int().min(0).max(10000).default(0),search:z.string().trim().max(80).default(''),network:z.enum(['all','undefined','instagram','facebook','youtube','tiktok','x','telegram']).default('all'),state:z.enum(['all','enabled','hidden','unavailable','unclassified','review']).default('all')});
+const catalog=z.object({page:z.number().int().min(0).max(10000).default(0),search:z.string().trim().max(80).default(''),category:z.string().trim().max(180).default(''),serviceType:z.enum(['all','followers','likes','views','comments','shares','subscribers','other']).default('all'),network:z.enum(['all','undefined','instagram','facebook','youtube','tiktok','x','telegram']).default('all'),state:z.enum(['all','enabled','hidden','unavailable','unclassified','review']).default('all')});
 const history=z.object({page:z.number().int().min(0).default(0),search:z.string().trim().max(80).default(''),email:z.string().trim().max(254).default(''),state:z.enum(['all','dispatching','pending','processing','completed','partial','refunded','review']).default('all')});
 const order=z.object({orderId:z.string().uuid()});const intent=z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()});
 export const socialCatalog=createServerFn({method:'POST'}).inputValidator(catalog).handler(async({data})=>(await import('./server')).socialCall('catalog',data));
@@ -22,3 +22,7 @@ export const socialAdminNote=createServerFn({method:'POST'}).inputValidator(orde
 export const socialVisibility=createServerFn({method:'POST'}).inputValidator(z.object({serviceIds:z.array(z.number().int().positive().max(1000000000)).min(1).max(100),enabled:z.boolean()})).handler(async({data})=>(await import('./server')).socialCall('admin-visibility',data,true));
 
 export const socialAdminOperations=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).socialCall('admin-operations',{},true));
+
+export const socialAutoCatalog=createServerFn({method:'POST'}).inputValidator(z.object({enabled:z.boolean()})).handler(async({data})=>(await import('./server')).socialCall('admin-auto-catalog',data,true));
+
+export const socialCatalogFacets=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).socialCall('catalog-facets'));

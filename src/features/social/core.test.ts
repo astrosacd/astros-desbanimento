@@ -1,4 +1,4 @@
-import {describe,it,expect} from 'vitest';import {decimal,price,targetLink,catalogRows,provenRejection,statusResult,text,suggestedCategory,customerDescription} from '../../../supabase/functions/astros-social/index';
+import {describe,it,expect} from 'vitest';import {automaticClassification,decimal,price,targetLink,catalogRows,provenRejection,statusResult,text,suggestedCategory,customerDescription} from '../../../supabase/functions/astros-social/index';
 describe('redes sociais: cálculo e fronteiras do fornecedor',()=>{
  it('calculates USD per 1000, rounds upward once, then applies markup and fee',()=>{expect(price(2000000,1000,50000,5000,100)).toEqual({cost:2000000,total:1600});expect(price(900000,100,50000,0,0)).toEqual({cost:90000,total:45});expect(decimal('0.000001')).toBe(1);for(const v of ['-1','1e3',null,'0.0000001'])expect(()=>decimal(v)).toThrow();});
  it('rejects unsafe or wrong-network links, never fetches targets',()=>{expect(targetLink('https://www.instagram.com/example#tracking','instagram')).toBe('https://www.instagram.com/example');for(const v of ['https://instagram.com.evil.test/example','https://user:password@instagram.com/example','https://127.0.0.1/example','http://instagram.com/example','https://youtube.com/example'])expect(()=>targetLink(v,'instagram')).toThrow();});
@@ -10,3 +10,5 @@ describe('redes sociais: cálculo e fronteiras do fornecedor',()=>{
 });
 
 it('offers Portuguese category names and conservative descriptions without inventing supplier promises',()=>{expect(suggestedCategory('Instagram Followers Brazil')).toBe('followers');expect(suggestedCategory('YouTube Views')).toBe('views');expect(customerDescription('')).toContain('Pode haver quedas');expect(customerDescription('<b>Descrição aprovada</b>')).toBe('Descrição aprovada');});
+
+it('classifies provider categories automatically without assigning unsupported networks',()=>{expect(automaticClassification('S1 Instagram Likes [Brazil]','Instagram Likes Brazil')).toEqual({network:'instagram',type:'likes'});expect(automaticClassification('Twitter Followers','Twitter')).toEqual({network:'x',type:'followers'});expect(automaticClassification('Tik Tok Views','Tik Tok')).toEqual({network:'tiktok',type:'views'});expect(automaticClassification('Spotify Plays','Music')).toEqual({network:'',type:'other'});});

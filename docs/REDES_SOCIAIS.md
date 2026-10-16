@@ -65,3 +65,11 @@ Serviços novos entram ocultos. Sincronização preserva rede, título, categori
 Apresentação em português é editável, com categoria sugerida por palavras conhecidas e descrição geral conservadora quando não há texto revisado; não é tradução automática integral das condições do fornecedor. O original permanece administrativo. Cotação/pedido preservam a descrição original e o texto ao cliente separadamente; a descrição original continua sendo usada para bloquear reposição contraditória. Preços e condições atuais são verificados antes da cobrança.
 
 Resumo operacional conta todos os pedidos, sem confundir contagem com faturamento. Fila mostra os 20 mais antigos em conferência ou ativos há mais de 24 horas, com contagem completa; 24h é critério de acompanhamento, não promessa de prazo. ID externo e descrição original aparecem somente nos detalhes administrativos, com copiar ID e confirmação visual. Clientes não recebem ID do fornecedor.
+
+
+## Catálogo automático e seleção em etapas
+Aplicar `20261016_social_automatic_catalog.sql` e publicar `astros-social.deploy.ts`. Em Catálogo, o administrador pode ativar o catálogo automático uma vez. A rotina já existente atualiza os serviços compatíveis sem classificação individual. A pausa global continua independente. Decisões manuais de ocultar/liberar são preservadas.
+
+O cliente filtra rede → tipo de serviço → categoria/origem original do fornecedor → serviço. As opções de categorias são agrupadas no servidor sobre todo o catálogo liberado, antes da paginação. Instagram, Facebook, YouTube, TikTok, X e Telegram são reconhecidos pelo início do nome/categoria; serviços não reconhecidos ficam ocultos. Serviços especiais não compatíveis com pedidos simples continuam excluídos.
+
+A descrição original e suas informações de início, velocidade e quedas aparecem quando fornecidas pela API. Métricas exclusivas do site não são inventadas; campos ausentes exibem “Não informado pelo fornecedor”. O preço final continua calculado no servidor e debitado da carteira única, pelas regras existentes.
