@@ -33,19 +33,26 @@ export function AssistantAdmin() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [voice, setVoice] = useState(false),
-    [micAvailable, setMicAvailable] = useState(false);
+    [micAvailable, setMicAvailable] = useState(false),
+    [conversation, setConversation] = useState(false);
   const lock = useRef(false),
     alive = useRef(true),
     recognition = useRef<SpeechInput | null>(null),
     end = useRef<HTMLDivElement>(null),
     seq = useRef(0),
     speechMotion = useRef<SpeechMotion | null>(null),
-    speechSequence = useRef(0);
+    speechSequence = useRef(0),
+    conversationActive = useRef(false),
+    restartTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    listenNext = useRef<() => void>(() => {}),
+    sendNext = useRef<(text: string) => void>(() => {});
   useEffect(() => {
     alive.current = true;
     setMicAvailable(!!speechInput());
     return () => {
       alive.current = false;
+      conversationActive.current = false;
+      if (restartTimer.current) clearTimeout(restartTimer.current);
       recognition.current?.stop();
       speechMotion.current = null;
       speechSequence.current++;
@@ -56,15 +63,25 @@ export function AssistantAdmin() {
     end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [messages, busy]);
   function stopVoice() {
+    conversationActive.current = false;
+    setConversation(false);
+    if (restartTimer.current) clearTimeout(restartTimer.current);
+    recognition.current?.stop();
     speechSequence.current++;
     speechMotion.current = null;
     window.speechSynthesis?.cancel();
     setMode("idle");
   }
   function speak(text: string) {
-    if (!voice || !window.speechSynthesis) return;
+    if ((!voice && !conversationActive.current) || !window.speechSynthesis) {
+      resumeListening();
+      return;
+    }
     const clean = speechPlainText(text);
-    if (!clean) return;
+    if (!clean) {
+      resumeListening();
+      return;
+    }
     const current = ++speechSequence.current;
     window.speechSynthesis.cancel();
     const speech = new SpeechSynthesisUtterance(clean);
@@ -108,10 +125,19 @@ export function AssistantAdmin() {
         speechMotion.current.anchorAt = performance.now();
       }
     };
-    speech.onend = speech.onerror = () => {
+    speech.onend = () => {
       if (alive.current && current === speechSequence.current) {
         speechMotion.current = null;
         setMode("idle");
+        resumeListening();
+      }
+    };
+    speech.onerror = () => {
+      if (alive.current && current === speechSequence.current) {
+        stopVoice();
+        setError(
+          "A leitura por voz foi interrompida. Você pode continuar por texto ou iniciar a conversa novamente.",
+        );
       }
     };
     window.speechSynthesis.speak(speech);
@@ -121,7 +147,7 @@ export function AssistantAdmin() {
     const text = (prompt ?? question).trim();
     if (text.length < 2 || lock.current) return;
     recognition.current?.stop();
-    speechSequence.current++;
+    const speechRequest = ++speechSequence.current;
     speechMotion.current = null;
     window.speechSynthesis?.cancel();
     lock.current = true;
@@ -140,10 +166,12 @@ export function AssistantAdmin() {
       setUntil(answer.until);
       setMessages((old) => [...old, { id: ++seq.current, role: "assistant", ...answer }]);
       setMode("idle");
-      speak(answer.text);
+      if (speechSequence.current === speechRequest) speak(answer.text);
     } catch (e) {
       if (alive.current) {
         setError(e instanceof Error ? e.message : "Não foi possível consultar agora.");
+        conversationActive.current = false;
+        setConversation(false);
         setMode("error");
         setQuestion(text);
       }
@@ -152,42 +180,74 @@ export function AssistantAdmin() {
       if (alive.current) setBusy(false);
     }
   }
-  function listen() {
-    if (mode === "listening") {
-      recognition.current?.stop();
-      setMode("idle");
-      return;
-    }
+  function resumeListening() {
+    if (restartTimer.current) clearTimeout(restartTimer.current);
+    if (!conversationActive.current || !alive.current) return;
+    restartTimer.current = setTimeout(() => {
+      if (conversationActive.current && alive.current && !lock.current) listenNext.current();
+    }, 450);
+  }
+  function beginListening() {
+    if (!conversationActive.current || !alive.current || lock.current) return;
     const r = speechInput();
     if (!r) {
-      setError("Seu navegador não oferece entrada por voz. Use o campo de texto.");
+      stopVoice();
+      setError("Seu navegador não oferece conversa por voz. Continue por texto.");
       return;
     }
-    speechSequence.current++;
-    speechMotion.current = null;
-    window.speechSynthesis?.cancel();
     recognition.current = r;
     r.lang = "pt-BR";
     r.continuous = false;
     r.interimResults = false;
+    let heard = false;
     r.onresult = (e) => {
-      if (alive.current) setQuestion(e.results[0]?.[0]?.transcript.slice(0, 1000) || "");
+      if (!alive.current || !conversationActive.current || heard || recognition.current !== r)
+        return;
+      const transcript = (e.results[0]?.[0]?.transcript || "").trim().slice(0, 1000);
+      if (transcript.length < 2) return;
+      heard = true;
+      sendNext.current(transcript);
     };
     r.onerror = () => {
-      if (alive.current) {
-        setError("Não foi possível usar o microfone. Confira a permissão ou digite sua pergunta.");
-        setMode("idle");
+      if (alive.current && conversationActive.current && recognition.current === r) {
+        stopVoice();
+        setError(
+          "O microfone foi pausado. Confira a permissão e clique em Conversar por voz para continuar.",
+        );
       }
     };
     r.onend = () => {
-      if (alive.current) setMode((m) => (m === "listening" ? "idle" : m));
+      if (alive.current && conversationActive.current && recognition.current === r && !heard) {
+        setMode("idle");
+        conversationActive.current = false;
+        setConversation(false);
+      }
     };
     try {
+      setError("");
       r.start();
       setMode("listening");
     } catch {
+      stopVoice();
       setError("Não foi possível iniciar o microfone.");
     }
+  }
+  listenNext.current = beginListening;
+  sendNext.current = (text) => {
+    void send(undefined, text);
+  };
+  function listen() {
+    if (conversationActive.current) {
+      stopVoice();
+      return;
+    }
+    if (!window.speechSynthesis) {
+      setError("A conversa por voz não está disponível neste navegador. Continue por texto.");
+      return;
+    }
+    conversationActive.current = true;
+    setConversation(true);
+    beginListening();
   }
   return (
     <div className="astra-page">
@@ -218,6 +278,17 @@ export function AssistantAdmin() {
             </h3>
             <p role="status">{labels[mode]}</p>
           </div>
+          {micAvailable && (
+            <Button
+              type="button"
+              className="astra-voice-start"
+              disabled={busy && !conversation}
+              onClick={listen}
+            >
+              {conversation ? <MicOff size={16} /> : <Mic size={16} />}{" "}
+              {conversation ? "Encerrar conversa" : "Conversar por voz"}
+            </Button>
+          )}
           <div className="astra-capabilities">
             <span>Recargas</span>
             <span>Clientes</span>
@@ -241,13 +312,15 @@ export function AssistantAdmin() {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label={voice ? "Desativar resposta por voz" : "Ativar resposta por voz"}
+                aria-label={
+                  voice || conversation ? "Desativar resposta por voz" : "Ativar resposta por voz"
+                }
                 onClick={() => {
-                  if (voice) stopVoice();
-                  setVoice(!voice);
+                  if (voice || conversation) stopVoice();
+                  setVoice(conversation ? false : !voice);
                 }}
               >
-                {voice ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                {voice || conversation ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </Button>
               <Button
                 variant="ghost"
@@ -388,8 +461,10 @@ export function AssistantAdmin() {
             <div>
               <small>
                 {mode === "listening"
-                  ? "Ouvindo… revise o texto antes de enviar."
-                  : "Conversa mantida apenas nesta tela. Voz depende do navegador."}
+                  ? "Ouvindo… sua pergunta será enviada automaticamente."
+                  : conversation
+                    ? "Conversa por voz ativa. Vou escutar novamente após responder."
+                    : "Digite e envie ou inicie uma conversa por voz."}
               </small>
               <div>
                 {micAvailable && (
@@ -397,8 +472,8 @@ export function AssistantAdmin() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    aria-label={mode === "listening" ? "Parar microfone" : "Usar microfone"}
-                    disabled={busy}
+                    aria-label={conversation ? "Encerrar conversa por voz" : "Usar microfone"}
+                    disabled={busy && !conversation}
                     onClick={listen}
                   >
                     {mode === "listening" ? <MicOff size={17} /> : <Mic size={17} />}

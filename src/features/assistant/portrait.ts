@@ -54,8 +54,8 @@ export function drawPortrait(
     scale = Math.min(width / 16.7, height / 19.8),
     cx = width * 0.5,
     cy = height * 0.47,
-    yaw = -0.18 + Math.sin(t * 0.28) * 0.08,
-    pitch = 0.03 + Math.sin(t * 0.21) * 0.018;
+    yaw = -0.12 + Math.sin(t * 0.48) * 0.28,
+    pitch = 0.06 + Math.sin(t * 0.37) * 0.07;
   const jaw = mode === "speaking" && !reduced ? articulation.jaw : 0,
     round = mode === "speaking" ? articulation.round : 0;
   ctx.clearRect(0, 0, width, height);
@@ -77,6 +77,36 @@ export function drawPortrait(
       perspective = 1 + zz * 0.012;
     return [cx + xx * scale * perspective, cy - yy * scale * perspective, zz];
   }
+  // Translucent coloured facets and moving highlights, reconstructed from the reference's glass phase.
+  const palette = [
+    "33,225,209",
+    "74,167,255",
+    "244,74,131",
+    "85,237,171",
+    "181,119,255",
+    "255,207,116",
+  ];
+  const glass = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * 0.65));
+  triangles.forEach((f, i) => {
+    const a = vertices[f[0]!]!,
+      b = vertices[f[1]!]!,
+      c = vertices[f[2]!]!;
+    const p = project(a[0]!, a[1]!, a[2]!),
+      q = project(b[0]!, b[1]!, b[2]!),
+      r = project(c[0]!, c[1]!, c[2]!);
+    const phase = 0.5 + 0.5 * Math.sin(t * 0.8 + i * 1.73);
+    const coloured = i % 13 < 2;
+    const shine = Math.max(0, Math.sin((a[0]! + a[1]!) * 0.25 - t * 0.45)) ** 12;
+    ctx.fillStyle = coloured
+      ? `rgba(${palette[i % palette.length]},${glass * (0.2 + phase * 0.36)})`
+      : `rgba(195,229,246,${0.008 + shine * 0.075})`;
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(q[0], q[1]);
+    ctx.lineTo(r[0], r[1]);
+    ctx.closePath();
+    ctx.fill();
+  });
   ctx.lineWidth = 0.45;
   ctx.strokeStyle = "rgba(233,244,248,.18)";
   ctx.beginPath();
@@ -94,7 +124,7 @@ export function drawPortrait(
   for (let i = 0; i < points.length; i++) {
     const a = points[i]!,
       p = project(a[0], a[1], a[2]),
-      brightness = 0.67 + (i % 7) / 22;
+      brightness = 0.43 + (i % 7) / 18;
     ctx.fillStyle = `rgba(244,250,255,${brightness})`;
     ctx.beginPath();
     ctx.arc(p[0], p[1], (0.55 + (i % 5) * 0.13) * (width < 220 ? 0.75 : 1), 0, Math.PI * 2);

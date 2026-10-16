@@ -73,7 +73,7 @@ it("sends plain text rather than Markdown to the speech engine", async () => {
   const utterance = speak.mock.calls[0]![0];
   expect(utterance.text).not.toContain("*");
   expect(utterance.text).toContain("16 de outubro de 2026");
-  expect(utterance.text).toContain("10,00 reais");
+  expect(utterance.text).toContain("dez reais");
   cleanup();
   vi.unstubAllGlobals();
 });

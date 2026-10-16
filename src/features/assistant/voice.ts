@@ -35,6 +35,13 @@ export function speechPlainText(text: string) {
     "dezembro",
   ];
   return text
+    .replace(/\p{Regional_Indicator}{2}/gu, "")
+    .replace(
+      /\p{Extended_Pictographic}(?:[\uFE0E\uFE0F\u200D\p{Emoji_Modifier}\p{Extended_Pictographic}])*/gu,
+      "",
+    )
+    .replace(/[0-9#*]\uFE0F?\u20E3/gu, "")
+    .replace(/:[a-z][a-z0-9_+-]*:/gi, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/<[^>]*>/g, "")
@@ -48,8 +55,9 @@ export function speechPlainText(text: string) {
         ? `${Number(d)} de ${months[Number(m) - 1]} de ${y}`
         : all,
     )
-    .replace(/US\$\s*(\d[\d.,]*\d|\d)/g, "$1 dólares")
-    .replace(/R\$\s*(\d[\d.,]*\d|\d)/g, "$1 reais")
+    .replace(/US\$\s*(\d[\d.,]*\d|\d)/g, (_, v) => moneySpeech(v, "dólar", "dólares"))
+    .replace(/R\$\s*(\d[\d.,]*\d|\d)/g, (_, v) => moneySpeech(v, "real", "reais"))
+    .replace(/\b(\d+),00\s+(reais|dólares)\b/g, "$1 $2")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -91,4 +99,84 @@ export function speechArticulation(s: SpeechMotion | null, time: number): Articu
     round: a.round + (b.round - a.round) * blend,
     width: a.width + (b.width - a.width) * blend,
   };
+}
+
+function integerSpeech(n: number): string {
+  const small = [
+    "zero",
+    "um",
+    "dois",
+    "três",
+    "quatro",
+    "cinco",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+    "dez",
+    "onze",
+    "doze",
+    "treze",
+    "catorze",
+    "quinze",
+    "dezesseis",
+    "dezessete",
+    "dezoito",
+    "dezenove",
+  ];
+  if (n < 20) return small[n]!;
+  if (n < 100)
+    return (
+      [
+        "",
+        "",
+        "vinte",
+        "trinta",
+        "quarenta",
+        "cinquenta",
+        "sessenta",
+        "setenta",
+        "oitenta",
+        "noventa",
+      ][Math.floor(n / 10)]! + (n % 10 ? " e " + integerSpeech(n % 10) : "")
+    );
+  if (n === 100) return "cem";
+  if (n < 1000)
+    return (
+      [
+        "",
+        "cento",
+        "duzentos",
+        "trezentos",
+        "quatrocentos",
+        "quinhentos",
+        "seiscentos",
+        "setecentos",
+        "oitocentos",
+        "novecentos",
+      ][Math.floor(n / 100)]! + (n % 100 ? " e " + integerSpeech(n % 100) : "")
+    );
+  if (n < 1000000) {
+    const k = Math.floor(n / 1000),
+      r = n % 1000;
+    return (
+      (k === 1 ? "mil" : integerSpeech(k) + " mil") +
+      (r ? (r < 100 || r % 100 === 0 ? " e " : " ") + integerSpeech(r) : "")
+    );
+  }
+  return String(n);
+}
+function moneySpeech(raw: string, singular: string, plural: string) {
+  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const value = Number(normalized);
+  if (!Number.isFinite(value) || value < 0 || value > 999999) return raw + " " + plural;
+  const cents = Math.round(value * 100),
+    whole = Math.floor(cents / 100),
+    fraction = cents % 100;
+  return (
+    (whole || !fraction ? integerSpeech(whole) + " " + (whole === 1 ? singular : plural) : "") +
+    (fraction
+      ? (whole ? " e " : "") + integerSpeech(fraction) + (fraction === 1 ? " centavo" : " centavos")
+      : "")
+  );
 }

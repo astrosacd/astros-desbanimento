@@ -1,6 +1,6 @@
 # Assistente ASTRA
 
-Assistente de consulta exclusivo do administrador, em Gestão geral → Assistente ASTRA. Mostra rosto de partículas, conversa por texto, ditado e leitura por voz quando o navegador suporta. O microfone só inicia após clique; revise o texto antes de enviar.
+Assistente de consulta exclusivo do administrador, em Gestão geral → Assistente ASTRA. Mostra rosto de partículas, conversa por texto, ditado e leitura por voz quando o navegador suporta. O microfone só inicia após clique em Conversar por voz. A pergunta reconhecida é enviada automaticamente; após a resposta falada, a escuta volta a iniciar. Encerrar conversa interrompe a escuta e cancela respostas de áudio pendentes. Erros do microfone ou da consulta pausam esse modo. A opção de digitar e enviar permanece disponível.
 
 ## Ativação nesta instalação
 
@@ -40,3 +40,12 @@ Testes: `npm test -- src/features/assistant`; SQL isolado: `node scripts/check-a
 +A voz recebe uma versão sem Markdown: asteriscos, crases, títulos, marcações de link e HTML não são pronunciados. Datas e valores em real/dólar são preparados como texto falado. A apresentação escrita mantém negrito.
 +
 +O rosto usa partículas brancas, contornos da malha e deformação de lábios e mandíbula. A articulação acompanha início, pausa, fim e limites de palavras informados pelo SpeechSynthesis; entre eventos, estima a posição das letras para interpolar formatos de vogais e consoantes. Navegadores sem eventos de palavra usam estimativa temporal. Não há análise do áudio nem sincronização fonética garantida. A voz disponível depende do navegador e sistema operacional. Uma reprodução literalmente idêntica do avatar e da voz da referência exigiria os ativos e o motor originais; esta implementação é uma reconstrução própria.
+
+
+### Conversa e leitura natural
+
+A leitura remove emojis, sequências de emojis, bandeiras e shortcodes como `:smile:`. Valores em moeda são convertidos em expressões faladas: R$ 0,00 → zero reais; R$ 10,50 → dez reais e cinquenta centavos. A resposta escrita preserva a formatação. O prompt pede linguagem breve e conversacional, sem emojis e sem repetir métricas desnecessárias.
+
+O modo de conversa por voz usa turnos: escutar → enviar transcrição final uma vez → consultar → falar → aguardar 450 ms → escutar. Não grava enquanto o assistente fala, nem abre o microfone ao carregar a página. Sem resultado ou com erro, pausa em vez de reiniciar indefinidamente. Não permite interromper a fala por reconhecimento simultâneo. A autorização e os dados de consulta continuam iguais; nenhuma operação de alteração foi adicionada.
+
+O retrato também inclui facetas translúcidas coloridas, reflexos móveis e maior rotação da cabeça, inspirados na fase de vidro da referência. A malha e a articulação são uma reconstrução própria, não os ativos originais do vídeo.
