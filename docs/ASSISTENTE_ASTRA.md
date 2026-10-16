@@ -26,3 +26,11 @@ Autorização administrativa no servidor, na Edge Function e nas funções SQL. 
 Verifique com admin uma pergunta de recargas e uma de chamados; confira período, fontes e registros no painel. Com cliente, o acesso deve ser negado. Se a integração de suporte falhar, a resposta deve informar indisponibilidade. Testes locais usam dados simulados e não substituem a verificação após a publicação das funções no Supabase real.
 
 Testes: `npm test -- src/features/assistant`; SQL isolado: `node scripts/check-assistant-sql.mjs` com PGlite disponível; compilação: `npm run build`.
+
+## Consultas ampliadas e retrato 3D
++
++Execute também `supabase/migrations/20261016_assistant_extended.sql` para contas e saldo atual, último login, extrato, tentativas de pagamento, pendências atuais, catálogo liberado/oculto e parâmetros públicos de preços. A função complementar repete a autorização admin e não escreve em dados financeiros. Se ela ainda não foi instalada, as consultas anteriores continuam funcionando e a fonte ampliada aparece indisponível.
++
++O servidor consulta as ações **admin-balance** existentes de **astros-social** e **astros-sms**, sem comprar, sincronizar catálogo ou alterar pedidos. Cada resposta valida moeda USD, unidades e horário e projeta somente o saldo e seus metadados. Falhas individuais não se transformam em saldo zero. Essas duas fontes são saldos atuais externos; nunca são substituídas pelo saldo interno da carteira. Não é necessário republicar astros-admin-context para esta ampliação. Um e-mail explícito na pergunta ativa automaticamente o filtro de cliente quando o campo está vazio; para nomes, use o campo de filtro.
++
++O retrato usa a malha canônica do MediaPipe com partículas amostradas, projeção 3D e animação local em canvas. Arquivo e origem em `face-mesh.ts`, licença Apache-2.0 em `public/licenses/mediapipe-Apache-2.0.txt`. Nenhuma imagem de câmera é capturada. Respostas têm renderização restrita de negrito e parágrafos; HTML do modelo nunca é executado.

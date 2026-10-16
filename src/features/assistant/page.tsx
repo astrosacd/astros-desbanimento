@@ -1,3 +1,4 @@
+import { AssistantAnswer } from "./answer";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, Mic, MicOff, Send, ShieldCheck, Volume2, VolumeX, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -140,9 +141,9 @@ export function AssistantAdmin() {
     <div className="astra-page">
       <header className="astra-heading">
         <div>
-          <span className="eyebrow">INTELIGÊNCIA ADMINISTRATIVA</span>
-          <h2>Converse com a ASTRA.</h2>
-          <p>Uma visão do seu sistema, em uma conversa.</p>
+          <span className="eyebrow">CENTRO DE INTELIGÊNCIA</span>
+          <h2>ASTRA</h2>
+          <p>Seu ecossistema. Uma conversa.</p>
         </div>
         <span className="astra-access">
           <ShieldCheck size={15} />
@@ -152,16 +153,16 @@ export function AssistantAdmin() {
       <div className="astra-workspace">
         <aside className="astra-avatar-panel" data-mode={mode}>
           <div className="astra-avatar-top">
-            <span>ASTRA / ASTROS MAIS</span>
+            <span>ASTROS MAIS / INTELLIGENCE</span>
             <span className="astra-online-dot" />
           </div>
           <AssistantFace mode={mode} />
           <div className="astra-avatar-label">
-            <span>ASSISTENTE DO ECOSSISTEMA</span>
+            <span>INTELIGÊNCIA A SERVIÇO DA ASTROS</span>
             <h3>
-              Dados reais.
+              Visão completa.
               <br />
-              Respostas com contexto.
+              Decisões com clareza.
             </h3>
             <p role="status">{labels[mode]}</p>
           </div>
@@ -182,7 +183,7 @@ export function AssistantAdmin() {
           <div className="astra-chat-toolbar">
             <div>
               <Bot size={20} />
-              <strong>Seu centro de consulta</strong>
+              <strong>Conversa com a ASTRA</strong>
             </div>
             <div>
               <Button
@@ -270,7 +271,7 @@ export function AssistantAdmin() {
                 <div className="astra-prompts">
                   {[
                     "Quanto entrou de recargas hoje?",
-                    "Quem se cadastrou hoje?",
+                    "Qual o saldo no SMMRaja e SMSPool?",
                     "Como estão os pedidos de SMS e redes sociais?",
                     "Há bloqueios ou chamados abertos?",
                   ].map((text) => (
@@ -285,7 +286,7 @@ export function AssistantAdmin() {
             {messages.map((m) => (
               <article key={m.id} className={`astra-message astra-message-${m.role}`}>
                 <span>{m.role === "user" ? "Você" : "ASTRA"}</span>
-                <p>{m.text}</p>
+                <AssistantAnswer text={m.text} />
                 {m.generatedAt && (
                   <footer>
                     <span>

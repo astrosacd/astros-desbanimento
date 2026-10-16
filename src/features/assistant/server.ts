@@ -1,3 +1,4 @@
+import { supplierBalance, extendedContext } from "./sources.server";
 import { getCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { requireAdmin, request } from "../admin/auth.server";
 import { assistantInput, assistantSystem, resolvePeriod } from "./validation";
@@ -14,19 +15,34 @@ export async function answerAssistant(input: unknown) {
   });
   if (!gate.ok) throw Error("Ative o SQL do assistente no Supabase antes de consultar.");
   if ((await gate.json()) !== true) throw Error("Limite de consultas atingido. Aguarde um minuto.");
-  const response = await request("/functions/v1/astros-admin-context", token, {
-    method: "POST",
-    body: JSON.stringify({ ...period, clientSearch: data.clientSearch }),
-    signal: AbortSignal.timeout(45000),
-  });
+  const clientSearch =
+    data.clientSearch || data.question.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+  const [response, socialBalance, smsBalance, extended] = await Promise.all([
+    request("/functions/v1/astros-admin-context", token, {
+      method: "POST",
+      body: JSON.stringify({ ...period, clientSearch }),
+      signal: AbortSignal.timeout(45000),
+    }),
+    supplierBalance(token, "social"),
+    supplierBalance(token, "sms"),
+    extendedContext(token, period.from, period.until, clientSearch),
+  ]);
   if (!response.ok)
     throw Error(
       "Não foi possível consultar as fontes do assistente. Confira a função astros-admin-context.",
     );
   const context = await response.json();
   if (!context?.snapshot?.generatedAt) throw Error("A consulta retornou dados incompletos.");
+  context.supplierBalances = { social: socialBalance, sms: smsBalance };
+  context.extended = extended;
+  context.sources = [
+    ...(context.sources || []),
+    { name: "SMMRaja · saldo externo", available: socialBalance.available },
+    { name: "SMSPool · saldo externo", available: smsBalance.available },
+    { name: "Supabase · consultas ampliadas", available: extended.available },
+  ];
   const payload = JSON.stringify(context);
-  if (payload.length > 45000)
+  if (payload.length > 65000)
     throw Error("A consulta ficou grande demais. Restrinja o período ou o cliente.");
   const { completeAssistant } = await import("./lovable.server");
   const text = await completeAssistant([

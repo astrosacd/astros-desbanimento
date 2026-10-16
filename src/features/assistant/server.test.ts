@@ -53,6 +53,9 @@ it("uses only the fixed context endpoint and bounded messages after authorizatio
   expect(mocks.request.mock.calls.map((c) => c[0])).toEqual([
     "/rest/v1/rpc/astros_assistant_gate",
     "/functions/v1/astros-admin-context",
+    "/functions/v1/astros-social",
+    "/functions/v1/astros-sms",
+    "/rest/v1/rpc/astros_assistant_extended",
   ]);
   const messages = mocks.model.mock.calls[0]![0];
   expect(messages[0].role).toBe("system");
