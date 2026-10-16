@@ -1,0 +1,2 @@
+import {Facebook,Globe,Instagram,Linkedin,MessageCircle,Music2,Send,Twitch,Youtube} from 'lucide-react';
+export function SocialNetworkIcon({network}:{network:string}){const Icon=({instagram:Instagram,facebook:Facebook,youtube:Youtube,linkedin:Linkedin,telegram:Send,tiktok:Music2,spotify:Music2,twitch:Twitch,whatsapp:MessageCircle} as Record<string,typeof Globe>)[network]||Globe;return <span className={`social-network-icon social-network-${network}`} aria-hidden="true"><Icon size={20}/></span>;}

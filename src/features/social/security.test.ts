@@ -7,6 +7,7 @@ function setup({role='cliente',failure=false,reject=false,previous=false,low=fal
  else if(url.includes('astros_social_gate'))value=true;
  else if(url.includes('rpc/astros_social_platforms'))value=[{id:'soundcloud',name:'SoundCloud'}];
  else if(url.includes('rpc/astros_social_source_list'))value={services:[],total:0,catalogTotal:0,hasMore:false,types:[]};
+ else if(url.includes('astros_social_present_details'))value=null;
  else if(url.includes('astros_social_configure'))value=null;
  else if(url.includes('astros_social_catalog_claim'))value={started:false};
  else if(url.includes('astros_social_operations'))value={total:0,attention:[]};
@@ -15,7 +16,7 @@ function setup({role='cliente',failure=false,reject=false,previous=false,low=fal
  else if(url.includes('astros_social_private'))value=[{api_key:'PRIVATE-PROVIDER',integration_id:'private-generation',worker_secret:'PRIVATE-WORKER'}];
  else if(url.includes('rpc/astros_social_admin_catalog'))value={rows:[],hasMore:false,total:0};
  else if(url.includes('rpc/astros_social_client_catalog'))value={rows:[],hasMore:false,total:0};
- else if(url.includes('astros_social_services'))value=[{id:1,enabled:true,available:true,network:'instagram',title:'Example',provider_name:'Example',description:'',minimum:10,maximum:10000,refill:false,cancel:false,updated_at:'2026-01-01'}];
+ else if(url.includes('astros_social_services'))value=[{id:1,rate_units:1000000,customer_average_time:'15 minutos',enabled:true,available:true,network:'instagram',title:'Example',provider_name:'Example',description:'',minimum:10,maximum:10000,refill:false,cancel:false,updated_at:'2026-01-01'}];
  else if(url.includes('astros_social_quotes')&&options.method==='POST')value=[{...JSON.parse(options.body),id:quoteId,expires_at:new Date(Date.now()+120000).toISOString()}];
  else if(url.includes('astros_social_quotes'))value=[{id:quoteId,user_id:owner,service_id:1,quantity:1000,refill:false,cancel:false,rate_units:1000000,cost_units:1000000,description:'',link:'https://instagram.com/example'}];
  else if(url.includes('astros_social_reserve')){order={id:requestId,user_id:owner,quote_id:quoteId,state:'dispatching',service_id:1,provider_id:'12345',title:'Example',network:'instagram',link:'https://instagram.com/example',quantity:1000,price_cents:750,refund_cents:0};value={dispatch:true};}
@@ -53,3 +54,6 @@ it('limits original catalog export to administrators and performs no purchase or
 it('exposes a service reference for customer support without exposing the provider order ID',async()=>{setup({previous:true});const response=await handler(request('buy'));const data=await response.json();expect(data.order.serviceId).toBe(1);expect(data.order).not.toHaveProperty('provider_id');expect(data.order).not.toHaveProperty('providerId');});
 
 it('keeps complete provider inventory and source service costs administrator-only',async()=>{for(const action of ['admin-source-list','admin-service','admin-platforms']){const calls=setup();expect((await handler(request(action,{serviceId:1}))).status).toBe(400);expect(calls.some(c=>c.url.includes('astros_social_source_list')||c.url.includes('astros_social_platforms')||c.url.includes('astros_social_services'))).toBe(false);}const calls=setup();const response=await handler(request('catalog-platforms',{actor:owner}));expect(response.status).toBe(200);expect(JSON.parse(calls.find(c=>c.url.includes('rpc/astros_social_platforms'))!.body)).toEqual({actor:null});});
+
+it('estimates retail price without supplier calls, quote creation or wallet mutation',async()=>{const calls=setup();const response=await handler(request('estimate',{serviceId:1,quantity:1000}));expect(response.status).toBe(200);expect(await response.json()).toEqual({serviceId:1,quantity:1000,priceCents:750,estimated:true});expect(calls.some(c=>c.url.includes('smmraja')||c.url.includes('quotes')||c.url.includes('reserve')||c.url.includes('private'))).toBe(false);const bad=await handler(request('estimate',{serviceId:1,quantity:100000001}));expect(bad.status).toBe(400);});
+it('saves average delivery through an administrator-only atomic RPC',async()=>{const data={serviceId:1,title:'Example',network:'instagram',categoryCode:'views',customerDescription:'Descrição',averageTime:'15 minutos',enabled:false};let calls=setup();expect((await handler(request('admin-curate',data))).status).toBe(400);expect(calls.some(c=>c.url.includes('present_details'))).toBe(false);calls=setup({role:'admin'});expect((await handler(request('admin-curate',data))).status).toBe(200);expect(JSON.parse(calls.find(c=>c.url.includes('present_details'))!.body)).toMatchObject({actor:owner,service:1,average_text:'15 minutos',active:false});});
