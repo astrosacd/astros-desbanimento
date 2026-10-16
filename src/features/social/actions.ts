@@ -1,5 +1,5 @@
 import {createServerFn} from '@tanstack/react-start';import {z} from 'zod';
-const catalog=z.object({page:z.number().int().min(0).max(10000).default(0),search:z.string().trim().max(80).default('')});
+const catalog=z.object({page:z.number().int().min(0).max(10000).default(0),search:z.string().trim().max(80).default(''),network:z.enum(['all','undefined','instagram','facebook','youtube','tiktok','x','telegram']).default('all'),state:z.enum(['all','enabled','hidden','unavailable','unclassified']).default('all')});
 const history=z.object({page:z.number().int().min(0).default(0),search:z.string().trim().max(80).default(''),email:z.string().trim().max(254).default(''),state:z.enum(['all','dispatching','pending','processing','completed','partial','refunded','review']).default('all')});
 const order=z.object({orderId:z.string().uuid()});const intent=z.object({quoteId:z.string().uuid(),requestId:z.string().uuid()});
 export const socialCatalog=createServerFn({method:'POST'}).inputValidator(catalog).handler(async({data})=>(await import('./server')).socialCall('catalog',data));
@@ -18,3 +18,5 @@ export const socialAdminCatalog=createServerFn({method:'POST'}).inputValidator(c
 export const socialCurate=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),title:z.string().trim().min(3).max(180),network:z.enum(['instagram','facebook','youtube','tiktok','x','telegram']),enabled:z.boolean()})).handler(async({data})=>(await import('./server')).socialCall('admin-curate',data,true));
 export const socialAdminHistory=createServerFn({method:'POST'}).inputValidator(history).handler(async({data})=>(await import('./server')).socialCall('admin-history',data,true));
 export const socialAdminNote=createServerFn({method:'POST'}).inputValidator(order.extend({requestId:z.string().uuid(),note:z.string().trim().min(10).max(500)})).handler(async({data})=>(await import('./server')).socialCall('admin-note',data,true));
+
+export const socialVisibility=createServerFn({method:'POST'}).inputValidator(z.object({serviceIds:z.array(z.number().int().positive().max(1000000000)).min(1).max(100),enabled:z.boolean()})).handler(async({data})=>(await import('./server')).socialCall('admin-visibility',data,true));

@@ -48,3 +48,11 @@ A chave guarda uma geração privada de integração. Pedidos/cotações preserv
 - Operação avisa saldo inferior a US$ 10 (limiar fixo informativo), com horário da consulta; erro de consulta não aparece como saldo zero.
 - Indicação explícita NR / No refill / Sem reposição no nome ou descrição prevalece sobre flag contraditória: não oferecer reposição. Sincronizar catálogo após atualizar astros-social. Pedidos históricos preservam valores; solicitações de reposição também passam por esse bloqueio no servidor.
 - Teste real requer saldo do fornecedor e confirmação pelo proprietário; nenhuma compra foi executada pelos testes automatizados.
+
+## Catálogo e liberação em lote
+- Filtros de rede e situação são aplicados no servidor antes da paginação. Clientes recebem somente serviços liberados e disponíveis, independentemente de filtros enviados.
+- Seleção limitada aos serviços configurados e disponíveis da página atual (até 100), limpa ao mudar filtros/página. Não existe liberar catálogo inteiro sem revisão.
+- Ações individuais e em lote exigem confirmação; itens sem rede abrem o editor para configuração explícita. Não adivinhar a rede pelo nome do fornecedor.
+- Nova RPC service-only `astros_social_visibility` valida admin, quantidade, existência, disponibilidade, nome e rede; lote inválido é rejeitado por inteiro, sem alteração parcial. Somente visibilidade e versão dos serviços mudam; preços, carteira, pedidos e pausa geral são preservados.
+- Ativação: executar `20261016_social_catalog_visibility.sql` e atualizar `astros-social` com o arquivo deploy completo.
+- Cliente: selecionar rede, pesquisar, filtrar categoria e escolher serviço; descrição e condições aparecem no bloco Sobre o serviço. Categorias refletem o resultado encontrado e a pesquisa ajuda em catálogos extensos. Sem estatísticas ou prazos fictícios.
