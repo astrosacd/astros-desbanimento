@@ -1,9 +1,16 @@
+import { diagnosticGuide } from "./diagnostics";
+import { redactDiagnosticText, redactDiagnosticValue } from "./privacy";
 import { speechPlainText } from "./voice";
 import type { NaturalAudio } from "./audio-player";
-import { supplierBalance, extendedContext } from "./sources.server";
+import { supplierBalance, extendedContext, diagnosticContext } from "./sources.server";
 import { getCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { requireAdmin, request } from "../admin/auth.server";
-import { assistantInput, assistantSystem, resolvePeriod } from "./validation";
+import {
+  assistantInput,
+  assistantSystem,
+  resolvePeriod,
+  diagnosisInstructions,
+} from "./validation";
 export async function answerAssistant(input: unknown) {
   await requireAdmin();
   setResponseHeader("Cache-Control", "private, no-store");
@@ -19,7 +26,15 @@ export async function answerAssistant(input: unknown) {
   if ((await gate.json()) !== true) throw Error("Limite de consultas atingido. Aguarde um minuto.");
   const clientSearch =
     data.clientSearch || data.question.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
-  const [response, socialBalance, smsBalance, extended] = await Promise.all([
+  const requestedReference =
+    data.reportedError?.reference ||
+    data.question.match(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i,
+    )?.[0] ||
+    data.question.match(/\bref(?:er[eê]ncia)?\s*#?\s*(\d{1,12})\b/i)?.[1] ||
+    "";
+  const reference = redactDiagnosticText(requestedReference).slice(0, 100);
+  const [response, socialBalance, smsBalance, extended, diagnostics] = await Promise.all([
     request("/functions/v1/astros-admin-context", token, {
       method: "POST",
       body: JSON.stringify({ ...period, clientSearch }),
@@ -28,6 +43,14 @@ export async function answerAssistant(input: unknown) {
     supplierBalance(token, "social"),
     supplierBalance(token, "sms"),
     extendedContext(token, period.from, period.until, clientSearch),
+    diagnosticContext(
+      token,
+      period.from,
+      period.until,
+      clientSearch,
+      data.reportedError?.module,
+      reference,
+    ),
   ]);
   if (!response.ok)
     throw Error(
@@ -37,24 +60,29 @@ export async function answerAssistant(input: unknown) {
   if (!context?.snapshot?.generatedAt) throw Error("A consulta retornou dados incompletos.");
   context.supplierBalances = { social: socialBalance, sms: smsBalance };
   context.extended = extended;
+  context.diagnostics = diagnostics;
+  context.technicalGuide = diagnosticGuide;
   context.sources = [
     ...(context.sources || []),
     { name: "SMMRaja · saldo externo", available: socialBalance.available },
     { name: "SMSPool · saldo externo", available: smsBalance.available },
     { name: "Supabase · consultas ampliadas", available: extended.available },
+    { name: "Diagnósticos operacionais", available: diagnostics.available },
   ];
-  const payload = JSON.stringify(context);
+  const safeContext = redactDiagnosticValue(context);
+  const payload = JSON.stringify(safeContext);
   if (payload.length > 65000)
     throw Error("A consulta ficou grande demais. Restrinja o período ou o cliente.");
   const { completeAssistant } = await import("./lovable.server");
   const text = await completeAssistant([
-    { role: "system", content: assistantSystem },
+    { role: "system", content: assistantSystem + "\n" + diagnosisInstructions },
     {
       role: "user",
       content: JSON.stringify({
-        question: data.question,
-        previousConversation: data.history,
-        verifiedSnapshot: context,
+        question: redactDiagnosticText(data.question),
+        reportedError: redactDiagnosticValue(data.reportedError ?? null),
+        previousConversation: redactDiagnosticValue(data.history),
+        verifiedSnapshot: safeContext,
       }),
     },
   ]);

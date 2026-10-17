@@ -225,6 +225,10 @@ export async function mountAvatar(
           else if (key.endsWith("mouthpucker")) value = smooth.round * 0.3;
           else if (key.endsWith("eyeblinkleft") || key.endsWith("eyeblinkright")) value = blink;
           else if (key.endsWith("eyesquintleft") || key.endsWith("eyesquintright")) value = 0.12;
+          else if (key.endsWith("eyelookoutleft") || key.endsWith("eyelookinright"))
+            value = current.reduced ? 0 : Math.max(0, Math.sin(t * 0.24)) * 0.02;
+          else if (key.endsWith("eyelookinleft") || key.endsWith("eyelookoutright"))
+            value = current.reduced ? 0 : Math.max(0, -Math.sin(t * 0.24)) * 0.02;
           else if (key.endsWith("mouthsmileleft") || key.endsWith("mouthsmileright")) value = 0.025;
           if (object.morphTargetInfluences) object.morphTargetInfluences[index] = value;
         }

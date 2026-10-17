@@ -1,3 +1,4 @@
+import { diagnosticResult, type diagnosticModules } from "./diagnostics";
 import { request } from "../admin/auth.server";
 export async function supplierBalance(token: string, module: "social" | "sms") {
   const name = module === "social" ? "SMMRaja" : "SMSPool";
@@ -54,6 +55,44 @@ export async function extendedContext(
     return {
       available: false,
       message: "Consultas ampliadas ainda não confirmadas. Ative o SQL complementar do assistente.",
+    };
+  }
+}
+
+export async function diagnosticContext(
+  token: string,
+  from: string,
+  until: string,
+  clientSearch: string,
+  module: (typeof diagnosticModules)[number] = "all",
+  reference = "",
+) {
+  try {
+    const r = await request("/rest/v1/rpc/astros_assistant_diagnostics", token, {
+      method: "POST",
+      body: JSON.stringify({
+        date_from: from,
+        date_until: until,
+        client_search: clientSearch,
+        module_filter: module,
+        reference_filter: reference,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (r.status === 404)
+      return {
+        available: false,
+        reason: "not_activated",
+        message: "A consulta ampliada de erros ainda não foi ativada no Supabase.",
+      };
+    if (!r.ok) throw Error("unavailable");
+    return { available: true, ...diagnosticResult.parse(await r.json()) };
+  } catch {
+    return {
+      available: false,
+      reason: "not_confirmed",
+      message:
+        "Não foi possível confirmar os diagnósticos operacionais. Não concluir que não há erros.",
     };
   }
 }

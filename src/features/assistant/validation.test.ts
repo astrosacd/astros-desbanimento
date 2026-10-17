@@ -28,3 +28,27 @@ it("requires real dates, bounded question and at most 31 days", () => {
     }).success,
   ).toBe(false);
 });
+
+it("bounds reported error context without accepting administrative actions", () => {
+  const base = { question: "Analise este erro", from: "2026-10-17", until: "2026-10-17" };
+  expect(
+    assistantInput.safeParse({
+      ...base,
+      reportedError: { module: "sms", message: "BALANCE_ERROR" },
+    }).success,
+  ).toBe(true);
+  expect(
+    assistantInput.safeParse({
+      ...base,
+      reportedError: { module: "sms", message: "x".repeat(3001) },
+    }).success,
+  ).toBe(false);
+  expect(
+    assistantInput.safeParse({ ...base, reportedError: { module: "sql", message: "select" } })
+      .success,
+  ).toBe(false);
+  expect(
+    assistantInput.safeParse({ ...base, reportedError: { module: "sms", action: "refund" } })
+      .success,
+  ).toBe(false);
+});

@@ -98,3 +98,25 @@ it("keeps the written answer visible if natural voice is unavailable", async () 
   await screen.findByText("Nenhuma recarga hoje.");
   expect(screen.getByRole("alert").textContent).toContain("Créditos de voz");
 });
+
+it("sends a reported error with its module and screen and can clear the context", async () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  render(<AssistantAdmin />);
+  fireEvent.change(screen.getByLabelText("Módulo"), { target: { value: "sms" } });
+  fireEvent.change(screen.getByLabelText("Tela onde aconteceu"), {
+    target: { value: "Comprar número" },
+  });
+  fireEvent.change(screen.getByLabelText("Mensagem do erro"), {
+    target: { value: "BALANCE_ERROR api_key=private-key" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Analisar erro" }));
+  await waitFor(() => expect(askAssistant).toHaveBeenCalledTimes(1));
+  const data = vi.mocked(askAssistant).mock.calls[0]![0].data;
+  expect(data.reportedError).toMatchObject({ module: "sms", screen: "Comprar número" });
+  expect(JSON.stringify(data)).not.toContain("private-key");
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Limpar contexto" })).not.toBeDisabled(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Limpar contexto" }));
+  expect(screen.getByLabelText("Mensagem do erro")).toHaveValue("");
+});

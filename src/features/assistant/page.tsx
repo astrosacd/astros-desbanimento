@@ -1,3 +1,4 @@
+import { redactDiagnosticText } from "./privacy";
 import { NaturalVoicePlayer, type NaturalAudio } from "./audio-player";
 import { AssistantAnswer } from "./answer";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -24,6 +25,12 @@ const labels: Record<FaceMode, string> = {
   error: "Consulta não concluída",
 };
 export function AssistantAdmin() {
+  const [reportedError, setReportedError] = useState({
+    module: "all" as "all" | "api" | "sms" | "social" | "desban" | "payment",
+    screen: "",
+    reference: "",
+    message: "",
+  });
   const [messages, setMessages] = useState<Message[]>([]),
     [question, setQuestion] = useState(""),
     [from, setFrom] = useState(todayFortaleza),
@@ -111,7 +118,7 @@ export function AssistantAdmin() {
   }
   async function send(event?: FormEvent, prompt?: string) {
     event?.preventDefault();
-    const text = (prompt ?? question).trim();
+    const text = redactDiagnosticText((prompt ?? question).trim());
     if (text.length < 2 || lock.current) return;
     recognition.current?.stop();
     const speechRequest = ++speechSequence.current;
@@ -123,7 +130,14 @@ export function AssistantAdmin() {
     setMode("thinking");
     setQuestion("");
     const history = messages.slice(-4).map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
-    setMessages((old) => [...old, { id: ++seq.current, role: "user", text }]);
+    const reportSummary =
+      reportedError.message.trim() || reportedError.reference.trim()
+        ? `\n\nErro informado · ${reportedError.module}${reportedError.screen ? " · " + reportedError.screen : ""}${reportedError.reference ? " · REF " + reportedError.reference : ""}\n${reportedError.message.slice(0, 1000)}`
+        : "";
+    setMessages((old) => [
+      ...old,
+      { id: ++seq.current, role: "user", text: redactDiagnosticText(text + reportSummary) },
+    ]);
     try {
       const answer = await askAssistant({
         data: {
@@ -133,6 +147,15 @@ export function AssistantAdmin() {
           clientSearch,
           history,
           voiceRequested: voice || conversationActive.current,
+          ...(reportedError.message.trim() || reportedError.reference.trim()
+            ? {
+                reportedError: {
+                  ...reportedError,
+                  message: redactDiagnosticText(reportedError.message),
+                  screen: redactDiagnosticText(reportedError.screen),
+                },
+              }
+            : {}),
         },
       });
       if (!alive.current) return;
@@ -313,6 +336,7 @@ export function AssistantAdmin() {
                 onClick={() => {
                   stopVoice();
                   setMessages([]);
+                  setReportedError({ module: "all", screen: "", reference: "", message: "" });
                   setError("");
                 }}
               >
@@ -360,6 +384,98 @@ export function AssistantAdmin() {
               Chamados mostram o estado atual do inbox do painel.
             </p>
           </details>
+          <details className="astra-diagnostics">
+            <summary>
+              Analisar um erro
+              {reportedError.message || reportedError.reference ? " · contexto ativo" : ""}
+            </summary>
+            <p>
+              Informe o erro e onde apareceu. A ASTRA cruza o relato com os registros disponíveis e
+              orienta você, sem alterar o sistema. Não inclua senhas ou tokens. A referência
+              pesquisa todas as datas, mantendo o módulo e o cliente selecionados.
+            </p>
+            <div className="astra-diagnostic-fields">
+              <label>
+                Módulo
+                <select
+                  className="field"
+                  value={reportedError.module}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setReportedError((v) => ({ ...v, module: e.target.value as typeof v.module }))
+                  }
+                >
+                  <option value="all">Toda a aplicação</option>
+                  <option value="desban">Desbanimento</option>
+                  <option value="sms">Ativações SMS</option>
+                  <option value="social">Redes sociais</option>
+                  <option value="payment">Pagamentos / carteira</option>
+                  <option value="api">API de clientes</option>
+                </select>
+              </label>
+              <label>
+                Tela onde aconteceu
+                <input
+                  className="field"
+                  maxLength={120}
+                  value={reportedError.screen}
+                  disabled={busy}
+                  onChange={(e) => setReportedError((v) => ({ ...v, screen: e.target.value }))}
+                  placeholder="Ex.: Carteira / Recargas"
+                />
+              </label>
+              <label>
+                Referência do pedido ou serviço
+                <input
+                  className="field"
+                  maxLength={100}
+                  value={reportedError.reference}
+                  disabled={busy}
+                  onChange={(e) => setReportedError((v) => ({ ...v, reference: e.target.value }))}
+                  placeholder="Opcional"
+                />
+              </label>
+              <label className="astra-diagnostic-message">
+                Mensagem do erro
+                <textarea
+                  maxLength={3000}
+                  value={reportedError.message}
+                  disabled={busy}
+                  onChange={(e) => setReportedError((v) => ({ ...v, message: e.target.value }))}
+                  placeholder="Cole a mensagem exata e explique o que estava tentando fazer."
+                />
+              </label>
+            </div>
+            <div className="astra-diagnostic-actions">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  busy || (!reportedError.message.trim() && !reportedError.reference.trim())
+                }
+                onClick={() => {
+                  setReportedError({ module: "all", screen: "", reference: "", message: "" });
+                }}
+              >
+                Limpar contexto
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  busy || (!reportedError.message.trim() && !reportedError.reference.trim())
+                }
+                onClick={() =>
+                  void send(
+                    undefined,
+                    question.trim() ||
+                      "Analise o erro informado. O que foi confirmado, qual a causa provável e como posso conferir ou corrigir sem alterar nada agora?",
+                  )
+                }
+              >
+                Analisar erro
+              </Button>
+            </div>
+          </details>
           <div
             className="astra-chat-messages"
             role="log"
@@ -373,8 +489,8 @@ export function AssistantAdmin() {
                 </span>
                 <h3>O que você quer saber?</h3>
                 <p>
-                  Pergunte sobre movimentações, compras, cadastros ou ocorrências. Eu aviso quando
-                  uma fonte não puder ser confirmada.
+                  Pergunte sobre movimentações, compras, cadastros, erros ou ocorrências. Eu aviso
+                  quando uma fonte não puder ser confirmada.
                 </p>
                 <div className="astra-prompts">
                   {[

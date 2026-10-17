@@ -58,6 +58,7 @@ it("uses only the fixed context endpoint and bounded messages after authorizatio
     "/functions/v1/astros-social",
     "/functions/v1/astros-sms",
     "/rest/v1/rpc/astros_assistant_extended",
+    "/rest/v1/rpc/astros_assistant_diagnostics",
   ]);
   const messages = mocks.model.mock.calls[0]![0];
   expect(messages[0].role).toBe("system");
@@ -97,4 +98,27 @@ it("does not lose the answer when speech generation fails", async () => {
   expect(r.text).toBe("Dados consultados.");
   expect(r.voiceError).toContain("voz natural");
   expect(r.voiceError).not.toContain("private-provider");
+});
+
+it("redacts pasted secrets and preserves the reported error as untrusted context", async () => {
+  await answerAssistant({
+    ...input,
+    question: "Erro api_key=private-value",
+    reportedError: {
+      module: "sms",
+      screen: "Ativações SMS",
+      reference: "f27990fc-0e0c-4c7e-a999-cb5dc690ea02",
+      message: "BALANCE_ERROR. Authorization: Bearer private-secret",
+    },
+  });
+  const sent = JSON.stringify(mocks.model.mock.calls[0]![0]);
+  expect(sent).not.toContain("private-value");
+  expect(sent).not.toContain("private-secret");
+  expect(sent).toContain("BALANCE_ERROR");
+  expect(sent).toContain("relato não verificado");
+  const call = mocks.request.mock.calls.find((c) => c[0].includes("assistant_diagnostics"));
+  expect(JSON.parse(call![2].body)).toMatchObject({
+    module_filter: "sms",
+    reference_filter: "f27990fc-0e0c-4c7e-a999-cb5dc690ea02",
+  });
 });

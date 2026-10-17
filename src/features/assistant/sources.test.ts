@@ -39,3 +39,65 @@ it("keeps base assistant usable before complementary SQL activation", async () =
   vi.mocked(request).mockResolvedValue(new Response("{}", { status: 404 }));
   expect((await extendedContext("admin", "2026-10-16", "2026-10-16", "")).available).toBe(false);
 });
+
+it("keeps diagnostics unavailable rather than inventing no errors before SQL activation", async () => {
+  const { diagnosticContext } = await import("./sources.server");
+  vi.mocked(request).mockResolvedValueOnce(new Response("{}", { status: 404 }));
+  expect(await diagnosticContext("admin", "2026-10-17", "2026-10-17", "client")).toMatchObject({
+    available: false,
+    reason: "not_activated",
+  });
+  vi.mocked(request).mockResolvedValueOnce(
+    new Response(JSON.stringify({ version: 1, total: 0, secret: "never-escape" })),
+  );
+  const r = await diagnosticContext("admin", "2026-10-17", "2026-10-17", "");
+  expect(r.available).toBe(false);
+  expect(JSON.stringify(r)).not.toContain("never-escape");
+});
+
+it("accepts a bounded diagnostic projection and strips unexpected private fields", async () => {
+  const { diagnosticContext } = await import("./sources.server");
+  const value = {
+    version: 1,
+    generatedAt: "2026-10-17T12:00:00Z",
+    scope: "period",
+    total: 1,
+    byModule: { sms: 1 },
+    matchedRecords: 0,
+    records: [],
+    events: [
+      {
+        module: "sms",
+        occurred_at: "2026-10-17T12:00:00Z",
+        email: "ana@test.local",
+        reference_id: "20000000-0000-4000-8000-000000000001",
+        service_ref: "7",
+        category: "BALANCE_ERROR",
+        state: "refunded",
+        http_status: 400,
+        amount_cents: 1000,
+        refund_cents: null,
+        raw_payload: "private-provider-data",
+      },
+    ],
+    health: [],
+    coverage: {
+      operationalRecords: true,
+      providerRawPayloads: false,
+      platformRuntimeLogs: false,
+      browserConsole: false,
+      sourceCode: false,
+    },
+    limitations: [],
+    apiKey: "private-key",
+  };
+  vi.mocked(request).mockResolvedValueOnce(new Response(JSON.stringify(value)));
+  const result = await diagnosticContext("admin", "2026-10-17", "2026-10-17", "");
+  expect(result).toMatchObject({
+    available: true,
+    total: 1,
+    events: [{ category: "BALANCE_ERROR" }],
+  });
+  expect(JSON.stringify(result)).not.toContain("private-key");
+  expect(JSON.stringify(result)).not.toContain("private-provider-data");
+});
