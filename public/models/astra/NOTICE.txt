@@ -1,0 +1,10 @@
+ASTRA — Créditos do modelo 3D
+
+FaceCapHeadGeneric, de Niels J. / Face Cap (Bannaflak).
+Fonte: https://github.com/hizzlehoff/FaceCapOSCReceiverExample
+Arquivo de origem: Face-Cap OSC Receiver Example/Assets/FaceCap/Avatars/FaceCapHeadGeneric
+Licença: MIT, Copyright (c) 2020 Niels J.
+A licença completa está em /models/astra/LICENSE.txt.
+
+Adaptações da Astros: iluminação, material holográfico, partículas, enquadramento e controle dos movimentos faciais por áudio. O arquivo FBX é distribuído comprimido sem perda (gzip); o conteúdo do modelo e a textura de origem não foram alterados.
+O avatar é uma representação visual do assistente, não uma pessoa do atendimento.

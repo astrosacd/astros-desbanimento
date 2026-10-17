@@ -1,6 +1,6 @@
 import type { AudioMotion } from "./audio-player";
-import { useEffect, useRef, type MutableRefObject } from "react";
-import { drawPortrait, type FaceMode } from "./portrait";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import type { FaceMode } from "./portrait";
 export type { FaceMode } from "./portrait";
 export function AssistantFace({
   mode,
@@ -12,47 +12,65 @@ export function AssistantFace({
   const ref = useRef<HTMLCanvasElement>(null),
     modeRef = useRef(mode),
     audioRef = useRef(audioMotion);
-  audioRef.current = audioMotion;
+  const [status, setStatus] = useState("Carregando avatar 3D…");
   modeRef.current = mode;
+  audioRef.current = audioMotion;
   useEffect(() => {
-    const canvas = ref.current,
-      ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    const canvas = ref.current;
+    if (!canvas) return;
+    const controller = new AbortController();
+    let dispose: (() => void) | undefined;
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
-    let frame = 0,
-      last = -Infinity;
-    const smooth = { jaw: 0, round: 0, width: 1 };
-
-    function draw(time: number) {
-      frame = requestAnimationFrame(draw);
-      if (document.hidden || time - last < 40) return;
-      last = time;
-      const width = canvas!.clientWidth,
-        height = canvas!.clientHeight,
-        dpr = Math.min(devicePixelRatio || 1, 1.5);
-      if (
-        canvas!.width !== Math.round(width * dpr) ||
-        canvas!.height !== Math.round(height * dpr)
-      ) {
-        canvas!.width = Math.round(width * dpr);
-        canvas!.height = Math.round(height * dpr);
-      }
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const target = audioRef.current?.current?.sample() ?? { jaw: 0, round: 0, width: 1 };
-      smooth.jaw += (target.jaw - smooth.jaw) * 0.4;
-      smooth.round += (target.round - smooth.round) * 0.4;
-      smooth.width += (target.width - smooth.width) * 0.4;
-      drawPortrait(ctx!, width, height, time, modeRef.current, motion.matches, smooth);
-    }
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    import("./avatar-3d")
+      .then(({ mountAvatar }) => {
+        if (controller.signal.aborted) return;
+        return mountAvatar(
+          canvas,
+          () => ({
+            mode: modeRef.current,
+            articulation: audioRef.current?.current?.sample() ?? { jaw: 0, round: 0, width: 1 },
+            reduced: motion.matches,
+          }),
+          controller.signal,
+        );
+      })
+      .then((cleanup) => {
+        dispose = cleanup;
+        if (controller.signal.aborted) cleanup?.();
+        else setStatus("");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setStatus(
+            "O avatar 3D não está disponível neste navegador. A conversa continua funcionando.",
+          );
+      });
+    return () => {
+      controller.abort();
+      dispose?.();
+    };
   }, []);
   return (
-    <canvas
-      ref={ref}
-      className="astra-face-canvas"
-      role="img"
-      aria-label="Rosto holográfico tridimensional da ASTRA, formado por partículas luminosas"
-    />
+    <div className="astra-avatar-view">
+      <canvas
+        ref={ref}
+        className="astra-face-canvas"
+        role="img"
+        aria-label="Avatar tridimensional da ASTRA, com movimentos faciais e partículas luminosas"
+      />
+      {status && (
+        <span className="astra-avatar-load" role="status">
+          {status}
+        </span>
+      )}
+      <a
+        className="astra-avatar-credit"
+        href="/models/astra/NOTICE.txt"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Créditos do modelo 3D
+      </a>
+    </div>
   );
 }

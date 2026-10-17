@@ -251,8 +251,7 @@ export function AssistantAdmin() {
           <div className="astra-avatar-label">
             <span>INTELIGÊNCIA A SERVIÇO DA ASTROS</span>
             <h3>
-              Visão completa.
-              <br />
+              Visão completa. <br />
               Decisões com clareza.
             </h3>
             <p role="status">{labels[mode]}</p>

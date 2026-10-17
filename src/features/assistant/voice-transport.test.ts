@@ -24,11 +24,6 @@ it("uses the documented speech endpoint with only bounded text and returns valid
   });
   expect(opts.redirect).toBe("manual");
 });
-it("treats upstream redirects as V-REDIR without following them", async () => {
-  vi.stubEnv("LOVABLE_API_KEY", "secret");
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 302 })));
-  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-REDIR");
-});
 it("rejects error and non-audio responses without echoing private provider data", async () => {
   vi.stubEnv("LOVABLE_API_KEY", "secret");
   vi.stubGlobal(
@@ -72,4 +67,23 @@ it("distinguishes timeout from network failure without exposing the raw error", 
     vi.fn().mockRejectedValue(new DOMException("secret upstream", "TimeoutError")),
   );
   await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-TEMPO");
+});
+
+it("uses an edge-compatible redirect mode and never follows a credential-bearing redirect", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "private-voice-key");
+  const fetch = vi.fn().mockImplementation((_url, options) => {
+    if (options.redirect === "error") throw new TypeError("Invalid redirect value");
+    return Promise.resolve(
+      new Response(null, { status: 307, headers: { Location: "https://untrusted.example" } }),
+    );
+  });
+  vi.stubGlobal("fetch", fetch);
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-REDIR");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("treats upstream redirects as V-REDIR without following them", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "secret");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 302 })));
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-REDIR");
 });
