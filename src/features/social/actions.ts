@@ -36,3 +36,5 @@ export const socialAdminService=createServerFn({method:'POST'}).inputValidator(z
 export const socialEstimate=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.number().int().positive(),quantity:z.number().int().positive().max(100000000)})).handler(async({data})=>(await import('./server')).socialCall('estimate',data));
 
 export const socialAdminIncidents=createServerFn({method:'POST'}).inputValidator(z.object({page:z.number().int().min(0).max(10000).default(0),search:z.string().trim().max(80).default('')})).handler(async({data})=>(await import('./server')).socialCall('admin-incidents',data,true));
+
+export const socialAdminOriginalFacets=createServerFn({method:"GET"}).handler(async()=>(await import("./server")).socialCall("admin-original-facets",{},true));

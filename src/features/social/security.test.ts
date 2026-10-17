@@ -66,3 +66,11 @@ it('blocks low supplier balance before reserving money, creating an order or sen
 
 it('records the owned preflight incident privately and never leaks the internal reason to the client',async()=>{const calls=setup({low:true});const response=await handler(request('buy'));expect(JSON.stringify(await response.json())).not.toContain('supplier_balance_insufficient');expect(JSON.parse(calls.find(c=>c.url.includes('record_incident'))!.body)).toEqual({actor:owner,request:requestId,quote:quoteId});});
 it('restricts incident history to verified administrators',async()=>{let calls=setup();expect((await handler(request('admin-incidents',{page:0,search:''}))).status).toBe(400);expect(calls.some(c=>c.url.includes('incident_list'))).toBe(false);calls=setup({role:'admin'});expect((await handler(request('admin-incidents',{page:1,search:'1124'}))).status).toBe(200);expect(JSON.parse(calls.find(c=>c.url.includes('incident_list'))!.body)).toEqual({actor:owner,filters:{page:1,search:'1124'}});});
+
+it('loads exact original facets across pages for admins only without provider or write calls',async()=>{
+ setup();expect((await handler(request('admin-original-facets'))).status).toBe(400);
+ const denied=vi.mocked(fetch).mock.calls;expect(denied.some(([url])=>String(url).includes('astros_social_source_catalog'))).toBe(false);
+ setup({role:'admin'});const original=fetch;const reads:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:any,options:any={})=>{if(String(url).includes('astros_social_source_catalog?')){reads.push(String(url));expect(options.method).toBe('GET');return new Response(JSON.stringify(String(url).includes('offset=0')?Array.from({length:1000},()=>({platform_key:'kwai',source_category:'KWAI (Followers & Likes)',source_type:'Default'})):[{platform_key:'kwai',source_category:'KWAI Comments',source_type:'Custom Comments'}]));}return original(url,options);}));
+ const response=await handler(request('admin-original-facets'));expect(response.status).toBe(200);expect(await response.json()).toEqual({groups:[{platform:'kwai',category:'KWAI (Followers & Likes)',format:'Default'},{platform:'kwai',category:'KWAI Comments',format:'Custom Comments'}]});expect(reads).toHaveLength(2);expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('smmraja.com'))).toBe(false);
+});

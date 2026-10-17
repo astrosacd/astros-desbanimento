@@ -145,3 +145,11 @@ Consulta administrativa paginada em 20, filtros por cliente/e-mail, referência 
 Ativar `20261016_social_incidents.sql` e atualizar `astros-social` com o arquivo de deploy consolidado. Sem rotina de limpeza automática ou alterações em pagamentos/saldos.
 
 As ocorrências também aparecem na aba Pedidos do admin, em bloco separado dos pedidos. Pesquisar novamente os mesmos filtros (incluindo situação Todas) força uma nova consulta; limpar filtros já vazios também atualiza pedidos. Falha confirmada por saldo USD insuficiente encerra a cotação visual e a contagem, mostra estado de indisponibilidade e pausa estimativas automáticas. Não repete compras automaticamente. Nova cotação exige clique explícito em Consultar novamente. Erros de resposta incerta preservam a mesma tentativa e o fluxo de conferência.
+
+## Categorias originais no catálogo administrativo — 17/10/2026
+
+A lista fixa de tipos foi retirada do catálogo de publicação. O seletor **Categoria original do fornecedor** usa exclusivamente `source_category` do inventário original sincronizado, por `platform_key`, sem traduzir ou separar categorias combinadas. Ex.: `KWAI (Followers & Likes)` permanece uma única categoria. O nome original é o título do registro administrativo; o nome personalizado aparece separadamente como nome para clientes. As edições de apresentação e a liberação manual continuam preservadas.
+
+A API exportada fornece `type` como formato (Default, Custom Comments etc.), não a taxonomia do filtro visual do site SMMRaja. Portanto este seletor não é anunciado como uma cópia desse filtro de tipos. O inventário original continua mostrando todos os formatos recebidos; o formulário de compra continua restrito aos formatos já suportados.
+
+**Ativação:** substituir o código da Edge Function `astros-social` pelo arquivo `supabase/astros-social.deploy.ts` e publicar a aplicação. Não há SQL novo. A ação administrativa `admin-original-facets` lê apenas plataforma/categoria/formato, em lotes de 1.000 até o limite de 20.000 registros, antes da paginação da interface. Não consulta o fornecedor nem altera preços, nomes, permissões, saldos ou pedidos. Erro ou excesso de registros bloqueia a carga dos filtros em vez de mostrar uma lista incompleta.
