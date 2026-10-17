@@ -1,31 +1,20 @@
-# ASTROS • Painel de Desbanimento V2
+# Diagnóstico da voz ASTRA (V-CONEXAO)
 
-## Escopo e isolamento
-Construir neste projeto novo já aberto uma V2 exclusivamente demonstrativa. O projeto original `65b4004c-1306-4b1b-9b3c-6e360e7eceb4` não será acessado nem alterado. Nenhuma conexão com banco, webhooks, Meta ou pagamentos; nenhuma publicação.
+## O que foi verificado
+- O projeto tem acesso a modelos de voz no catálogo autenticado (`workspace_models: included`). As opções incluem `google/gemini-3.1-flash-tts-preview` (atual, padrão), `google/gemini-2.5-flash-tts` e `openai/gpt-4o-mini-tts`. Este último está **marcado como obsoleto**, mas continua disponível. Todos funcionam com retenção zero.
+- Fiz uma chamada direta "Olá" com a chave existente e o mesmo corpo do código (`openai/gpt-4o-mini-tts`, `onyx`, `mp3`): **HTTP 200, audio/mpeg, 23 KB, 0,79 s**, e os primeiros bytes são um MP3 válido (`FF F3`).
+- Conclusão: o endpoint `/v1/audio/speech` está liberado e funciona para este projeto. O problema não é falta de crédito, permissão ou chave.
 
-## Ordem de execução
-1. **Identidade e navegação:** design premium solicitado, wordmark tipográfico, sidebar recolhível, menu mobile com rótulos, breadcrumb, avatar e identificação persistente de demonstração.
-2. **Dados locais:** registros fictícios, carteira e movimentações; totais derivados, moeda/datas brasileiras e botão restaurar demonstração.
-3. **Visão geral:** saudação, destaque funcional, ações de nova solicitação/recarga, indicadores, gráfico de atividade e solicitações recentes com busca/filtros.
-4. **Solicitações:** listagem paginada, exportação CSV, detalhes com timeline ilustrativa; formulário com os cinco tipos, validação nacional/internacional, aviso de rebanimento, revisão e confirmação. Debitar R$3,97 do saldo fictício e criar somente registro demo em andamento; bloquear duplicatas e saldo insuficiente.
-5. **Carteira:** valores rápidos e personalizado, confirmação simulada, histórico de movimentações e saldo atualizado.
-6. **API e conta:** documentação demonstrativa e snippets copiáveis; perfil editável localmente; login, cadastro e recuperação com validação visual e botão Explorar demonstração, sem autenticação real ou armazenamento de senhas.
-7. **Termos e suporte:** páginas acessíveis, limites da demonstração e ausência de garantia de aprovação. Área administrativa explicitamente demonstrativa, acessível no menu da conta, sem privilégios reais.
-8. **Revisão:** testes de regras de saldo/preço/duplicatas/rebanimento, rotas, filtros, CSV, formulários, modais, persistência e restauração; inspeção desktop/mobile, teclado, overflow e sinais de compilação/TypeScript.
+## Causa provável (no código, não no serviço)
+Em `voice-transport.server.ts`, o `fetch` usa `redirect: "error"`. O servidor publicado roda no Cloudflare Workers (workerd), que só aceita `"follow"` ou `"manual"`. Com `"error"`, o `fetch` lança um TypeError antes de qualquer requisição de rede. O `.catch` transforma isso em V-CONEXAO. Isso explica a falha com qualquer modelo ou formato, já que a opção é a mesma nas duas versões. Os testes locais não pegam o problema porque o `fetch` é simulado.
 
-## Decisões e limites
-- Login é uma simulação visual, não exige infraestrutura de autenticação ou perfis reais.
-- Rebanimento será permitido apenas para número presente nos registros locais da demonstração.
-- Dados e timelines serão identificados como fictícios, sem afirmar disponibilidade real ou desbloqueio.
-- Estados vazios, carregamento local, erros, feedback e movimento reduzido serão incluídos.
+Isso não foi confirmado nos logs do servidor publicado. A primeira etapa da correção confirma a causa.
 
-## Detalhes técnicos
-- TanStack Start/Router, React, Tailwind v4, componentes acessíveis e lucide.
-- Páginas independentes com metadados específicos; estado compartilhado em provider, persistido em localStorage apenas após hidratação.
-- Regras de negócio demo em módulo puro com testes Vitest; armazenamento nunca inclui senhas, tokens ou chaves.
-- Sem alterações server-side nem ativação de Lovable Cloud, pois o escopo proíbe backend nesta entrega.
+## Correção proposta (somente após aprovação)
+1. Ver nos logs do servidor publicado se aparece o erro "Invalid redirect value".
+2. Trocar para `redirect: "manual"` e tratar qualquer resposta 3xx como V-REDIR. Isso mantém a proteção contra redirecionamento.
+3. Registrar no servidor só o nome da exceção (`error.name`), sem a mensagem nem a chave, para evitar novos diagnósticos às cegas.
+4. Atualizar o teste para exigir `redirect: "manual"`.
+5. Opcional, só se você pedir: trocar o modelo obsoleto por `google/gemini-3.1-flash-tts-preview`. Isso usa outro formato de chamada (`contents`/`generationConfig`, voz como `Charon`, retorno WAV).
 
-## Impactos e riscos
-- Substitui apenas a tela vazia deste projeto; preserva o original.
-- Limpar armazenamento do navegador remove edições demo. Restauração pede confirmação.
-- Sem backend: não há autenticação, revisão real, pagamento, envio de suporte ou acesso administrativo protegido.
+Nada será publicado, e nenhum dado, credencial ou configuração será alterado.
