@@ -15,7 +15,8 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
         "X-Lovable-AIG-SDK": "tanstack-ai",
         "Content-Type": "application/json",
       },
-      redirect: "error",
+      // workerd rejects redirect:"error" synchronously; "manual" + 3xx check keeps the guard.
+      redirect: "manual",
       signal: AbortSignal.timeout(60_000),
       body: JSON.stringify({
         model: "openai/gpt-4o-mini-tts",
@@ -28,6 +29,7 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
     }).catch((error: unknown) => {
       // Only fixed categories leave the server; never forward raw network errors.
       const name = error && typeof error === "object" && "name" in error ? error.name : "";
+      console.error("[voice] fetch failed:", typeof name === "string" ? name : "unknown");
       const cause = error instanceof Error ? error.cause : undefined;
       const causeCode =
         cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
@@ -36,12 +38,14 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
         causeCode === "UND_ERR_CONNECT_TIMEOUT"
       )
         throw Error("Não foi possível gerar a voz: o serviço excedeu o tempo de espera. (V-TEMPO)");
-      if (cause instanceof Error && cause.message === "unexpected redirect")
-        throw Error("Não foi possível gerar a voz: o serviço redirecionou a chamada. (V-REDIR)");
       throw Error(
         "Não foi possível gerar a voz: a conexão com o serviço de áudio falhou. (V-CONEXAO)",
       );
     });
+    if (r.type === "opaqueredirect" || (r.status >= 300 && r.status < 400)) {
+      await r.body?.cancel();
+      throw Error("Não foi possível gerar a voz: o serviço redirecionou a chamada. (V-REDIR)");
+    }
     if (!r.ok) {
       await r.body?.cancel();
       throw Error(
