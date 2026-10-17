@@ -161,3 +161,11 @@ Na edição, a rede usa o seletor pesquisável da lista administrativa de plataf
 Adicionar outra categoria cria uma opção de apresentação `custom:<nome>` (até 80 caracteres de letras/números/pontuação simples). A opção é persistida quando o serviço é salvo, reutilizável em outras edições e exibida ao cliente sem o prefixo interno. Nomes equivalentes sem distinção de maiúsculas reutilizam a grafia já salva. Não altera categoria/nome original do fornecedor. A sincronização continua preservando a curadoria manual.
 
 Ativação: executar apenas `20261017_social_custom_categories.sql`, atualizar a Edge Function astros-social pelo arquivo deploy e publicar a aplicação. Sem alterações de carteira, preços, pedidos ou autenticação. A categoria adicional só aparece no filtro do cliente quando houver um serviço disponível/liberado nessa categoria e as compras estiverem ativas.
+
+## Organização do catálogo e do pedido — 17/10/2026
+
+O admin abre Catálogo diretamente em Serviços para publicação, com busca, rede, categoria original, situação, comparação e redefinição agrupadas. Inventário original é uma aba própria; sincronização, exportação e explicações ficam em um painel expansível. Nenhuma rotina de sincronização, curadoria, cobrança ou consulta foi alterada.
+
+No cliente, busca e filtros precedem o seletor de serviço em uma seção de largura completa. Destino/quantidade e detalhes têm áreas distintas; em telas menores seguem em uma coluna, com o formulário antes dos detalhes. Descrição, referência, limites, estimativa, preço confirmado e confirmação explícita continuam disponíveis. Fluxos e estados de compra foram preservados.
+
+Verificação local: 76 testes do módulo; build de produção; renderizações com dados de teste nas larguras 320, 375, 768, 1024 e 1440 px sem transbordamento horizontal. Não exige SQL nem atualização da Edge Function; publicar apenas o frontend. Nenhum deploy da VPS foi realizado.
