@@ -22,7 +22,12 @@ it("uses the documented speech endpoint with only bounded text and returns valid
     response_format: "mp3",
     input: "Olá, tudo bem?",
   });
-  expect(opts.redirect).toBe("error");
+  expect(opts.redirect).toBe("manual");
+});
+it("treats upstream redirects as V-REDIR without following them", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "secret");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 302 })));
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-REDIR");
 });
 it("rejects error and non-audio responses without echoing private provider data", async () => {
   vi.stubEnv("LOVABLE_API_KEY", "secret");
