@@ -62,3 +62,8 @@ O microfone continua usando reconhecimento de fala do navegador, em turnos. Entr
 
 ### Correção de voz e enquadramento — 17/10
 A chamada de voz agora usa o par documentado pelo adaptador Lovable: `openai/gpt-4o-mini-tts` e a voz `onyx`, com WAV. A combinação anterior Gemini/Charon não foi confirmada em produção. Há limite de 30 segundos e códigos seguros V-HTTP ou V-CONEXAO, sem expor o corpo do erro do fornecedor. A resposta escrita permanece disponível. A disponibilidade real do modelo na conta ainda depende de teste no Lovable; testes locais usam respostas simuladas. O rosto perdeu a rotação fixa lateral e usa movimentos pequenos em torno da posição frontal. Nenhuma permissão de alteração de dados foi adicionada.
+
+### Revisão visual e diagnóstico — 17/10, 08h22
+O print confirmou `V-CONEXAO`, antes de uma resposta HTTP; não há evidência de erro de crédito ou de consulta de dados. A origem precisa ainda ser confirmada no runtime do Lovable. O transporte agora pede MP3 (formato padrão documentado, mais leve), mantém o modelo/voz documentados, valida a assinatura binária e limita a espera a 60 segundos. Os códigos distinguem conexão, timeout e redirecionamento; nenhum corpo de erro ou credencial é exposto. Não há repetição automática de chamadas. Esta alteração não comprova que o problema externo foi resolvido: exige teste real no ambiente publicado. O player continua aceitando WAV antigo e MP3 e move a boca somente pelo áudio reproduzido.
+
+O rosto passa a usar sombreamento interpolado pela superfície, com volume no nariz e nas bochechas, olhos com íris e pálpebras, partículas discretas e sem triângulos aleatórios coloridos. A revisão preserva a autorização administrativa e consultas somente de leitura.

@@ -5,22 +5,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
-it("uses the documented speech endpoint with only bounded text and returns validated WAV", async () => {
+it("uses the documented speech endpoint with only bounded text and returns validated MP3", async () => {
   vi.stubEnv("LOVABLE_API_KEY", "private-voice-key");
   const wav = new Uint8Array(48);
-  wav.set(new TextEncoder().encode("RIFF"), 0);
-  wav.set(new TextEncoder().encode("WAVE"), 8);
+  wav.set(new TextEncoder().encode("ID3"), 0);
   const fetch = vi.fn().mockResolvedValue(new Response(wav));
   vi.stubGlobal("fetch", fetch);
   const r = await synthesizeAssistantVoice("Olá, tudo bem?");
-  expect(r.mimeType).toBe("audio/wav");
+  expect(r.mimeType).toBe("audio/mpeg");
   expect(JSON.stringify(r)).not.toContain("private-voice-key");
   const [url, opts] = fetch.mock.calls[0]!;
   expect(url).toBe("https://ai.gateway.lovable.dev/v1/audio/speech");
   expect(JSON.parse(opts.body)).toMatchObject({
     model: "openai/gpt-4o-mini-tts",
     voice: "onyx",
-    response_format: "wav",
+    response_format: "mp3",
     input: "Olá, tudo bem?",
   });
   expect(opts.redirect).toBe("error");
@@ -49,11 +48,23 @@ it("does not call a provider without credentials or with excessive text", async 
 
 it("exposes a safe status code and preserves no upstream error body", async () => {
   vi.stubEnv("LOVABLE_API_KEY", "secret");
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("secret upstream", { status: 400 })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response("secret upstream", { status: 400 })),
+  );
   await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-HTTP-400");
 });
 it("bounds failed connections without disclosing request credentials", async () => {
   vi.stubEnv("LOVABLE_API_KEY", "secret");
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(Error("secret upstream")));
   await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-CONEXAO");
+});
+
+it("distinguishes timeout from network failure without exposing the raw error", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "secret");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockRejectedValue(new DOMException("secret upstream", "TimeoutError")),
+  );
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-TEMPO");
 });

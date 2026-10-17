@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 // OpenAI-compatible speech contract verified against @tanstack/ai-lovable 0.6.0, adapters/tts.ts.
 // Uses the existing project key; never accepts a caller-supplied model, URL or credential.
 export const synthesizeAssistantVoice = createServerOnlyFn(
-  async (text: string): Promise<{ base64: string; mimeType: "audio/wav" }> => {
+  async (text: string): Promise<{ base64: string; mimeType: "audio/mpeg" }> => {
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw Error("A voz natural precisa da chave de IA no servidor.");
     if (!text.trim() || text.length > 1200) throw Error("Texto de voz fora do limite.");
@@ -16,17 +16,31 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
         "Content-Type": "application/json",
       },
       redirect: "error",
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(60_000),
       body: JSON.stringify({
         model: "openai/gpt-4o-mini-tts",
         input: text,
         voice: "onyx",
-        response_format: "wav",
+        response_format: "mp3",
         instructions:
           "Fale em português brasileiro, com voz masculina acolhedora e natural de assistente pessoal. Tom conversacional, ritmo moderado, pausas curtas e entonação humana. Diga somente o texto recebido, sem ler instruções.",
       }),
-    }).catch(() => {
-      throw Error("Não foi possível gerar a voz: conexão interrompida ou tempo esgotado. (V-CONEXAO)");
+    }).catch((error: unknown) => {
+      // Only fixed categories leave the server; never forward raw network errors.
+      const name = error && typeof error === "object" && "name" in error ? error.name : "";
+      const cause = error instanceof Error ? error.cause : undefined;
+      const causeCode =
+        cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
+      if (
+        (typeof name === "string" && ["AbortError", "TimeoutError"].includes(name)) ||
+        causeCode === "UND_ERR_CONNECT_TIMEOUT"
+      )
+        throw Error("Não foi possível gerar a voz: o serviço excedeu o tempo de espera. (V-TEMPO)");
+      if (cause instanceof Error && cause.message === "unexpected redirect")
+        throw Error("Não foi possível gerar a voz: o serviço redirecionou a chamada. (V-REDIR)");
+      throw Error(
+        "Não foi possível gerar a voz: a conexão com o serviço de áudio falhou. (V-CONEXAO)",
+      );
     });
     if (!r.ok) {
       await r.body?.cancel();
@@ -59,12 +73,13 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
       reader.releaseLock();
     }
     const bytes = Buffer.concat(chunks);
-    if (
-      bytes.length < 44 ||
-      bytes.toString("ascii", 0, 4) !== "RIFF" ||
-      bytes.toString("ascii", 8, 12) !== "WAVE"
-    )
-      throw Error("A voz retornou um formato de áudio não confirmado.");
-    return { base64: bytes.toString("base64"), mimeType: "audio/wav" };
+    // The documented default is MP3: smaller transfer and broadly supported.
+    // Reject error pages even if the upstream returns HTTP 200.
+    const mp3 =
+      bytes.length >= 4 &&
+      (bytes.toString("ascii", 0, 3) === "ID3" ||
+        (bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0 && (bytes[1]! & 0x06) !== 0));
+    if (!mp3) throw Error("A voz retornou um formato de áudio não confirmado.");
+    return { base64: bytes.toString("base64"), mimeType: "audio/mpeg" };
   },
 );

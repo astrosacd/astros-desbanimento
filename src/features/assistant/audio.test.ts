@@ -36,7 +36,7 @@ it("stops playback without delivering an end callback and prevents late decoded 
     start = vi.fn(),
     end = vi.fn();
   const p = player.play(
-    { base64: btoa("fixture"), mimeType: "audio/wav", spokenText: "Olá", shortened: false },
+    { base64: btoa("fixture"), mimeType: "audio/mpeg", spokenText: "Olá", shortened: false },
     start,
     end,
   );

@@ -1,7 +1,7 @@
 import type { Articulation } from "./voice";
 export type NaturalAudio = {
   base64: string;
-  mimeType: "audio/wav";
+  mimeType: "audio/wav" | "audio/mpeg";
   spokenText: string;
   shortened: boolean;
 };
@@ -60,7 +60,7 @@ export class NaturalVoicePlayer implements AudioMotion {
     const epoch = this.epoch;
     await this.unlock();
     if (this.epoch !== epoch) return false;
-    if (audio.mimeType !== "audio/wav" || audio.base64.length > 5600000)
+    if (!["audio/wav", "audio/mpeg"].includes(audio.mimeType) || audio.base64.length > 5600000)
       throw Error("Áudio inválido.");
     const binary = atob(audio.base64),
       bytes = Uint8Array.from(binary, (x) => x.charCodeAt(0));
