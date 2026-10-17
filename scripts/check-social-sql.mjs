@@ -126,4 +126,15 @@ for(let i=0;i<21;i++)await db.query('select astros_social_record_incident($1,$2,
 incidents=(await db.query('select astros_social_incident_list($1,$2) r',[admin,'{}'])).rows[0].r;assert.equal(incidents.total,22);assert.equal(incidents.incidents.length,20);assert.equal(incidents.hasMore,true);
 assert.equal((await db.query('select astros_social_incident_list($1,$2) r',[admin,JSON.stringify({page:1})])).rows[0].r.incidents.length,2);
 assert.equal(await balance(),walletBefore);
+await db.exec(sql('20261017_social_custom_categories.sql'));
+const originalBefore=(await db.query('select provider_name,provider_category,rate_units from astros_social_services where id=8000')).rows[0];
+await db.query("select astros_social_present_details($1,8000,true,'soundcloud','Nome manual','Texto','custom:Membros do canal','15 minutos')",[admin]);
+assert.equal((await db.query('select category_code from astros_social_services where id=8000')).rows[0].category_code,'custom:Membros do canal');
+assert.deepEqual((await db.query('select provider_name,provider_category,rate_units from astros_social_services where id=8000')).rows[0],originalBefore);
+await db.exec("update astros_social_settings set enabled=true where id=true");
+const customFacets=(await db.query('select astros_social_catalog_facets() r')).rows[0].r;assert(customFacets.some(g=>g.kind==='custom:Membros do canal'));
+assert.equal((await adminPrefs({serviceType:'custom:Membros do canal'})).total,1);
+await assert.rejects(db.query("select astros_social_present($1,8000,true,'soundcloud','Nome','Texto','custom:Outra')",[user]));
+await assert.rejects(db.query("select astros_social_present($1,8000,true,'soundcloud','Nome','Texto','custom:<script>')",[admin]));
+assert.equal(await balance(),walletBefore);
 console.log('Social SQL passed: private access, wallet guards, idempotency, partial/full refund once, terminal protection, safe actions, quote release, financial separation.');await db.close();

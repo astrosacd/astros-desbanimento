@@ -153,3 +153,11 @@ A lista fixa de tipos foi retirada do catálogo de publicação. O seletor **Cat
 A API exportada fornece `type` como formato (Default, Custom Comments etc.), não a taxonomia do filtro visual do site SMMRaja. Portanto este seletor não é anunciado como uma cópia desse filtro de tipos. O inventário original continua mostrando todos os formatos recebidos; o formulário de compra continua restrito aos formatos já suportados.
 
 **Ativação:** substituir o código da Edge Function `astros-social` pelo arquivo `supabase/astros-social.deploy.ts` e publicar a aplicação. Não há SQL novo. A ação administrativa `admin-original-facets` lê apenas plataforma/categoria/formato, em lotes de 1.000 até o limite de 20.000 registros, antes da paginação da interface. Não consulta o fornecedor nem altera preços, nomes, permissões, saldos ou pedidos. Erro ou excesso de registros bloqueia a carga dos filtros em vez de mostrar uma lista incompleta.
+
+## Redes sincronizadas e categorias adicionais para clientes — 17/10/2026
+
+Na edição, a rede usa o seletor pesquisável da lista administrativa de plataformas importadas. O botão Atualizar lista de redes relê essa lista; o botão Atualizar catálogo agora é o que consulta o inventário no fornecedor. Falha na consulta é explícita, sem substituir silenciosamente pelas antigas redes fixas. Uma rede já salva continua visível mesmo quando não aparece mais no catálogo; atualizar a lista não altera o serviço.
+
+Adicionar outra categoria cria uma opção de apresentação `custom:<nome>` (até 80 caracteres de letras/números/pontuação simples). A opção é persistida quando o serviço é salvo, reutilizável em outras edições e exibida ao cliente sem o prefixo interno. Nomes equivalentes sem distinção de maiúsculas reutilizam a grafia já salva. Não altera categoria/nome original do fornecedor. A sincronização continua preservando a curadoria manual.
+
+Ativação: executar apenas `20261017_social_custom_categories.sql`, atualizar a Edge Function astros-social pelo arquivo deploy e publicar a aplicação. Sem alterações de carteira, preços, pedidos ou autenticação. A categoria adicional só aparece no filtro do cliente quando houver um serviço disponível/liberado nessa categoria e as compras estiverem ativas.
