@@ -11,3 +11,8 @@ export const prepareSmsSupport=createServerFn({method:'POST'}).inputValidator(su
  const identity=await (await import('./server')).identity({number:data.number,country:data.country});
  return {...identity,smsContext:{id:order.id,service:order.service,country:order.country}};
 });
+
+import {whatsappSettingsSchema} from './whatsapp';
+export const getSupportWhatsapp=createServerFn({method:'GET'}).handler(async()=>(await import('./whatsapp.server')).whatsappSettings());
+export const getAdminSupportWhatsapp=createServerFn({method:'GET'}).handler(async()=>(await import('./whatsapp.server')).whatsappSettings(true));
+export const saveSupportWhatsapp=createServerFn({method:'POST'}).inputValidator(whatsappSettingsSchema).handler(async({data})=>(await import('./whatsapp.server')).saveWhatsapp(data));

@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {render,screen,cleanup} from '@testing-library/react';
+import {whatsappSettingsSchema,defaultWhatsappLinks} from './whatsapp';
+const api=vi.hoisted(()=>({data:undefined as unknown}));
+vi.mock('@tanstack/react-query',()=>({useQuery:()=>({data:api.data})}));
+vi.mock('./actions',()=>({getSupportWhatsapp:vi.fn()}));
+import {WhatsappSupportCard} from './whatsapp-card';
+beforeEach(()=>{cleanup();api.data=undefined;});
+it('accepts the two provided contact links, rejecting other hosts and executable destinations',()=>{expect(whatsappSettingsSchema.safeParse({enabled:true,links:defaultWhatsappLinks}).success).toBe(true);for(const url of ['javascript:alert(1)','https://wa.me.evil.com/message/ABCDEF','https://wa.me/message/ABCDEF?next=https://evil.com','https://user@wa.me/message/ABCDEF'])expect(whatsappSettingsSchema.safeParse({enabled:true,links:[{label:'Contato',url}]}).success).toBe(false);});
+it('does not show disabled, missing or invalid contacts',()=>{for(const data of [undefined,{enabled:false,links:defaultWhatsappLinks},{enabled:true,links:[{label:'Contato',url:'https://evil.com'}]}]){api.data=data;const view=render(<WhatsappSupportCard/>);expect(screen.queryByRole('link')).toBeNull();view.unmount();}});
+it('opens both contacts independently of chat identity, without embedding account or SMS data',()=>{api.data={enabled:true,links:defaultWhatsappLinks};render(<WhatsappSupportCard/>);const links=screen.getAllByRole('link');expect(links).toHaveLength(2);links.forEach((link,i)=>{expect(link.getAttribute('href')).toBe(defaultWhatsappLinks[i]!.url);expect(link.getAttribute('target')).toBe('_blank');expect(link.getAttribute('rel')).toContain('noopener');});});

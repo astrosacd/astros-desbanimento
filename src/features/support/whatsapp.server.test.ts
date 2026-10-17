@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const api=vi.hoisted(()=>({requireAdmin:vi.fn(),request:vi.fn(),getCookie:vi.fn(()=> 'session')}));
+vi.mock('../admin/auth.server',()=>api);
+vi.mock('@tanstack/react-start/server',()=>({getCookie:api.getCookie,setResponseHeader:vi.fn()}));
+import {saveWhatsapp,whatsappSettings} from './whatsapp.server';
+import {defaultWhatsappLinks} from './whatsapp';
+beforeEach(()=>{vi.resetAllMocks();api.getCookie.mockReturnValue('session');});
+it('rejects nonadmin changes before any database request',async()=>{api.requireAdmin.mockRejectedValue(Error('Denied'));await expect(saveWhatsapp({enabled:true,links:defaultWhatsappLinks})).rejects.toThrow('Denied');expect(api.request).not.toHaveBeenCalled();});
+it('writes only the separate WhatsApp RPC, preserving chat and account settings',async()=>{api.request.mockResolvedValue(new Response(null,{status:204}));await saveWhatsapp({enabled:true,links:defaultWhatsappLinks});expect(api.requireAdmin).toHaveBeenCalledOnce();expect(api.request).toHaveBeenCalledExactlyOnceWith('/rest/v1/rpc/astros_save_support_whatsapp','session',{method:'POST',body:JSON.stringify({active:true,contacts:defaultWhatsappLinks})});});
+it('requires confirmed client identity for reading contacts',async()=>{api.request.mockResolvedValue(new Response(JSON.stringify({id:'own'})));await expect(whatsappSettings()).rejects.toThrow('confirmada');expect(api.request).toHaveBeenCalledOnce();});
+it('keeps the client support page usable before the optional SQL is installed',async()=>{api.request.mockResolvedValueOnce(new Response(JSON.stringify({id:'own',email_confirmed_at:'yes'}))).mockResolvedValueOnce(new Response('{}',{status:404}));await expect(whatsappSettings()).resolves.toEqual({enabled:false,links:[]});});
