@@ -18,7 +18,8 @@ it("uses the documented speech endpoint with only bounded text and returns valid
   const [url, opts] = fetch.mock.calls[0]!;
   expect(url).toBe("https://ai.gateway.lovable.dev/v1/audio/speech");
   expect(JSON.parse(opts.body)).toMatchObject({
-    model: "google/gemini-2.5-flash-tts",
+    model: "openai/gpt-4o-mini-tts",
+    voice: "onyx",
     response_format: "wav",
     input: "Olá, tudo bem?",
   });
@@ -44,4 +45,15 @@ it("does not call a provider without credentials or with excessive text", async 
   vi.stubEnv("LOVABLE_API_KEY", "secret");
   await expect(synthesizeAssistantVoice("a".repeat(1201))).rejects.toThrow("limite");
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it("exposes a safe status code and preserves no upstream error body", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "secret");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("secret upstream", { status: 400 })));
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-HTTP-400");
+});
+it("bounds failed connections without disclosing request credentials", async () => {
+  vi.stubEnv("LOVABLE_API_KEY", "secret");
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(Error("secret upstream")));
+  await expect(synthesizeAssistantVoice("Olá")).rejects.toThrow("V-CONEXAO");
 });

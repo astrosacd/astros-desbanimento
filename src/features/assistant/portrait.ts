@@ -54,15 +54,9 @@ export function drawPortrait(
     scale = Math.min(width / 16.7, height / 22),
     cx = width * 0.5,
     cy = height * 0.5,
-    yaw =
-      -0.2 +
-      Math.sin(t * 0.31) * 0.11 +
-      Math.sin(t * 0.67) * 0.035 +
-      (mode === "speaking" && !reduced ? articulation.jaw * 0.035 : 0),
-    pitch =
-      0.045 +
-      Math.sin(t * 0.27) * 0.035 +
-      (mode === "speaking" && !reduced ? articulation.jaw * 0.04 : 0);
+    // Neutral frontal pose; small symmetric movement avoids a permanently tilted face.
+    yaw = reduced ? 0 : Math.sin(t * 0.31) * 0.035,
+    pitch = reduced ? 0 : Math.sin(t * 0.27) * 0.012;
   const jaw = mode === "speaking" && !reduced ? articulation.jaw : 0,
     round = mode === "speaking" ? articulation.round : 0;
   ctx.clearRect(0, 0, width, height);

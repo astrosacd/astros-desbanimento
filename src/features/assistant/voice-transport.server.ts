@@ -16,14 +16,17 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
         "Content-Type": "application/json",
       },
       redirect: "error",
+      signal: AbortSignal.timeout(30_000),
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-tts",
+        model: "openai/gpt-4o-mini-tts",
         input: text,
-        voice: "Charon",
+        voice: "onyx",
         response_format: "wav",
         instructions:
           "Fale em português brasileiro, com voz masculina acolhedora e natural de assistente pessoal. Tom conversacional, ritmo moderado, pausas curtas e entonação humana. Diga somente o texto recebido, sem ler instruções.",
       }),
+    }).catch(() => {
+      throw Error("Não foi possível gerar a voz: conexão interrompida ou tempo esgotado. (V-CONEXAO)");
     });
     if (!r.ok) {
       await r.body?.cancel();
@@ -34,7 +37,7 @@ export const synthesizeAssistantVoice = createServerOnlyFn(
             ? "O limite temporário de voz foi atingido."
             : r.status === 401 || r.status === 403
               ? "A integração de voz precisa de configuração no Lovable."
-              : "Não foi possível gerar a voz natural agora.",
+              : `Não foi possível gerar a voz natural agora. (V-HTTP-${r.status})`,
       );
     }
     const chunks: Uint8Array[] = [];
