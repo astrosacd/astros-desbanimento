@@ -169,3 +169,6 @@ O admin abre Catálogo diretamente em Serviços para publicação, com busca, re
 No cliente, busca e filtros precedem o seletor de serviço em uma seção de largura completa. Destino/quantidade e detalhes têm áreas distintas; em telas menores seguem em uma coluna, com o formulário antes dos detalhes. Descrição, referência, limites, estimativa, preço confirmado e confirmação explícita continuam disponíveis. Fluxos e estados de compra foram preservados.
 
 Verificação local: 76 testes do módulo; build de produção; renderizações com dados de teste nas larguras 320, 375, 768, 1024 e 1440 px sem transbordamento horizontal. Não exige SQL nem atualização da Edge Function; publicar apenas o frontend. Nenhum deploy da VPS foi realizado.
+
+### Pesquisa principal e filtros opcionais
+No cliente, o catálogo começa pela pesquisa e pelos botões Buscar/Filtros. Uma nova busca (botão ou Enter) pesquisa globalmente os serviços liberados, zerando rede, tipo, categoria e preferências anteriores. O painel Filtros é recolhido inicialmente e permite refinar essa pesquisa; seus valores ativos continuam indicados mesmo depois de recolher. Limpar pesquisa e filtros redefine toda a consulta. A cotação/compra mantém os mesmos bloqueios e confirmação explícita. Mudança apenas de frontend, sem SQL/Edge novo.
