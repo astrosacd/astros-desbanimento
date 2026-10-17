@@ -445,18 +445,60 @@ tbody tr:hover { background: var(--secondary); }
  .admin-content .form-section { padding: 16px; }
 }
 
-.support-layout { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(240px,1fr); gap: 24px; max-width: 1040px; align-items: start; }
+/* Support: two contact channels, account attached to chat, records below. */
+.support-page { max-width: 1160px; min-width: 0; container-type: inline-size; }
+.support-page .form-section { max-width: none; width: 100%; }
+.support-layout { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(280px,1fr); gap: 20px; align-items: start; }
+.support-layout:not(:has(.support-whatsapp)) { grid-template-columns: minmax(0,1fr); }
 .support-layout > *, .support-heading > div { min-width: 0; }
-.support-card { padding: clamp(20px,3vw,32px); }
-.support-heading { display: flex; gap: 16px; align-items: center; }
-.support-icon { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border: 1px solid var(--border); border-radius: 14px; color: var(--primary); background: var(--secondary); }
-.support-contact-form,.support-ready { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 24px; }
-.support-side { display: grid; gap: 20px; }
-.support-contact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; margin: 22px 0; color: var(--muted-foreground); }
+.support-page .support-card,.support-page .support-whatsapp { margin: 0; padding: clamp(20px,3vw,28px); }
+.support-heading { display: flex; gap: 14px; align-items: center; }
+.support-heading h2 { font-size: 19px; line-height: 1.35; margin-top: 4px; overflow-wrap: anywhere; }
+.support-icon { display: grid; place-items: center; flex-shrink: 0; width: 48px; height: 48px; border: 1px solid var(--border); border-radius: 14px; color: var(--primary); background: var(--secondary); }
+.support-whatsapp-icon { color: #168351; background: color-mix(in srgb,#45b97f 10%,var(--card)); border-color: color-mix(in srgb,#45b97f 24%,var(--border)); }
+.support-caption { display: block; font-size: 10px; letter-spacing: .12em; font-weight: 700; color: var(--muted-foreground); }
+.support-contact-form,.support-ready { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 22px; }
+.support-phone-fields { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 14px; margin-top: 20px; }
+.support-phone-fields > * { min-width: 0; }
+.support-private-note { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; font-size: 11px; color: var(--muted-foreground); }
+.support-private-note svg { flex-shrink: 0; margin-top: 1px; }
+.support-contact-form button[type=submit] { width: 100%; }
+.support-account { display: flex; align-items: center; gap: 12px; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; }
+.support-account-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--secondary); color: var(--muted-foreground); }
+.support-account > div { min-width: 0; }
+.support-account strong,.support-account div > span:last-child { display: block; overflow-wrap: anywhere; }
+.support-account strong { font-size: 13px; margin-top: 3px; font-weight: 600; }
+.support-account div > span:last-child { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+.support-contact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; margin: 22px 0; color: var(--muted-foreground); overflow-wrap: anywhere; }
 .support-contact strong { color: var(--foreground); }
+.support-channel-description { color: var(--muted-foreground); font-size: 13px; line-height: 1.7; margin-top: 18px; }
+.support-whatsapp-links { display: grid; gap: 10px; margin-top: 22px; }
+.support-whatsapp-links a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 13px 15px; border: 1px solid color-mix(in srgb,#45b97f 28%,var(--border)); border-radius: 12px; color: #168351; background: color-mix(in srgb,#45b97f 6%,var(--card)); transition: background .15s; }
+.support-whatsapp-links a:hover { background: color-mix(in srgb,#45b97f 13%,var(--card)); }
+.support-whatsapp-links a:focus-visible,.support-shortcuts a:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.support-whatsapp-links a > span { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+.support-whatsapp-links svg { flex-shrink: 0; }
+.support-whatsapp-note { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 18px; font-size: 12px; }
+.support-whatsapp-note strong { font-weight: 600; }
+.support-whatsapp-note p { color: var(--muted-foreground); line-height: 1.65; margin-top: 6px; }
+.support-external-note { color: var(--muted-foreground); font-size: 11px; line-height: 1.6; margin-top: 18px; }
+.support-page .support-records { margin-top: 20px; padding: clamp(18px,3vw,26px); }
+.support-records-heading h2 { font-weight: 600; font-size: 15px; }
+.support-records-heading p { font-size: 12px; color: var(--muted-foreground); margin-top: 6px; line-height: 1.6; }
+.support-shortcuts { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 20px; }
+.support-shortcuts a { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; min-width: 0; }
+.support-shortcuts a:hover { background: var(--secondary); }
+.support-shortcut-icon { color: var(--primary); flex-shrink: 0; }
+.support-shortcuts a > span:nth-child(2) { min-width: 0; flex: 1; }
+.support-shortcuts strong,.support-shortcuts small { display: block; overflow-wrap: anywhere; }
+.support-shortcuts strong { font-size: 12px; font-weight: 600; }
+.support-shortcuts small { font-size: 10px; color: var(--muted-foreground); margin-top: 4px; }
+.support-shortcuts a > svg { flex-shrink: 0; color: var(--muted-foreground); }
 .support-link { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; font-size: 12px; color: var(--primary); min-height: 44px; }
-@container (max-width:800px) { .support-layout { grid-template-columns: minmax(0,1fr); } .support-side { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media(max-width:600px) { .support-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-side { grid-template-columns: minmax(0,1fr); gap: 16px; } .support-heading { gap: 12px; } .support-heading h2 { font-size: 18px; } .support-contact-form button[type=submit] { width: 100%; } }
+@container (max-width:950px) { .support-shortcuts { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@container (max-width:760px) { .support-layout { grid-template-columns: minmax(0,1fr); } }
+@container (max-width:460px) { .support-phone-fields { grid-template-columns: minmax(0,1fr); } .support-shortcuts { grid-template-columns: minmax(0,1fr); } .support-ready button { width: 100%; } .support-heading h2 { font-size: 17px; } }
+@media(max-width:600px) { .support-layout { grid-template-columns: minmax(0,1fr); gap: 16px; } }
 
 .payment-settings-layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
 .payment-settings-layout > .admin-settings { margin-bottom: 0; min-width: 0; }
