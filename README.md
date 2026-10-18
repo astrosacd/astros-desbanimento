@@ -18,6 +18,7 @@ Este repositório contém a aplicação real. As instruções antigas de demonst
 | Carteira e pagamentos | [Pagamentos](PAYMENTS_SETUP.md) |
 | Envios e conferência automática | [Solicitações](SUBMISSIONS_SETUP.md) |
 | Atendimento | [Suporte](SUPPORT_SETUP.md) |
+| Copiar e manter os prompts da Lyra no n8n | [Prompts da agência e do Astros Mais](prompts/README.md) |
 | Trazer clientes e saldos do painel antigo | [Migração de clientes](docs/MIGRACAO_CLIENTES.md) |
 | API, chaves e logs | [API](API_SETUP.md) |
 | Assistente administrativo com IA | [ASTRA: ativação, fontes e limites](docs/ASSISTENTE_ASTRA.md) |
