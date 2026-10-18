@@ -30,7 +30,7 @@ Uma empresa já entregue não é entregue novamente como nova para a mesma conta
 - Possível problema: sinais como página suspensa, domínio estacionado ou HTTP 404/410.
 - Não foi possível confirmar: timeout, bloqueio, erro de rede/TLS, resposta insuficiente ou incompatível.
 
-A checagem é uma observação datada, não uma conclusão definitiva. Não executa JavaScript, tem limites de tempo/tamanho e usa IPv4 público. URLs locais, credenciais, portas e redes privadas são bloqueadas; a resolução é validada na conexão efetiva e em redirecionamentos. HTML não é armazenado. Erros 403/429/5xx não são tratados como prova de site desativado.
+A checagem é uma observação datada, não uma conclusão definitiva. Não executa JavaScript, tem limites de tempo/tamanho e usa IPv4 público. A leitura direta aceita até 512 KiB e analisa o trecho disponível quando a página ultrapassa esse limite, sem descartar automaticamente uma resposta bem-sucedida. Scripts e estilos incompletos no corte não são evidência de conteúdo visível. URLs locais, credenciais, portas e redes privadas são bloqueadas; a resolução é validada na conexão efetiva e em redirecionamentos. HTML não é armazenado. Erros 403/429/5xx não são tratados como prova de site desativado.
 
 ## Uso pelo cliente
 Meus leads oferece pesquisa, etapas individuais e exportação CSV da página atual. O histórico mostra quantidades e cobrança reais. Nome, endereço, telefone, site e Maps dependem dos campos públicos retornados; e-mail e WhatsApp não são prometidos. A existência do telefone não confirma conta WhatsApp ou consentimento para contato.
