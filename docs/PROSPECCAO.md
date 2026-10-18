@@ -12,7 +12,7 @@ Módulo separado no cliente e no admin. Usa a carteira compartilhada, sem dispar
 Os secrets padrão SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são fornecidos pelo ambiente da função. Nunca coloque a chave SerpApi no GitHub, em variáveis VITE ou no chat. Publicar no Lovable não executa SQL nem publica funções no Supabase. A VPS continua na imagem atual até atualização manual.
 
 ## Busca e cobrança
-O cliente informa nicho, país, cidade/região e filtro de site. Cada busca pede de 1 a 20 leads. Uma tentativa consulta no máximo uma página de até 20 resultados do Google Maps pela SerpApi, podendo entregar menos após filtros e exclusão de repetidos. Apenas leads efetivamente entregues são debitados. Uma busca sem entregas não cobra.
+O cliente informa nicho, país e cidade/região. A situação do site é verificada automaticamente e exibida nos resultados; não é uma escolha no formulário. Cada busca pede de 1 a 20 leads. Uma tentativa consulta no máximo uma página de até 20 resultados do Google Maps pela SerpApi, podendo entregar menos após filtros e exclusão de repetidos. Apenas leads efetivamente entregues são debitados. Uma busca sem entregas não cobra.
 
 A entrega, o débito e o movimento da carteira são gravados na mesma transação. Um UUID identifica a tentativa: reenviar a mesma referência não faz nova cobrança. Se a resposta se perder, use Verificar esta busca ou o histórico; não inicie outra tentativa para descobrir o resultado. Uma busca pendente expira sem débito caso não tenha concluído a entrega.
 

@@ -16,7 +16,7 @@ import {
 import { getWallet } from "../payments/actions";
 import { prospectConfig, prospectSearch, prospectStatus } from "./actions";
 import { ProspectHistory, ProspectRequests } from "./history";
-import { siteLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
+import { money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
 const countries = getCountries()
   .map((code) => ({ id: code, name: names.of(code) || code, iso: code }))
@@ -39,7 +39,6 @@ export function ProspectingPage() {
     [country, setCountry] = useState("BR"),
     [city, setCity] = useState(""),
     [region, setRegion] = useState(""),
-    [filter, setFilter] = useState("all"),
     [quantity, setQuantity] = useState(8),
     [confirm, setConfirm] = useState(false),
     [busy, setBusy] = useState(false),
@@ -81,7 +80,7 @@ export function ProspectingPage() {
           country,
           city,
           region,
-          filter: filter as "all",
+          filter: "all",
           quantity,
           expectedUnitCents: c!.unitCents,
         },
@@ -227,20 +226,6 @@ export function ProspectingPage() {
                       maxLength={80}
                       placeholder="Ex.: Ceará"
                     />
-                  </label>
-                  <label>
-                    Situação do site
-                    <select
-                      className="field"
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                    >
-                      {Object.entries(siteLabels).map(([id, label]) => (
-                        <option key={id} value={id}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
                   </label>
                   <label>
                     Quantidade desejada
