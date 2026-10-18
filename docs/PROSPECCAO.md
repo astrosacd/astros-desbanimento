@@ -51,3 +51,14 @@ ASTROS_PGLITE_MODULE=/caminho/node_modules/@electric-sql/pglite node scripts/che
 ```
 
 Os testes locais não comprovam a chave, a cota nem uma chamada real da instalação. Não há cron necessário nesta primeira versão. Nenhuma integração externa é acionada pelos testes simulados.
+
+## Leitura complementar com Jina Reader
+A função também consulta `https://r.jina.ai/` para ler páginas públicas de sites próprios classificados como acessíveis ou inconclusivos. Guarda somente título, trecho de até 600 caracteres, até cinco e-mails publicados e data da leitura. A interface e o CSV mostram esses campos quando disponíveis. Não gera abordagem, não envia mensagem, não executa instruções encontradas na página e não confirma a validade ou titularidade dos contatos. O trecho é uma extração, não uma avaliação por IA.
+
+Para ativar esta atualização em uma instalação existente, substitua todo o código da função **astros-prospecting** pelo arquivo `supabase/astros-prospecting.deploy.ts` atualizado e faça Deploy. Não é necessário novo SQL. Entregas antigas permanecem como estavam; o enriquecimento ocorre nas novas coletas.
+
+A integração tenta o acesso básico sem chave. Isso está sujeito aos limites e disponibilidade da Jina e não significa serviço ilimitado. Opcionalmente, configure **JINA_API_KEY** nos secrets do Supabase para usar sua conta Jina; a chave nunca vai para o cliente. Não reutilize a chave SerpApi nesse secret. Não há novo campo obrigatório no painel.
+
+A leitura usa prazo e resposta limitados, solicita conteúdo atualizado sem cache do fornecedor e omite parâmetros de consulta do endereço. Só chama o domínio fixo Jina, nunca repassa cookies ou tokens da sessão. URLs sociais, locais, com credenciais e endereços DNS privados são recusados. A verificação direta mantém a proteção de conexão descrita acima; a navegação executada pela Jina depende das proteções do fornecedor.
+
+Falhas, bloqueios, limites e respostas inconsistentes da Jina são opcionais: não impedem a entrega dos demais dados. Não mudam uma verificação direta conclusiva. Uma leitura válida pode esclarecer um resultado antes inconclusivo. O processamento tem orçamento de tempo compartilhado; chegar ao limite mantém os casos restantes inconclusivos. A base compartilhada reaproveita os dados para reduzir chamadas.

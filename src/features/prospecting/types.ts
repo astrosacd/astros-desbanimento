@@ -35,6 +35,10 @@ export type Lead = {
     website: string;
     websiteStatus: keyof typeof siteLabels;
     websiteReason: string;
+    siteTitle?: string;
+    siteSummary?: string;
+    siteEmails?: string[];
+    siteReadAt?: string;
     checkedAt: string;
     collectedAt: string;
     rating: number | null;
@@ -71,6 +75,8 @@ export function exportLeads(leads: Lead[]) {
       "Verificado em",
       "Google Maps",
       "Etapa",
+      "E-mails publicados no site",
+      "Resumo do site",
     ],
     ...leads.map((l) => [
       l.snapshot.name,
@@ -81,6 +87,8 @@ export function exportLeads(leads: Lead[]) {
       l.snapshot.checkedAt,
       l.snapshot.mapsUrl,
       stageLabels[l.status],
+      (l.snapshot.siteEmails ?? []).join("; "),
+      l.snapshot.siteSummary ?? "",
     ]),
   ];
   const url = URL.createObjectURL(

@@ -263,6 +263,13 @@ export function ProspectHistory({ userId }: { userId: string }) {
                   situação pode mudar.
                 </p>
               </details>
+              {lead.snapshot.siteSummary && <details className="prospect-site-details">
+                <summary>Conteúdo e contatos do site</summary>
+                {lead.snapshot.siteTitle && <p><strong>{lead.snapshot.siteTitle}</strong></p>}
+                <p className="break-words">{lead.snapshot.siteSummary}</p>
+                {!!lead.snapshot.siteEmails?.length && <p className="break-all">E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}</p>}
+                <p>Trecho extraído da página, sem confirmação de vínculo ou validade dos contatos.</p>
+              </details>}
               <label className="prospect-lead-stage">
                 Etapa do contato
                 <select
