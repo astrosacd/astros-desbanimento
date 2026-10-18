@@ -2,3 +2,6 @@
 # Applies only to the new social function, never changes Supabase Auth globally.
 [functions.astros-social]
 verify_jwt = false
+# This function verifies confirmed Auth identity and role on every request itself.
+[functions.astros-prospecting]
+verify_jwt = false

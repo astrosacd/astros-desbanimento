@@ -20,6 +20,7 @@ import { Route as DesbanimentoRouteImport } from './routes/desbanimento'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NovaSolicitacaoRouteImport } from './routes/nova-solicitacao'
 import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as ProspeccaoRouteImport } from './routes/prospeccao'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedesSociaisRouteImport } from './routes/redes-sociais'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -82,6 +83,11 @@ const PerfilRoute = PerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProspeccaoRoute = ProspeccaoRouteImport.update({
+  id: '/prospeccao',
+  path: '/prospeccao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
   id: '/recuperar-senha',
   path: '/recuperar-senha',
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
+  '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
+  '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
   '/perfil': typeof PerfilRoute
+  '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
+    | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
     | '/reset-password'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
+    | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
     | '/reset-password'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/nova-solicitacao'
     | '/perfil'
+    | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
     | '/reset-password'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NovaSolicitacaoRoute: typeof NovaSolicitacaoRoute
   PerfilRoute: typeof PerfilRoute
+  ProspeccaoRoute: typeof ProspeccaoRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedesSociaisRoute: typeof RedesSociaisRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prospeccao': {
+      id: '/prospeccao'
+      path: '/prospeccao'
+      fullPath: '/prospeccao'
+      preLoaderRoute: typeof ProspeccaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recuperar-senha': {
       id: '/recuperar-senha'
       path: '/recuperar-senha'
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NovaSolicitacaoRoute: NovaSolicitacaoRoute,
   PerfilRoute: PerfilRoute,
+  ProspeccaoRoute: ProspeccaoRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedesSociaisRoute: RedesSociaisRoute,
   ResetPasswordRoute: ResetPasswordRoute,

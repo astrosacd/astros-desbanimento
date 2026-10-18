@@ -1,0 +1,8 @@
+import {beforeEach,it,expect,vi} from 'vitest';
+const mock=vi.hoisted(()=>({admin:vi.fn(),cookie:vi.fn(),fetch:vi.fn()}));
+vi.mock('../admin/auth.server',()=>({requireAdmin:mock.admin}));vi.mock('@tanstack/react-start/server',()=>({getCookie:mock.cookie,setResponseHeader:vi.fn()}));
+import {prospectCall} from './server';
+beforeEach(()=>{vi.resetAllMocks();vi.stubGlobal('fetch',mock.fetch);mock.cookie.mockReturnValue('verified-cookie');mock.fetch.mockResolvedValue(new Response(JSON.stringify({enabled:false})));});
+it('rejects nonadmin configuration calls before touching the function',async()=>{mock.admin.mockRejectedValue(Error('Denied'));await expect(prospectCall('admin-save',{},true)).rejects.toThrow('Denied');expect(mock.fetch).not.toHaveBeenCalled();});
+it('sends the verified session to a fixed function endpoint, without a provider key',async()=>{await prospectCall('config');expect(mock.fetch.mock.calls[0]![0]).toBe('https://tevljvidqbvrcgzqypwf.supabase.co/functions/v1/astros-prospecting');const options=mock.fetch.mock.calls[0]![1];expect(options.headers.Authorization).toBe('Bearer verified-cookie');expect(options.redirect).toBe('error');expect(JSON.parse(options.body)).toEqual({action:'config',data:{}});});
+it('blocks anonymous use and preserves uncertainty on network failure',async()=>{mock.cookie.mockReturnValue(null);await expect(prospectCall('search')).rejects.toThrow('Entre novamente');expect(mock.fetch).not.toHaveBeenCalled();mock.cookie.mockReturnValue('verified-cookie');mock.fetch.mockRejectedValue(Error('Network'));await expect(prospectCall('search')).rejects.toThrow('mesma busca');});
