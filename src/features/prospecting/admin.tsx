@@ -112,9 +112,13 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           {query.isPending ? (
             <p role="status">Consultando configuração…</p>
           ) : query.isError ? (
-            <p role="alert" className="error-text">
-              {query.error.message}
-            </p>
+            <div role="alert" className="prospect-notice">
+              <p className="error-text">{query.error.message}</p>
+              <p>O campo da chave aparece após carregar a configuração. Tente novamente para continuar.</p>
+              <Button type="button" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
+                <RefreshCw size={15} /> Tentar carregar configuração
+              </Button>
+            </div>
           ) : (
             <form onSubmit={save}>
               <fieldset disabled={busy} className="prospect-admin-form">
@@ -263,7 +267,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           )}
           <a
             className="prospect-provider-link"
-            href="https://serpapi.com/manage-account"
+            href="https://serpapi.com/dashboard"
             target="_blank"
             rel="noopener noreferrer"
           >

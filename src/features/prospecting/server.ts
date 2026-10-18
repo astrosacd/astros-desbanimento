@@ -23,7 +23,11 @@ export async function prospectCall(action: string, data: unknown = {}, admin = f
     );
   } catch {
     throw Error(
-      "Não foi possível confirmar a conexão. Confira a mesma busca no histórico antes de iniciar outra.",
+      action === "search"
+        ? "Não foi possível confirmar a conexão. Confira a mesma busca no histórico antes de iniciar outra."
+        : action === "admin-config" || action === "config"
+          ? "Não foi possível carregar a configuração de Prospecção. Tente novamente."
+          : "Não foi possível confirmar a conexão com Prospecção. Tente consultar novamente.",
     );
   }
   const value = await response.json().catch(() => null);
