@@ -1146,3 +1146,6 @@ tbody tr:hover { background: var(--secondary); }
 @media(max-width:600px){.prospect-heading,.prospect-card{padding:18px}.prospect-wallet{width:100%}.prospect-form{grid-template-columns:minmax(0,1fr)}.prospect-search-total>button,.prospect-history-filters>button{width:100%}.prospect-history-filters{padding:14px}.prospect-request-list article{grid-template-columns:minmax(0,1fr)}.prospect-lead-title{flex-wrap:wrap}.prospect-tabs button{flex-basis:100px;padding:10px;font-size:12px}.prospect-section-heading>button{width:100%}.prospect-search-total{align-items:stretch}.prospect-search-total>div{width:100%}}
 
 .finance-accent-prospect .finance-bar>span{background:#168351}
+
+/* Keep the country combobox aligned with the adjacent prospecting inputs. */
+.prospect-form{align-items:start}.prospect-form>label{align-content:start;line-height:1.5;margin:0}.prospect-form .field-label{display:block;margin:0 0 8px;font-size:13px;font-weight:400;line-height:1.5}.prospect-form>.min-w-0{align-self:start}.prospect-form input.field,.prospect-form button.field{min-height:48px;height:48px;font-weight:400}
