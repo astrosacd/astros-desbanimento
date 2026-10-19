@@ -1,3 +1,4 @@
+import "./layout.css";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouteContext } from "@tanstack/react-router";
@@ -186,6 +187,7 @@ export function ProspectingPage() {
                 }}
               >
                 <fieldset disabled={busy || !!pending} className="prospect-form">
+                  <div className="prospect-full prospect-form-section"><span>01 / PÚBLICO</span><h3>Quem você quer encontrar?</h3></div>
                   <label className="prospect-full">
                     Nicho ou atividade
                     <input
@@ -198,6 +200,7 @@ export function ProspectingPage() {
                       placeholder="Ex.: dentistas, academias ou restaurantes"
                     />
                   </label>
+                  <div className="prospect-full prospect-form-section"><span>02 / LOCALIZAÇÃO</span><h3>Onde estão seus próximos clientes?</h3></div>
                   <SmsOptionPicker
                     id="prospect-country"
                     label="País"
@@ -228,7 +231,8 @@ export function ProspectingPage() {
                       placeholder="Ex.: Ceará"
                     />
                   </label>
-                  <label>
+                  <div className="prospect-full prospect-form-section"><span>03 / QUANTIDADE</span><h3>Defina o tamanho da sua busca</h3></div>
+                  <label className="prospect-full">
                     Quantidade desejada
                     <input
                       className="field"
@@ -281,7 +285,7 @@ export function ProspectingPage() {
                   {result?.state === "queued" ? queueLabels[result.queue_reason || "capacity"] || queueLabels["capacity"] : "A busca pode levar alguns instantes. Não é necessário enviar novamente."}
                   {" "}Acompanhamos automaticamente. O saldo só é descontado quando os leads são entregues. Se o saldo ficar insuficiente antes da entrega, a busca será encerrada sem cobrança.
                 </p>
-                <code>{pending}</code>
+                <details className="prospect-reference"><summary>Referência da busca</summary><code>{pending}</code></details>
                 <Button disabled={busy} variant="outline" onClick={check}>
                   Verificar esta busca
                 </Button>

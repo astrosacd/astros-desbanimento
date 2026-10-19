@@ -1,3 +1,4 @@
+import "./layout.css";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ExternalLink, RefreshCw, Search } from "lucide-react";
@@ -92,6 +93,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
       <nav className="prospect-tabs" aria-label="Administração da prospecção">
         {[
           ["settings", "Configurações"],
+          ["capacity", "Cotas e processamento"],
           ["requests", "Buscas dos clientes"],
         ].map(([id, label]) => (
           <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id!)}>
@@ -103,7 +105,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         <section className="prospect-card">
           <header className="prospect-section-heading">
             <div>
-              <h2>Integração SerpApi</h2>
+              <h2>Configuração da prospecção</h2>
               <p>A chave fica privada. Os clientes não têm acesso à API do fornecedor.</p>
             </div>
             <KeyRound size={22} />
@@ -121,6 +123,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           ) : (
             <form onSubmit={save}>
               <fieldset disabled={busy} className="prospect-admin-form">
+                <div className="prospect-full prospect-form-section"><span>01 / CONEXÃO</span><h3>Integração com o fornecedor</h3><p>Cadastre a chave uma vez para conectar a pesquisa de empresas.</p></div>
                 <label className="prospect-full">
                   Chave de API da SerpApi
                   <input
@@ -147,7 +150,8 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
                   <ExternalLink size={14} />
                 </a>
                 <div className="prospect-full prospect-form-divider">
-                  <h3>Venda e limites</h3>
+                  <span>02 / PREÇO E BASE</span>
+                  <h3>Valor do lead e reaproveitamento</h3>
                   <p>
                     O preço é cobrado por lead novo efetivamente entregue, usando a carteira
                     compartilhada.
@@ -182,6 +186,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
                     preservado.
                   </small>
                 </label>
+                <div className="prospect-full prospect-form-section"><span>03 / CONTROLE DE USO</span><h3>Limites de pesquisa</h3><p>O limite por conta é individual. O teto da aplicação é compartilhado.</p></div>
                 <label>
                   Buscas por conta por dia
                   <input
@@ -228,16 +233,19 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
                 resultados válidos da base e consulta novas páginas quando necessário, dentro dos
                 limites.
               </p>
+              <div className="prospect-save-bar"><span>As alterações passam a valer após salvar.</span>
               <Button type="submit" disabled={busy}>
                 {busy ? "Salvando…" : "Salvar configuração"}
-              </Button>
+              </Button></div>
             </form>
           )}
         </section>
-        <section className="prospect-card mt-5">
+      </div>
+      <div hidden={tab !== "capacity"}>
+        <section className="prospect-card">
           <header className="prospect-section-heading">
             <div>
-              <h2>Consultas disponíveis no fornecedor</h2>
+              <h2>Cotas e processamento</h2>
               <p>Dados retornados pela API da SerpApi, sem estimar limites pelo nome do plano. A cota é compartilhada por toda a aplicação.</p>
             </div>
             <Button variant="outline" disabled={busy || !query.data?.hasKey} onClick={consult}>
@@ -247,7 +255,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           </header>
           {capacity.isError && <p role="alert" className="error-text">Não foi possível atualizar os limites. Os dados abaixo, quando disponíveis, são da última sincronização confirmada; não representam uma nova consulta. Buscas externas aguardam uma cota atualizada.</p>}
           {account?.syncedAt ? (
-            <div className="prospect-quota">
+            <div className="prospect-quota" aria-label="Dados da conta no fornecedor">
               <div>
                 <span>Plano</span>
                 <strong>{account.plan || "Não informado"}</strong>
@@ -270,7 +278,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           ) : (
             <p className="prospect-help">Limites não informados: aguardando a primeira sincronização confirmada da API. Clique em Consultar cota para atualizar.</p>
           )}
-          <p className="prospect-help">Uma consulta pode retornar várias empresas. Cota restante é uma leitura do fornecedor; reservas em andamento também são consideradas antes de novas chamadas. Ao atingir o limite por hora, a busca aguarda na fila. Se a cota acabar, consultas sem entrega são encerradas sem débito. A fila expira após 24 horas. O processamento local mantém até três consultas externas em andamento; o limite do plano é um teto, não uma promessa de velocidade.</p>
+          <div className="prospect-policy-grid"><div><h3>Limite por hora</h3><p>A busca aguarda na fila e continua automaticamente quando há capacidade.</p></div><div><h3>Cota esgotada</h3><p>Sem cota, novas consultas são encerradas sem débito. A base salva pode continuar atendendo buscas.</p></div><div><h3>Fila protegida</h3><p>Até 24 horas de espera, sem cobrança enquanto aguarda. Até três consultas externas simultâneas.</p></div></div><p className="prospect-help">Uma consulta pode retornar várias empresas. Os valores acima vêm da API; reservas em andamento também são consideradas antes de novas chamadas.</p>
           {account?.syncedAt && Date.now()-Date.parse(account.syncedAt)>300000 && <p role="alert" className="prospect-notice">A sincronização da cota está atrasada. Novas consultas externas aguardam uma confirmação atualizada. Confira a integração e o processamento automático.</p>}
           {account?.syncedAt && account.remaining>0 && account.remaining<=Math.max(10,Math.ceil(account.monthly*0.1)) && <p role="status" className="prospect-notice">Cota de pesquisa baixa. Acompanhe o consumo e a renovação para evitar indisponibilidade.</p>}
           {account?.remaining === 0 && account.syncedAt && <p role="status" className="prospect-notice">A cota de pesquisa está esgotada. Amplie ou renove seu plano. A base já coletada ainda pode atender buscas.</p>}
