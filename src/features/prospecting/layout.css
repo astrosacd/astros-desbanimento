@@ -48,3 +48,21 @@
 .prospect-contacts a strong{font-weight:650;color:var(--primary)}
 .prospect-contacts a svg{flex-shrink:0;color:var(--muted-foreground)}
 .prospect-contacts>p{font-size:11px;line-height:1.7;color:var(--muted-foreground);margin-top:10px}
+.prospect-base-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.prospect-base-totals>div{display:grid;align-content:start;gap:10px;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--secondary);min-width:0}
+.prospect-base-totals span{font-size:12px;color:var(--muted-foreground);line-height:1.7}
+.prospect-base-totals strong{font-size:25px;font-weight:700;font-variant-numeric:tabular-nums}
+.prospect-base-queries{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.prospect-base-queries article{padding:20px;border:1px solid var(--border);border-radius:13px;min-width:0}
+.prospect-base-queries header{display:flex;justify-content:space-between;gap:14px;align-items:start}
+.prospect-base-queries h4,.prospect-base-businesses h4{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.prospect-base-queries p,.prospect-base-businesses p{font-size:12px;color:var(--muted-foreground);line-height:1.8;overflow-wrap:anywhere}
+.prospect-base-metrics,.prospect-base-account{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px 0;margin-top:12px}
+.prospect-base-metrics dt,.prospect-base-account dt{font-size:11px;line-height:1.7;color:var(--muted-foreground)}
+.prospect-base-metrics dd,.prospect-base-account dd{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
+.prospect-base-account{background:var(--secondary);padding:15px;border-radius:10px;color:var(--primary)}
+.prospect-base-businesses{display:grid;gap:12px}
+.prospect-base-businesses article{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;padding:18px;border:1px solid var(--border);border-radius:12px}
+.prospect-base-account-state{display:block;margin-top:8px;font-size:12px;color:var(--primary);line-height:1.7}
+@container(max-width:850px){.prospect-base-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.prospect-base-queries{grid-template-columns:minmax(0,1fr)}}
+@container(max-width:480px){.prospect-base-businesses article{grid-template-columns:minmax(0,1fr)}.prospect-base-totals{grid-template-columns:minmax(0,1fr)}}

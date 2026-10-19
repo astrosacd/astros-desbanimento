@@ -70,3 +70,13 @@ export const prospectAdminRequests = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     (await import("./server")).prospectCall("admin-requests", data, true),
   );
+
+export const prospectAdminBase = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
+    search: z.string().trim().max(80),
+    email: z.string().trim().max(254).refine(v => v === "" || z.string().email().safeParse(v).success, "Informe um e-mail válido."),
+    queryId: z.string().max(64),
+    page: z.number().int().min(0).max(10000),
+    businessPage: z.number().int().min(0).max(10000),
+  }).strict())
+  .handler(async ({data}) => (await import("./server")).prospectCall("admin-base", data, true));

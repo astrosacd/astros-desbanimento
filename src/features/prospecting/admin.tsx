@@ -1,3 +1,4 @@
+import { ProspectBaseAdmin } from "./base-admin";
 import "./layout.css";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -95,6 +96,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           ["settings", "Configurações"],
           ["capacity", "Cotas e processamento"],
           ["requests", "Buscas dos clientes"],
+          ["base", "Base de empresas"],
         ].map(([id, label]) => (
           <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             {label}
@@ -293,6 +295,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           </a>
         </section>
       </div>
+      {tab === "base" && <ProspectBaseAdmin adminId={adminId} />}
       {tab === "requests" && <ProspectRequests adminId={adminId} />}{" "}
       {error && (
         <p role="alert" className="error-text">
