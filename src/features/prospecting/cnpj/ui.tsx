@@ -1,3 +1,4 @@
+import { SmsOptionPicker } from "../../sms/option-picker";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -204,6 +205,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (mode === "search" && !form.uf) return;
               setConfirm(true);
             }}
           >
@@ -226,22 +228,15 @@ export function CnpjPanel({ userId }: { userId: string }) {
                 </label>
               ) : (
                 <>
-                  <label>
-                    Estado
-                    <select
-                      className="field"
-                      required
-                      value={form.uf}
-                      onChange={(e) => update("uf", e.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {brazilStates.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SmsOptionPicker
+                    id="cnpj-state"
+                    label="Estado"
+                    placeholder="Selecione o estado"
+                    value={form.uf}
+                    options={brazilStates.map(state => ({id:state.id,name:`${state.name} (${state.id})`}))}
+                    onChange={value => update("uf",value)}
+                    disabled={busy || !!pending}
+                  />
                   <label>
                     Cidade
                     <input
@@ -346,7 +341,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
               </div>
               <Button
                 type="submit"
-                disabled={busy || !!pending || history.isPending || history.isError}
+                disabled={busy || !!pending || history.isPending || history.isError || (mode === "search" && !form.uf)}
               >
                 Conferir consulta CNPJ
               </Button>

@@ -6,7 +6,24 @@ vi.mock('../actions',()=>({cnpjConfig:api.config,cnpjHistory:api.history,cnpjSea
 import {CnpjPanel,CnpjAdmin} from './ui';
 const config={installed:true,enabled:true,unitCents:50,enrichEnabled:false,enrichCents:25,dailyRequests:5,dailyCalls:20,minuteCalls:5,cacheDays:7,hasKey:true};
 function mount(child:React.ReactNode){render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}>{child}</QueryClientProvider>);}
-beforeEach(()=>{api.config.mockResolvedValue(config);api.history.mockResolvedValue({requests:[],hasMore:false});api.adminConfig.mockResolvedValue(config);api.adminHistory.mockResolvedValue({requests:[],hasMore:false});});afterEach(()=>{cleanup();vi.resetAllMocks();});
+beforeEach(()=>{api.config.mockResolvedValue(config);api.history.mockResolvedValue({requests:[],hasMore:false});api.adminConfig.mockResolvedValue(config);api.adminHistory.mockResolvedValue({requests:[],hasMore:false});});afterEach(()=>{cleanup();vi.resetAllMocks();vi.unstubAllGlobals();});
 it('keeps CNPJ disabled without dispatch while Maps remains an independent option',async()=>{api.config.mockResolvedValue({...config,installed:false,enabled:false});mount(<CnpjPanel userId="owner"/>);await screen.findByText('Pesquisa por CNPJ ainda não disponível');expect(api.search).not.toHaveBeenCalled();expect(api.history).not.toHaveBeenCalled();});
 it('shows the charge before dispatch and uses one stable UUID for the request',async()=>{api.search.mockResolvedValue({id:'ref',state:'completed',delivered:1,charged_cents:50});mount(<CnpjPanel userId="owner"/>);fireEvent.click(await screen.findByRole('button',{name:'Consultar um CNPJ'}));await waitFor(()=>expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).not.toBeDisabled());fireEvent.change(screen.getByLabelText('CNPJ numérico (14 dígitos)'),{target:{value:'11222333000181'}});fireEvent.click(screen.getByRole('button',{name:'Conferir consulta CNPJ'}));expect(api.search).not.toHaveBeenCalled();const dialog=screen.getByRole('dialog');expect(within(dialog).getByText('Máximo a descontar da carteira')).toBeTruthy();fireEvent.click(within(dialog).getByRole('button',{name:'Confirmar consulta'}));await screen.findByText('1 novos leads entregues');expect(api.search).toHaveBeenCalledTimes(1);expect(api.search.mock.calls[0][0].data).toMatchObject({mode:'lookup',cnpj:'11222333000181',quantity:1,expectedUnitCents:50,requestId:expect.stringMatching(/^[\da-f-]{36}$/)});});
 it('does not prefill or expose credentials and preserves the existing key on settings edits',async()=>{api.save.mockResolvedValue({saved:true});mount(<CnpjAdmin adminId="admin"/>);const key=await screen.findByLabelText(/Chave da Casa dos Dados/);expect(key).toHaveValue('');fireEvent.click(screen.getByRole('button',{name:'Salvar configuração CNPJ'}));await waitFor(()=>expect(api.save).toHaveBeenCalled());expect(api.save.mock.calls[0][0].data.apiKey).toBe('');});
+it('searches states by name or abbreviation in a bounded list and keeps the saved state code',async()=>{
+ vi.stubGlobal('ResizeObserver',class{observe(){} unobserve(){} disconnect(){}});
+ Element.prototype.scrollIntoView=vi.fn();
+ mount(<CnpjPanel userId="owner"/>);
+ const state=await screen.findByRole('combobox',{name:'Estado'});
+ await waitFor(()=>expect(state).not.toBeDisabled());
+ fireEvent.click(state);
+ const search=screen.getByLabelText('Pesquisar estado');
+ fireEvent.change(search,{target:{value:'Ceará'}});
+ expect(screen.getByRole('option',{name:/Ceará \(CE\)/})).toBeTruthy();
+ expect(screen.queryByRole('option',{name:/São Paulo/})).toBeNull();
+ fireEvent.change(search,{target:{value:'CE'}});
+ fireEvent.click(screen.getByRole('option',{name:/Ceará \(CE\)/}));
+ expect(state).toHaveTextContent('Ceará (CE)');
+ expect(screen.queryByLabelText('Pesquisar estado')).toBeNull();
+ expect(api.search).not.toHaveBeenCalled();
+});
