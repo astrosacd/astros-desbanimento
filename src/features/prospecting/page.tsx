@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import { getCountries } from "libphonenumber-js";
-import { Search, Wallet, CheckCircle2 } from "lucide-react";
+import { Search, Wallet, CheckCircle2, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SmsOptionPicker } from "../sms/option-picker";
 import {
@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getWallet } from "../payments/actions";
-import { prospectConfig, prospectSearch, prospectStatus, prospectCities, prospectDailyQuota } from "./actions";
+import { prospectConfig, prospectSearch, prospectStatus, prospectCities, prospectDailyQuota, prospectRequests } from "./actions";
 import { ProspectHistory, ProspectRequests } from "./history";
 import { failureLabels, queueLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
@@ -52,6 +52,23 @@ export function ProspectingPage() {
     [error, setError] = useState(""),
     [result, setResult] = useState<ProspectRequest | null>(null),
     [pending, setPending] = useState<string | null>(null);
+  const activeRequest = useQuery({
+    queryKey: ["prospect-active-request", client?.id],
+    queryFn: () => prospectRequests({ data: { page: 0 } }),
+    retry: false,
+    refetchOnWindowFocus: true,
+    enabled: !pending && !busy,
+  });
+  useEffect(() => {
+    if (pending || busy || result) return;
+    const requests = (activeRequest.data as { requests?: ProspectRequest[] } | undefined)?.requests;
+    const active = requests?.find(r => ["queued", "processing"].includes(r.state));
+    if (active) { setPending(active.id); setResult(active); }
+  }, [activeRequest.data, pending, busy, result]);
+  const progress = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pending) progress.current?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+  }, [pending]);
   const lock = useRef(false);
   const c = config.data as ProspectConfig | undefined;
   const cityOptions = useQuery({queryKey:["prospect-cities",client?.id,stateCode],queryFn:()=>prospectCities({data:{state:stateCode}}),enabled:country==="BR"&&!!stateCode,staleTime:86400000,retry:false});
@@ -72,12 +89,13 @@ export function ProspectingPage() {
       cache.invalidateQueries({ queryKey: ["prospect-leads"] }),
       cache.invalidateQueries({ queryKey: ["prospect-daily-quota"] }),
       cache.invalidateQueries({ queryKey: ["prospect-requests"] }),
+      cache.invalidateQueries({ queryKey: ["prospect-active-request"] }),
       cache.invalidateQueries({ queryKey: ["wallet"] }),
       cache.invalidateQueries({ queryKey: ["prospect-wallet"] }),
     ]);
   }
   async function search() {
-    if (lock.current || !valid || pending) return;
+    if (lock.current || !valid || pending || activeRequest.isPending || activeRequest.isError) return;
     lock.current = true;
     setBusy(true);
     setError("");
@@ -258,7 +276,7 @@ export function ProspectingPage() {
                       <Link to="/carteira">Adicionar saldo</Link>
                     </Button>
                   ) : (
-                    <Button disabled={!valid || busy || !!pending || !wallet.data} type="submit">
+                    <Button disabled={!valid || busy || !!pending || !wallet.data || activeRequest.isPending || activeRequest.isError} type="submit">
                       <Search size={17} />
                       {busy ? "Pesquisando…" : "Conferir busca"}
                     </Button>
@@ -274,16 +292,25 @@ export function ProspectingPage() {
                 {error}
               </p>
             )}
+            {activeRequest.isError && !pending && (
+              <div className="prospect-notice" role="alert">
+                <p>Não foi possível conferir se há uma busca em andamento.</p>
+                <Button variant="outline" onClick={() => void activeRequest.refetch()}>Tentar novamente</Button>
+              </div>
+            )}
             {pending && (
-              <div className="prospect-notice" role="status">
-                <strong>
-                  {result?.state === "queued" ? "Busca na fila" : busy
-                    ? "Buscando e verificando empresas…"
-                    : "Confira o resultado desta tentativa"}
-                </strong>
+              <div ref={progress} className="prospect-search-progress" aria-busy="true">
+                <div className="prospect-search-progress-heading" role="status" aria-live="polite">
+                  <span className="prospect-search-progress-icon" aria-hidden="true"><LoaderCircle size={25} /></span>
+                  <div>
+                    <strong>{result?.state === "queued" ? "Busca na fila" : error ? "Confirmando sua busca…" : "Buscando e verificando empresas…"}</strong>
+                    <span>{result?.state === "queued" ? "Sua solicitação aguarda processamento." : "Estamos preparando seus resultados. Isso pode levar alguns instantes."}</span>
+                  </div>
+                </div>
                 <p>
                   {result?.state === "queued" ? queueLabels[result.queue_reason || "capacity"] || queueLabels["capacity"] : "A busca pode levar alguns instantes. Não é necessário enviar novamente."}
-                  {" "}Acompanhamos automaticamente. O saldo só é descontado quando os leads são entregues. Se o saldo ficar insuficiente antes da entrega, a busca será encerrada sem cobrança.
+                  {" "}Atualizamos esta tela automaticamente. Uma busca já registrada continua no servidor mesmo se você sair; acompanhe em Histórico de buscas ao voltar. Não envie novamente.
+                  {" "} O saldo só é descontado quando os leads são entregues. Se o saldo ficar insuficiente antes da entrega, a busca será encerrada sem cobrança.
                 </p>
                 <details className="prospect-reference"><summary>Referência da busca</summary><code>{pending}</code></details>
                 <Button disabled={busy} variant="outline" onClick={check}>

@@ -256,3 +256,20 @@
     min-height: 40px;
   }
 }
+
+.prospect-search-progress { margin-top:24px; padding:22px; border:1px solid #b8dfe3; border-radius:14px; background:#f3fafb; min-width:0; }
+.prospect-search-progress-heading { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+.prospect-search-progress-heading > div { display:grid; gap:5px; min-width:0; }
+.prospect-search-progress-heading strong { font-size:16px; line-height:1.5; color:#123c46; }
+.prospect-search-progress-heading span:not(.prospect-search-progress-icon), .prospect-search-progress > p { font-size:13px; line-height:1.8; color:#526678; }
+.prospect-search-progress-icon { display:grid; place-items:center; flex:0 0 48px; height:48px; border-radius:50%; background:#dff1f3; color:#087e8b; }
+.prospect-search-progress-icon svg { animation:prospect-search-spin 1.4s linear infinite; }
+.prospect-search-progress > p { margin-bottom:16px; }
+.prospect-search-progress .prospect-reference { margin-bottom:16px; overflow-wrap:anywhere; }
+@keyframes prospect-search-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .prospect-search-progress-icon svg { animation:none; } }
+@container (max-width:480px) {
+  .prospect-search-progress { padding:16px; }
+  .prospect-search-progress > button { width:100%; }
+  .prospect-search-progress-heading { align-items:flex-start; gap:10px; }
+}
