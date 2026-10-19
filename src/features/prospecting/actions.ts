@@ -80,3 +80,7 @@ export const prospectAdminBase = createServerFn({ method: "POST" })
     businessPage: z.number().int().min(0).max(10000),
   }).strict())
   .handler(async ({data}) => (await import("./server")).prospectCall("admin-base", data, true));
+
+export const prospectCities = createServerFn({ method: "POST" })
+ .inputValidator(z.object({state:z.string().regex(/^[A-Z]{2}$/)}).strict())
+ .handler(async({data})=>(await import("./server")).prospectCall("cities",data));

@@ -1,3 +1,4 @@
+import { brazilCities } from './geography.ts';
 import {Buffer} from 'node:buffer';
 import {checkWebsite,publicWebsite,contactLink} from './website.ts';
 import {readWebsite,enrichWebsite} from './reader.ts';
@@ -24,6 +25,7 @@ async function worker(req:Request){const key=(await db('astros_prospect_private?
 const statuses=['new','contacted','negotiating','won','discarded'];
 export async function handler(req:Request){try{
  if(req.method!=='POST')return json({error:'Método indisponível.'},405);if(Number(req.headers.get('content-length')||0)>32768)return json({error:'Pedido muito grande.'},413);const raw=await req.text();if(raw.length>32768)return json({error:'Pedido muito grande.'},413);const body=JSON.parse(raw),action=String(body.action),data=body.data??{};if(action==='worker')return await worker(req);const actor=await user(req);const admin=action.startsWith('admin-');if(admin&&actor['tipo_usuario']!=='admin')throw Error('Acesso administrativo necessário.');
+ if(action==='cities')return json({cities:await brazilCities(clean(data.state,2).toUpperCase())});
  if(action==='config'||action==='admin-config'){const s=(await db('astros_prospect_settings?id=eq.true'))[0];if(!s)throw Error('Ative o SQL de prospecção.');return json({enabled:s.enabled,unitCents:s.unit_cents,maxQuantity:20,...(admin?{cacheDays:s.cache_days,dailyRequests:s.daily_requests,dailyCalls:s.daily_calls,hasKey:!!(await db('astros_prospect_private?id=eq.true&select=api_key'))[0]?.api_key}:{})});}
  if(action==='admin-save'){await db('rpc/astros_prospect_save','POST',{actor:actor['id'],active:data.enabled===true,unit_price:count(data.unitCents,10000),retention_days:count(data.cacheDays,30),request_limit:count(data.dailyRequests,100),call_limit:count(data.dailyCalls,5000),new_key:clean(data.apiKey,201)});return json({saved:true});}
  if(action==='admin-base'){const email=clean(data.email,255).toLowerCase(),search=clean(data.search,81),queryId=clean(data.queryId,65);if(email.length>254||search.length>80||queryId.length>64||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))||(queryId&&!/^[a-f0-9]{32}$/.test(queryId)))throw Error('Filtro inválido.');return json(await db('rpc/astros_prospect_admin_base','POST',{actor:actor['id'],search_text:search,account_email:email,query_key:queryId,query_page:count(data.page??0,10000),business_page:count(data.businessPage??0,10000)}));}

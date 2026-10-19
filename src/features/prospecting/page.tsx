@@ -1,3 +1,4 @@
+import { brazilStates } from "../../../supabase/functions/astros-prospecting/geography";
 import "./layout.css";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getWallet } from "../payments/actions";
-import { prospectConfig, prospectSearch, prospectStatus } from "./actions";
+import { prospectConfig, prospectSearch, prospectStatus, prospectCities } from "./actions";
 import { ProspectHistory, ProspectRequests } from "./history";
 import { failureLabels, queueLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
@@ -40,6 +41,7 @@ export function ProspectingPage() {
     [country, setCountry] = useState("BR"),
     [city, setCity] = useState(""),
     [region, setRegion] = useState(""),
+    [stateCode, setStateCode] = useState(""),
     [quantity, setQuantity] = useState(8),
     [confirm, setConfirm] = useState(false),
     [busy, setBusy] = useState(false),
@@ -48,11 +50,14 @@ export function ProspectingPage() {
     [pending, setPending] = useState<string | null>(null);
   const lock = useRef(false);
   const c = config.data as ProspectConfig | undefined;
+  const cityOptions = useQuery({queryKey:["prospect-cities",client?.id,stateCode],queryFn:()=>prospectCities({data:{state:stateCode}}),enabled:country==="BR"&&!!stateCode,staleTime:86400000,retry:false});
+  const availableCities: {id:string;name:string}[] = cityOptions.data?.cities || [];
   const maximum = (c?.unitCents ?? 0) * quantity;
   const valid =
     !!c?.enabled &&
     niche.trim().length >= 2 &&
     city.trim().length >= 2 &&
+    (country!=="BR" || !!stateCode && availableCities.some(option=>option.name===city)) &&
     Number.isInteger(quantity) &&
     quantity >= 1 &&
     quantity <= 20;
@@ -201,36 +206,23 @@ export function ProspectingPage() {
                     />
                   </label>
                   <div className="prospect-full prospect-form-section"><span>02 / LOCALIZAÇÃO</span><h3>Onde estão seus próximos clientes?</h3></div>
-                  <SmsOptionPicker
+                  <div className="prospect-full"><SmsOptionPicker
                     id="prospect-country"
                     label="País"
                     placeholder="Selecione o país"
                     value={country}
                     options={countries}
-                    onChange={setCountry}
-                  />
-                  <label>
-                    Cidade
-                    <input
-                      className="field"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      required
-                      minLength={2}
-                      maxLength={80}
-                      placeholder="Ex.: Fortaleza"
-                    />
-                  </label>
-                  <label>
-                    Estado / região (opcional)
-                    <input
-                      className="field"
-                      value={region}
-                      onChange={(e) => setRegion(e.target.value)}
-                      maxLength={80}
-                      placeholder="Ex.: Ceará"
-                    />
-                  </label>
+                    onChange={value=>{setCountry(value);setStateCode("");setRegion("");setCity("");}}
+                  /></div>
+                  {country === "BR" ? <>
+                    <SmsOptionPicker id="prospect-state" label="Estado" placeholder="Selecione o estado" value={stateCode} options={brazilStates.map(state=>({...state,name:state.name+" ("+state.id+")"}))} onChange={value=>{setStateCode(value);setRegion(brazilStates.find(state=>state.id===value)?.name||"");setCity("");}}/>
+                    <SmsOptionPicker id="prospect-city" label="Cidade" placeholder={!stateCode?"Escolha o estado primeiro":cityOptions.isFetching?"Carregando cidades…":"Selecione a cidade"} value={city} options={availableCities.map(option=>({id:option.name,name:option.name}))} onChange={setCity} disabled={!stateCode||cityOptions.isFetching||!availableCities.length}/>
+                    {cityOptions.isError && <div className="prospect-full" role="alert"><p className="error-text">Não foi possível carregar as cidades deste estado.</p><Button type="button" variant="outline" onClick={()=>void cityOptions.refetch()}>Tentar carregar cidades</Button></div>}
+                    <p className="prospect-full prospect-location-help">Selecione o estado e depois pesquise a cidade pelo nome. Municípios fornecidos pelo IBGE.</p>
+                  </> : <>
+                    <label>Estado / região (opcional)<input className="field" value={region} onChange={e=>setRegion(e.target.value)} maxLength={80} placeholder="Informe o estado ou a região"/></label>
+                    <label>Cidade<input className="field" value={city} onChange={e=>setCity(e.target.value)} required minLength={2} maxLength={80} placeholder="Informe a cidade"/></label>
+                  </>}
                   <div className="prospect-full prospect-form-section"><span>03 / QUANTIDADE</span><h3>Defina o tamanho da sua busca</h3></div>
                   <label className="prospect-full">
                     Quantidade desejada

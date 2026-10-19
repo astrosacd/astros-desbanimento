@@ -66,3 +66,4 @@
 .prospect-base-account-state{display:block;margin-top:8px;font-size:12px;color:var(--primary);line-height:1.7}
 @container(max-width:850px){.prospect-base-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.prospect-base-queries{grid-template-columns:minmax(0,1fr)}}
 @container(max-width:480px){.prospect-base-businesses article{grid-template-columns:minmax(0,1fr)}.prospect-base-totals{grid-template-columns:minmax(0,1fr)}}
+.prospect-location-help{font-size:11px;color:var(--muted-foreground);line-height:1.7;margin:0}
