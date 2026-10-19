@@ -1,3 +1,4 @@
+import {useCnpjQuota,CnpjQuotaNotice} from "./quota";
 import {cnpjRejection, cnpjMissingRequest} from "./errors";
 import {displayCnpj} from "./details";
 import { SmsOptionPicker } from "../../sms/option-picker";
@@ -73,17 +74,13 @@ function useRefresh() {
   const cache = useQueryClient();
   return () =>
     Promise.all(
-      ["prospect-leads", "wallet", "prospect-wallet", "cnpj-history", "cnpj-admin-history"].map(
+      ["prospect-leads", "wallet", "prospect-wallet", "cnpj-history", "cnpj-admin-history", "cnpj-config"].map(
         (key) => cache.invalidateQueries({ queryKey: [key] }),
       ),
     );
 }
 export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>void }) {
-  const config = useQuery({
-    queryKey: ["cnpj-config", userId],
-    queryFn: () => cnpjConfig(),
-    retry: false,
-  });
+  const {query:config,blocked:dailyBlocked} = useCnpjQuota(userId);
   const c = config.data as Config | undefined;
   const history = useQuery({
     queryKey: ["cnpj-history", userId, 0],
@@ -146,7 +143,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
     return () => clearInterval(t);
   }, [pending]);
   async function run() {
-    if (lock.current || pending || !c?.enabled) return;
+    if (lock.current || pending || dailyBlocked || !c?.enabled) return;
     lock.current = true;
     setBusy(true);
     setConfirm(false);
@@ -175,6 +172,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
     } finally {
       setBusy(false);
       lock.current = false;
+      void config.refetch();
     }
   }
   const update = (key: keyof typeof form, value: string) =>
@@ -226,16 +224,17 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
               Consultar um CNPJ
             </Button>
           </div>
+          <CnpjQuotaNotice userId={userId}/>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (mode === "search" && !form.uf) return;
-              setConfirm(true);
+              if (!dailyBlocked) setConfirm(true);
             }}
           >
             <fieldset
               className="prospect-form"
-              disabled={busy || !!pending || history.isPending || history.isError}
+              disabled={busy || !!pending || dailyBlocked || history.isPending || history.isError}
             >
               {mode === "lookup" ? (
                 <label className="prospect-full">
@@ -374,6 +373,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
                 disabled={
                   busy ||
                   !!pending ||
+                  dailyBlocked ||
                   history.isPending ||
                   history.isError ||
                   (mode === "search" && !form.uf)
@@ -464,7 +464,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Voltar
             </Button>
-            <Button disabled={busy || !!pending} onClick={() => void run()}>
+            <Button disabled={busy || !!pending || dailyBlocked} onClick={() => void run()}>
               Confirmar consulta
             </Button>
           </DialogFooter>
@@ -745,8 +745,8 @@ export function CnpjAdmin({ adminId,onHistory }: { adminId: string;onHistory?:()
     </section>
   );
 }
-export function CnpjEnrichButton({ lead }: { lead: Lead }) {
-  const q = useQuery({ queryKey: ["cnpj-config"], queryFn: () => cnpjConfig(), retry: false });
+export function CnpjEnrichButton({ lead,userId }: { lead: Lead;userId:string }) {
+  const {query:q,blocked:dailyBlocked}=useCnpjQuota(userId);
   const c = q.data as Config | undefined,
     refresh = useRefresh();
   const [confirm, setConfirm] = useState(false),
@@ -763,7 +763,7 @@ export function CnpjEnrichButton({ lead }: { lead: Lead }) {
     );
   if (!c?.enabled || !c.enrichEnabled) return null;
   async function run() {
-    if (lock.current) return;
+    if (lock.current || (!pending && dailyBlocked)) return;
     lock.current = true;
     setBusy(true);
     setMessage("");
@@ -798,6 +798,7 @@ export function CnpjEnrichButton({ lead }: { lead: Lead }) {
     } finally {
       setBusy(false);
       lock.current = false;
+      void q.refetch();
     }
   }
   return (
@@ -808,7 +809,7 @@ export function CnpjEnrichButton({ lead }: { lead: Lead }) {
       </p>
       <Button
         variant="outline"
-        disabled={busy}
+        disabled={busy || (!pending && dailyBlocked)}
         onClick={() => (pending ? void run() : setConfirm(true))}
       >
         {busy
@@ -831,7 +832,7 @@ export function CnpjEnrichButton({ lead }: { lead: Lead }) {
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Voltar
             </Button>
-            <Button disabled={busy} onClick={() => void run()}>
+            <Button disabled={busy || (!pending && dailyBlocked)} onClick={() => void run()}>
               Confirmar dados complementares
             </Button>
           </DialogFooter>

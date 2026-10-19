@@ -17,7 +17,9 @@ export function DailyQuotaNotice({
   quota,
   updatedAt,
   onRenew,
+  cnpj = false,
 }: {
+  cnpj?: boolean;
   quota: DailyQuota;
   updatedAt?: number | undefined;
   onRenew: () => void;
@@ -54,12 +56,12 @@ export function DailyQuotaNotice({
     <div className={`prospect-daily-quota${blocked ? " prospect-daily-blocked" : ""}`}>
       <Clock3 size={19} />
       <div>
-        <strong>{blocked ? "Limite diário de buscas atingido" : "Suas buscas de hoje"}</strong>
+        <strong>{blocked ? (cnpj ? "Limite diário de consultas CNPJ atingido" : "Limite diário de buscas atingido") : (cnpj ? "Suas consultas CNPJ de hoje" : "Suas buscas de hoje")}</strong>
         <p>
-          {quota.used} de {quota.limit} buscas utilizadas.{" "}
+          {quota.used} de {quota.limit} {cnpj ? "consultas utilizadas" : "buscas utilizadas"}.{" "}
           {blocked
-            ? "Novas buscas ficam disponíveis após a renovação do limite."
-            : `${quota.remaining} busca(s) disponível(is).`}
+            ? (cnpj ? "Pesquisas, consultas e atualizações cadastrais usam esta mesma cota." : "Novas buscas ficam disponíveis após a renovação do limite.")
+            : `${quota.remaining} ${cnpj ? "consulta(s)" : "busca(s)"} disponível(is).`}
         </p>
         {blocked && (
           <>

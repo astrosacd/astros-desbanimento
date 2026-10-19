@@ -480,7 +480,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                     situação pode mudar.
                   </p>
                 </details>}
-                {lead.snapshot.source === "cnpj" && <><CnpjDetails lead={lead} onUpdated={snapshot=>{setInspected(current=>current?.id===lead.id?{...current,snapshot}:current);cache.setQueriesData({queryKey:["prospect-leads",userId]},(current:any)=>current?.leads?{...current,leads:current.leads.map((row:Lead)=>row.id===lead.id?{...row,snapshot}:row)}:current);}}/><CnpjEnrichButton key={lead.id} lead={lead}/></>}
+                {lead.snapshot.source === "cnpj" && <><CnpjDetails userId={userId} lead={lead} onUpdated={snapshot=>{setInspected(current=>current?.id===lead.id?{...current,snapshot}:current);cache.setQueriesData({queryKey:["prospect-leads",userId]},(current:any)=>current?.leads?{...current,leads:current.leads.map((row:Lead)=>row.id===lead.id?{...row,snapshot}:row)}:current);}}/><CnpjEnrichButton userId={userId} key={lead.id} lead={lead}/></>}
                 {lead.snapshot.siteSummary && (
                   <details className="prospect-site-details">
                     <summary>Conteúdo e contatos do site</summary>

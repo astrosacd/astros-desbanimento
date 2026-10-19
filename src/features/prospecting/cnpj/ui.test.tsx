@@ -56,3 +56,12 @@ it('keeps an uncertain request for status verification without sending it twice'
  await screen.findByText('1 novos leads entregues');
  expect(api.search).toHaveBeenCalledTimes(1);expect(api.status.mock.calls[0][0].data.requestId).toBe(api.search.mock.calls[0][0].data.requestId);
 });
+it('shows server quota and blocks both search modes before dispatch',async()=>{
+ api.config.mockResolvedValue({...config,dailyQuota:{limit:5,used:5,remaining:0,serverNow:'2026-10-19T22:00:00Z',resetsAt:'2026-10-20T03:00:00Z'}});
+ mount(<CnpjPanel userId="owner"/>);
+ await screen.findByText('Limite diário de consultas CNPJ atingido');
+ expect(screen.getByLabelText('Tempo até a renovação do limite')).toHaveTextContent('05:00:00');
+ fireEvent.click(screen.getByRole('button',{name:'Consultar um CNPJ'}));
+ expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).toBeDisabled();
+ expect(api.search).not.toHaveBeenCalled();
+});

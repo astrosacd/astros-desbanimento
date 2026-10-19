@@ -1,3 +1,4 @@
+import {useCnpjQuota,CnpjQuotaNotice} from "./quota";
 import {cnpjRejection, cnpjMissingRequest} from "./errors";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,8 +42,10 @@ export function displayCnpjMoney(v?: string) {
 const choice = (v?: boolean | null) => (v === true ? "Sim" : v === false ? "Não" : "Não informado");
 export function CnpjDetails({
   lead,
+  userId,
   onUpdated,
 }: {
+  userId: string;
   lead: Lead;
   onUpdated?: (snapshot: Lead["snapshot"]) => void;
 }) {
@@ -98,17 +101,20 @@ export function CnpjDetails({
           : ""}
         {s.collectedAt || s.checkedAt ? `Dados recebidos em ${displayCnpjDate(s.collectedAt || s.checkedAt)}.` : "Data de coleta não informada."}
       </p>
-      <CnpjRefreshButton key={lead.id} lead={lead} onUpdated={onUpdated} />
+      <CnpjRefreshButton key={lead.id} userId={userId} lead={lead} onUpdated={onUpdated} />
     </section>
   );
 }
 function CnpjRefreshButton({
   lead,
+  userId,
   onUpdated,
 }: {
+  userId:string;
   lead: Lead;
   onUpdated?: ((snapshot: Lead["snapshot"]) => void) | undefined;
 }) {
+  const {query:quotaQuery,blocked:dailyBlocked}=useCnpjQuota(userId);
   const [confirm, setConfirm] = useState(false),
     [pending, setPending] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
@@ -116,7 +122,7 @@ function CnpjRefreshButton({
   const lock = useRef(false),
     cache = useQueryClient();
   async function run() {
-    if (lock.current) return;
+    if (lock.current || (!pending && dailyBlocked)) return;
     lock.current = true;
     setBusy(true);
     setConfirm(false);
@@ -138,7 +144,7 @@ function CnpjRefreshButton({
             : "Não foi possível atualizar agora. Os dados anteriores foram preservados e nenhum valor foi descontado.",
         );
         await Promise.all(
-          ["prospect-leads", "cnpj-history", "cnpj-admin-history"].map((k) =>
+          ["prospect-leads", "cnpj-history", "cnpj-admin-history", "cnpj-config"].map((k) =>
             cache.invalidateQueries({ queryKey: [k] }),
           ),
         );
@@ -151,6 +157,7 @@ function CnpjRefreshButton({
     } finally {
       setBusy(false);
       lock.current = false;
+      void quotaQuery.refetch();
     }
   }
   return (
@@ -162,9 +169,10 @@ function CnpjRefreshButton({
           disponíveis.
         </p>
       </div>
+      <CnpjQuotaNotice userId={userId}/>
       <Button
         variant="outline"
-        disabled={busy}
+        disabled={busy || (!pending && dailyBlocked)}
         onClick={() => (pending ? void run() : setConfirm(true))}
       >
         {busy ? "Atualizando…" : pending ? "Verificar atualização" : "Atualizar dados cadastrais"}
@@ -183,7 +191,7 @@ function CnpjRefreshButton({
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Voltar
             </Button>
-            <Button disabled={busy} onClick={() => void run()}>
+            <Button disabled={busy || (!pending && dailyBlocked)} onClick={() => void run()}>
               Confirmar atualização cadastral
             </Button>
           </DialogFooter>
