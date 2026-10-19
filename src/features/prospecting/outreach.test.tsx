@@ -21,3 +21,13 @@ it('uses edited text, reports clipboard success and does not send or change stag
  fireEvent.click(screen.getByRole('button',{name:'Copiar mensagem'}));
  await screen.findByText('Mensagem copiada!');expect(writeText).toHaveBeenCalledWith('Minha proposta');
 });
+it('prepares CNPJ outreach with the company name without claiming a Google source',()=>{
+ const cnpj={...lead,id:'cnpj-lead',snapshot:{...lead.snapshot,source:'cnpj' as const,phone:'85999999999'}};
+ expect(leadMessage(cnpj.snapshot)).toContain('Empresa Exemplo');expect(leadMessage(cnpj.snapshot)).not.toContain('Google');
+ render(<LeadOutreach lead={cnpj}/>);fireEvent.click(screen.getByText('Preparar abordagem'));
+ expect(screen.getByRole('link',{name:'Conversar no WhatsApp'})).toHaveAttribute('href',whatsappLink(cnpj.snapshot.phone,leadMessage(cnpj.snapshot)));
+});
+it('allows copying CNPJ text without inventing a WhatsApp link for a missing phone',()=>{
+ render(<LeadOutreach lead={{...lead,snapshot:{...lead.snapshot,source:'cnpj',phone:''}}}/>);
+ fireEvent.click(screen.getByText('Preparar abordagem'));expect(screen.queryByRole('link',{name:'Conversar no WhatsApp'})).toBeNull();expect(screen.getByRole('button',{name:'Copiar mensagem'})).not.toBeDisabled();
+});

@@ -1,6 +1,6 @@
 # Prospecção por CNPJ
 
-Modalidade adicional dentro de Prospecção. Google Maps continua usando sua configuração, fila, cota e cron existentes. CNPJ usa Casa dos Dados para pesquisa e consulta direta e, opcionalmente, a API pública ReceitaWS para dados complementares. Não há envio de mensagens ou integração WhatsApp nesta modalidade.
+Modalidade adicional dentro de Prospecção. Google Maps continua usando sua configuração, fila, cota e cron existentes. CNPJ usa Casa dos Dados para pesquisa e consulta direta e, opcionalmente, a API pública ReceitaWS para dados complementares. Há preparação manual de abordagem no cartão, com mensagem editável, cópia e link WhatsApp preenchido. O usuário revisa e envia no próprio WhatsApp; não há envio automático ou integração com API de mensagens.
 
 ## Ativação
 
@@ -77,3 +77,7 @@ O adaptador aceita contatos empresariais em campos diretos e contêineres contat
 A configuração autenticada retorna `dailyQuota` da própria conta, contando os mesmos registros de pesquisa/consulta/enriquecimento/atualização usados pela reserva SQL. Limite, uso, restante, hora do servidor e próxima meia-noite de Fortaleza vêm do banco; não são estimados pelo relógio do navegador nem confundidos com créditos Casa. A UI consulta novamente a cada minuto, após tentativas, e ao encerrar o contador. Não envia uma nova consulta automaticamente. Cota zero bloqueia novas intenções nos dois modos e no cartão cadastral, preservando a verificação de uma referência em andamento. Configuração sem a projeção (SQL antigo) mantém validação autoritativa no servidor, sem inventar contador.
 
 Para instalação existente, executar somente `supabase/migrations/20261019_prospecting_cnpj_daily_quota.sql`. A alteração é de leitura e não aumenta limites, apaga histórico, modifica saldos ou mexe no Maps. A função continua restrita ao service role com validação do ator. Não precisa atualizar a Edge Function para este contador. Novas instalações já incluem a projeção no setup completo.
+
+## Preparar abordagem
+
+O cartão CNPJ usa o mesmo componente de abordagem do Google Maps, com o nome da empresa na sugestão. A sugestão CNPJ não afirma que a empresa foi encontrada no Google. A mensagem editada é usada tanto na cópia quanto no link `wa.me`. Telefone inválido ou ausente não gera link; não inventamos número nem confirmamos WhatsApp/titularidade. Preparar, copiar e abrir não mudam a etapa do CRM, não consomem cota e não fazem consultas ao fornecedor. Layout responsivo existente compartilhado.

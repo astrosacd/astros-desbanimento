@@ -502,7 +502,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                   </details>
                 )}
                 <LeadContacts snapshot={lead.snapshot} />
-                {lead.snapshot.source !== "cnpj" && <LeadOutreach lead={lead} />}
+                <LeadOutreach key={lead.id} lead={lead} />
                 <label className="prospect-lead-stage">
                   Etapa do contato
                   <select

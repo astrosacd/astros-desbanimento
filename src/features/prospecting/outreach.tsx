@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { Lead } from "./types";
 
 export function leadMessage(lead: Lead["snapshot"]) {
+  if (lead.source === "cnpj") return `Olá! Gostaria de conversar com a equipe da empresa ${lead.name} sobre uma proposta para o negócio. Com quem posso falar sobre esse assunto?`;
   return `Olá! Encontrei a empresa ${lead.name} no Google e gostaria de conversar sobre uma proposta para o negócio. Com quem posso falar sobre esse assunto?`;
 }
 export function whatsappLink(phone: string, message: string) {
