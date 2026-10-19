@@ -1,7 +1,7 @@
 import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
 import { LeadOutreach } from "./outreach";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -596,6 +596,18 @@ function ProspectBoard({
 }) {
   const [dragged, setDragged] = useState<Lead | null>(null);
   const board = useRef<HTMLDivElement>(null);
+  const [edges,setEdges] = useState({previous:false,next:false});
+  function updateEdges() {
+    const element=board.current;
+    if(element) setEdges({previous:element.scrollLeft>2,next:element.scrollLeft+element.clientWidth<element.scrollWidth-2});
+  }
+  useEffect(()=>{
+    updateEdges();
+    const element=board.current;
+    const observer=typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateEdges);
+    if(element) observer?.observe(element);
+    return ()=>observer?.disconnect();
+  },[userId,search]);
   function scrollColumns(direction: number) {
     const element = board.current;
     if (!element) return;
@@ -611,11 +623,17 @@ function ProspectBoard({
       <div className="prospect-board-navigation" role="group" aria-label="Navegar pelas etapas">
         <span>Novo → Contatado → Em negociação → Fechado → Descartado</span>
         <div>
-          <Button variant="outline" aria-label="Ver etapas anteriores" onClick={() => scrollColumns(-1)}><ChevronLeft size={17} /> Anteriores</Button>
-          <Button variant="outline" aria-label="Ver próximas etapas" onClick={() => scrollColumns(1)}>Próximas <ChevronRight size={17} /></Button>
+          <Button variant="outline" disabled={!edges.previous} aria-label="Ver etapas anteriores" onClick={() => scrollColumns(-1)}><ChevronLeft size={17} /> Anteriores</Button>
+          <Button variant="outline" disabled={!edges.next} aria-label="Ver próximas etapas" onClick={() => scrollColumns(1)}>Próximas <ChevronRight size={17} /></Button>
         </div>
       </div>
+      <div className="prospect-board-viewport">
+        <div className="prospect-board-edge-controls" role="group" aria-label="Setas laterais do quadro">
+          <Button variant="outline" size="icon" disabled={!edges.previous} aria-label="Mover quadro para a esquerda" onClick={()=>scrollColumns(-1)}><ChevronLeft size={20}/></Button>
+          <Button variant="outline" size="icon" disabled={!edges.next} aria-label="Mover quadro para a direita" onClick={()=>scrollColumns(1)}><ChevronRight size={20}/></Button>
+        </div>
       <div
+        onScroll={updateEdges}
         ref={board}
         className="prospect-board"
         aria-label="Quadro de acompanhamento"
@@ -630,6 +648,7 @@ function ProspectBoard({
             label={label}
           />
         ))}
+      </div>
       </div>
     </div>
   );

@@ -87,3 +87,17 @@ it('does not show fabricated zero totals if the summary is unavailable',async()=
  await screen.findByText('Não foi possível carregar as quantidades de leads.');
  expect(screen.queryByRole('region',{name:'Quantidades de todos os seus leads'})).toBeNull();
 });
+it('uses side arrows to navigate the board and disables each arrow at its boundary',async()=>{
+ api.history.mockImplementation(async({data})=>({leads:data.status==='all'||data.status==='new'?[lead]:[],hasMore:false}));
+ mount();await screen.findByRole('button',{name:'Ver detalhes de Empresa de exemplo'});
+ fireEvent.click(screen.getByRole('button',{name:'Quadro de etapas'}));
+ const board=screen.getByRole('region',{name:'Quadro de acompanhamento'});
+ Object.defineProperties(board,{clientWidth:{value:300,configurable:true},scrollWidth:{value:1400,configurable:true},scrollLeft:{value:0,writable:true,configurable:true}});
+ const scrollBy=vi.fn();board.scrollBy=scrollBy;
+ fireEvent.scroll(board);
+ expect(screen.getByRole('button',{name:'Mover quadro para a esquerda'})).toBeDisabled();
+ const next=screen.getByRole('button',{name:'Mover quadro para a direita'});expect(next).not.toBeDisabled();fireEvent.click(next);
+ expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({left:264}));
+ board.scrollLeft=1100;fireEvent.scroll(board);
+ expect(next).toBeDisabled();expect(screen.getByRole('button',{name:'Mover quadro para a esquerda'})).not.toBeDisabled();
+});

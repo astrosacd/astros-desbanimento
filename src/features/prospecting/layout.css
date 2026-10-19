@@ -356,3 +356,20 @@
   .prospect-board-navigation > div { width:100%; }
   .prospect-board-navigation button { flex:1; min-width:0; }
 }
+
+/* Atalhos nas bordas acompanham a área visível do quadro. */
+.prospect-board-viewport { position:relative; min-width:0; padding-inline:18px; }
+.prospect-board-edge-controls { position:sticky; top:calc(50dvh - 22px); z-index:4; height:0; pointer-events:none; }
+.prospect-page .prospect-board-edge-controls button { position:absolute; top:0; width:44px; height:44px; min-height:44px; padding:0; border-radius:50%; background:var(--card); color:var(--primary); border-color:var(--border); box-shadow:0 3px 14px #152c4326; pointer-events:auto; transform:translateY(-50%); }
+.prospect-board-edge-controls button:first-child { left:-18px; }
+.prospect-board-edge-controls button:last-child { right:-18px; }
+.prospect-page .prospect-board-edge-controls button:disabled { opacity:.4; }
+@container (min-width:1050px) {
+  .prospect-page .prospect-lead-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .prospect-lead-grid .prospect-lead-open { padding:15px; gap:10px; }
+  .prospect-lead-grid .prospect-quick-stage { margin:0 14px 14px; }
+}
+@container (min-width:1100px) {
+  .prospect-board-viewport { padding-inline:0; }
+  .prospect-board-edge-controls { display:none; }
+}
