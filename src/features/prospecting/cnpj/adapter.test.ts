@@ -128,3 +128,7 @@ it('fetches credit balance from the fixed read-only endpoint without returning t
  const db=vi.fn().mockResolvedValue([{api_key:'never-return-key'}]);const r=await handleCnpj('admin-cnpj-balance',{}, {id:'admin',tipo_usuario:'admin'},db);expect(r.total).toBe(200);expect(fetch).toHaveBeenCalledTimes(1);expect(fetch.mock.calls[0][0]).toBe('https://api.casadosdados.com.br/v5/saldo');expect(fetch.mock.calls[0][1].method).toBe('GET');expect(JSON.stringify(r)).not.toContain('never-return-key');expect(db).toHaveBeenCalledTimes(1);
 });
 it('rejects client balance reads before retrieving provider credentials',async()=>{const db=vi.fn();await expect(handleCnpj('admin-cnpj-balance',{}, {id:'client',tipo_usuario:'cliente'},db)).rejects.toThrow('Acesso administrativo');expect(db).not.toHaveBeenCalled();});
+it('reads bounded business contact arrays, pairs DDD once and excludes partner contacts',()=>{
+ const r=companySnapshot({cnpj:'11222333000181',razao_social:'Empresa',contatos:[{telefones:[{ddd:85,numero_telefone:933334444},{ddd:85,numero:'85933334444'}],emails:[{endereco:'EMPRESA@example.test'}]}],situacao_cadastral:{situacao_cadastral:{descricao:'ATIVA'}},quadro_societario:[{telefone:'11999999999',email:'partner@example.test'}]})!;
+ expect(r.phone).toBe('85933334444');expect(r.contacts.map(c=>c.value)).toEqual(['85933334444','empresa@example.test']);expect(r.registrationStatus).toBe('ATIVA');expect(JSON.stringify(r)).not.toMatch(/partner|11999999999/);
+});

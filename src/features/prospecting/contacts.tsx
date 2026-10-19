@@ -10,7 +10,7 @@ export function LeadContacts({ snapshot }: { snapshot: Lead["snapshot"] }) {
   const safe = contacts.filter(c => {
     try { const u = new URL(c.url); return ["https:","mailto:","tel:"].includes(u.protocol) && !u.username && !u.password; } catch { return false; }
   }).filter((c,i,a)=>a.findIndex(v=>v.url===c.url)===i).slice(0,25);
-  if (!safe.length) return snapshot.source === "cnpj" ? <section className="prospect-contacts" aria-label="Contatos cadastrais"><h4>Telefones e e-mails cadastrados</h4><p>A fonte não informou telefones ou e-mails para este cadastro na consulta recebida.</p></section> : null;
+  if (!safe.length) return snapshot.source === "cnpj" ? <section className="prospect-contacts" aria-label="Contatos cadastrais"><h4>Telefones e e-mails cadastrados</h4><p>Não há telefones ou e-mails disponíveis neste registro. Use Atualizar dados cadastrais para consultar os dados atuais.</p></section> : null;
   return <section className="prospect-contacts" aria-label={snapshot.source === "cnpj" ? "Contatos cadastrais" : "Outros contatos publicados"}>
     <h4>{snapshot.source === "cnpj" ? "Telefones e e-mails cadastrados" : "Outros contatos publicados"}</h4>
     <div>{safe.map(c => <a key={c.url} href={c.url} target={c.url.startsWith("https:")?"_blank":undefined} rel="noopener noreferrer">

@@ -33,3 +33,26 @@ it.each(['unavailable','balance'])('shows safe customer feedback for %s without 
  await screen.findByText(reason==='balance'?'Saldo insuficiente na carteira':'Não foi possível concluir sua consulta agora');expect(screen.queryByText(/HTTP|Credencial recusada|Fornecedor recusou/)).toBeNull();
  if(reason==='balance')expect(screen.getByRole('link',{name:'Ir para carteira e recargas'})).toHaveAttribute('href','/carteira');
 });
+async function submitLookup(){
+ fireEvent.click(await screen.findByRole('button',{name:'Consultar um CNPJ'}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).not.toBeDisabled());
+ fireEvent.change(screen.getByLabelText('CNPJ numérico (14 dígitos)'),{target:{value:'11222333000181'}});
+ fireEvent.click(screen.getByRole('button',{name:'Conferir consulta CNPJ'}));
+ fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Confirmar consulta'}));
+}
+it('does not poll a nonexistent request after a definite daily quota rejection',async()=>{
+ api.search.mockRejectedValue(new Error('Limite diário de consultas CNPJ atingido'));
+ mount(<CnpjPanel userId="owner"/>);await submitLookup();
+ await screen.findByText(/Você atingiu o limite diário de consultas CNPJ desta conta/);
+ expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).not.toBeDisabled();
+ expect(screen.queryByRole('button',{name:'Verificar consulta CNPJ'})).toBeNull();expect(api.status).not.toHaveBeenCalled();
+});
+it('keeps an uncertain request for status verification without sending it twice',async()=>{
+ api.search.mockRejectedValue(new Error('Failed to fetch'));
+ api.status.mockResolvedValue({id:'ref',state:'completed',delivered:1,charged_cents:50});
+ mount(<CnpjPanel userId="owner"/>);await submitLookup();
+ const verify=await screen.findByRole('button',{name:'Verificar consulta CNPJ'});
+ await waitFor(()=>expect(verify).not.toBeDisabled());fireEvent.click(verify);
+ await screen.findByText('1 novos leads entregues');
+ expect(api.search).toHaveBeenCalledTimes(1);expect(api.status.mock.calls[0][0].data.requestId).toBe(api.search.mock.calls[0][0].data.requestId);
+});

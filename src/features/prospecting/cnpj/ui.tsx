@@ -1,3 +1,4 @@
+import {cnpjRejection, cnpjMissingRequest} from "./errors";
 import {displayCnpj} from "./details";
 import { SmsOptionPicker } from "../../sms/option-picker";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -132,7 +133,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
       setError("");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Não foi possível consultar.";
-      setError(message);
+      setError(message === "Consulta CNPJ não encontrada" ? cnpjMissingRequest : message);
       if (message === "Consulta CNPJ não encontrada") setPending(null);
     } finally {
       lock.current = false;
@@ -168,9 +169,9 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
       await refresh();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Confira esta mesma consulta antes de tentar outra.";
-      const unavailable = ["Limite de consultas CNPJ ao fornecedor atingido", "Busca CNPJ temporariamente indisponível"].includes(message);
-      if (unavailable || message === "Saldo insuficiente. Faça uma recarga") setPending(null);
-      setError(unavailable ? "As consultas estão temporariamente indisponíveis. Tente novamente mais tarde." : message);
+      const rejection = cnpjRejection(message);
+      if (rejection) setPending(null);
+      setError(rejection || "Não foi possível confirmar a consulta. Verifique esta mesma tentativa antes de enviar outra.");
     } finally {
       setBusy(false);
       lock.current = false;
@@ -789,8 +790,10 @@ export function CnpjEnrichButton({ lead }: { lead: Lead }) {
       }
       setConfirm(false);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Confira a consulta no histórico.");
-      if (e instanceof Error && e.message === "Consulta CNPJ não encontrada") setPending(null);
+      const message = e instanceof Error ? e.message : "";
+      const rejection = cnpjRejection(message);
+      setMessage(rejection || (message === "Consulta CNPJ não encontrada" ? cnpjMissingRequest : "Confira a consulta no histórico antes de enviar outra."));
+      if (rejection || message === "Consulta CNPJ não encontrada") setPending(null);
       setConfirm(false);
     } finally {
       setBusy(false);

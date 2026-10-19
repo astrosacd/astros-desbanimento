@@ -215,44 +215,54 @@ export function companySnapshot(r: Obj, receita = false) {
     name = tradeName || legalName;
   if (!name) return null;
   const now = new Date().toISOString();
-  const contact =
-    r.contato && typeof r.contato === "object" && !Array.isArray(r.contato) ? r.contato : {};
-  const list = (v: any) => (Array.isArray(v) ? v : v == null ? [] : [v]);
-  const phones = [
-    ...list(r.telefones),
-    ...list(r.telefone),
-    ...list(contact.telefones),
-    ...list(contact.telefone),
-    ...[1, 2].flatMap((n) =>
-      r["telefone_" + n] ? [{ ddd: r["ddd_" + n], numero: r["telefone_" + n] }] : [],
-    ),
-  ]
-    .flatMap((v: any) => {
-      const raw =
-        typeof v === "string"
-          ? v
-          : v && typeof v === "object"
-            ? cnpjValue(v.ddd, 3) + cnpjValue(v.numero || v.telefone, 30)
-            : "";
-      return raw
-        .split(/[;,/]/)
-        .map((v: string) => v.replace(/\D/g, ""))
-        .filter((v: string) => /^\d{10,13}$/.test(v));
-    })
-    .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
-    .slice(0, 5);
-  const emails = [
-    ...list(r.emails),
-    ...list(r.email),
-    ...list(r.correio_eletronico),
-    ...list(contact.emails),
-    ...list(contact.email),
-  ]
-    .flatMap((v: any) => cnpjText(typeof v === "string" ? v : v?.email, 500).split(/[;,]/))
-    .map((v: string) => v.trim().toLowerCase())
-    .filter((v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-    .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
-    .slice(0, 5);
+  const list = (v: any): any[] => Array.isArray(v) ? v.slice(0, 30) : v == null ? [] : [v];
+  // Read business contact fields only. Never recurse into partners, documents or addresses.
+  const contactRoots = [r, ...list(r.contato), ...list(r.contatos)]
+    .filter(v => v && typeof v === "object" && !Array.isArray(v));
+  const phoneValues: string[] = [];
+  const emailValues: string[] = [];
+  function readPhone(value: any, ddd: unknown = "", depth = 0) {
+    if (depth > 3) return;
+    if (Array.isArray(value)) { value.slice(0, 30).forEach(v => readPhone(v, ddd, depth + 1)); return; }
+    if (value && typeof value === "object") {
+      const prefix = value.ddd ?? value.codigo_ddd ?? ddd;
+      for (const key of ["numero", "telefone", "numero_telefone", "valor", "telefones"])
+        if (value[key] != null) readPhone(value[key], prefix, depth + 1);
+      return;
+    }
+    // Restrict accepted characters: metadata and arbitrary document strings are not phones.
+    for (const part of cnpjValue(value, 200).split(/[;,/]/)) {
+      if (!/^[+\d().\s-]+$/.test(part)) continue;
+      let digits = part.replace(/\D/g, "");
+      const prefix = cnpjValue(ddd, 3).replace(/\D/g, "");
+      if (/^\d{8,9}$/.test(digits) && /^\d{2}$/.test(prefix)) digits = prefix + digits;
+      if (/^\d{10,13}$/.test(digits)) phoneValues.push(digits);
+    }
+  }
+  function readEmail(value: any, depth = 0) {
+    if (depth > 3) return;
+    if (Array.isArray(value)) { value.slice(0, 30).forEach(v => readEmail(v, depth + 1)); return; }
+    if (value && typeof value === "object") {
+      for (const key of ["email", "endereco", "valor", "emails"])
+        if (value[key] != null) readEmail(value[key], depth + 1);
+      return;
+    }
+    for (const part of cnpjText(value, 500).split(/[;,]/)) {
+      const email = part.trim().toLowerCase();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emailValues.push(email);
+    }
+  }
+  for (const root of contactRoots) {
+    for (const key of ["telefone", "telefones", "telefone_comercial", "contato_telefonico"])
+      readPhone(root[key], root.ddd);
+    for (const n of [1, 2]) {
+      readPhone(root["telefone_" + n], root["ddd_" + n] ?? root.ddd);
+      readPhone(root["telefone" + n], root["ddd" + n] ?? root.ddd);
+    }
+    for (const key of ["email", "emails", "correio_eletronico"]) readEmail(root[key]);
+  }
+  const phones = [...new Set(phoneValues)].slice(0, 5);
+  const emails = [...new Set(emailValues)].slice(0, 5);
   const contacts = [
     ...phones.map((phone: string) => ({
       kind: "phone",
@@ -329,7 +339,7 @@ export function companySnapshot(r: Obj, receita = false) {
         ? r.situacao
         : typeof status === "string"
           ? status
-          : status?.situacao_cadastral || status?.descricao || status?.situacao,
+          : cnpjDescription(status?.situacao_cadastral) || status?.descricao || status?.situacao || status?.situacao_atual || status?.texto,
     ),
     registrationDate: cnpjText(status?.data || r.data_situacao_cadastral || r.data_situacao, 40),
     registrationReason: cnpjDescription(status?.motivo || r.motivo_situacao_cadastral),
@@ -343,10 +353,10 @@ export function companySnapshot(r: Obj, receita = false) {
     branch: cnpjDescription(r.matriz_filial),
     mei: cnpjBoolean(typeof mei === "object" ? mei?.optante : mei),
     simples: cnpjBoolean(typeof simples === "object" ? simples?.optante : simples),
-    meiSince: cnpjText(mei?.data_opcao, 40),
-    simplesSince: cnpjText(simples?.data_opcao, 40),
+    meiSince: cnpjText(mei?.data_opcao || mei?.data_inicio, 40),
+    simplesSince: cnpjText(simples?.data_opcao || simples?.data_inicio, 40),
     providerUpdatedAt: cnpjText(r.atualizado_em || r.ultima_atualizacao || r.atualizado, 40),
-    dataVersion: 2,
+    dataVersion: 3,
     openedAt: cnpjText(receita ? r.abertura : r.data_abertura, 20),
     capitalSocial:
       typeof r.capital_social === "number" && Number.isFinite(r.capital_social)

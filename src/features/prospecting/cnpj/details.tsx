@@ -1,3 +1,4 @@
+import {cnpjRejection, cnpjMissingRequest} from "./errors";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -144,21 +145,9 @@ function CnpjRefreshButton({
       }
     } catch (e) {
       const error = e instanceof Error ? e.message : "";
-      if (
-        [
-          "Consulta CNPJ não encontrada",
-          "Lead CNPJ não encontrado",
-          "Limite diário de consultas CNPJ atingido",
-          "Limite de consultas CNPJ ao fornecedor atingido",
-          "Busca CNPJ temporariamente indisponível",
-        ].includes(error)
-      )
-        setPending(null);
-      setMessage(
-        error === "Limite diário de consultas CNPJ atingido" ? "Você atingiu seu limite diário de consultas. Aguarde a renovação do limite." : error === "Consulta CNPJ não encontrada"
-          ? "A tentativa não foi registrada. Você pode iniciar uma nova atualização."
-          : "Não foi possível confirmar a atualização. Verifique esta tentativa antes de enviar outra.",
-      );
+      const rejection = cnpjRejection(error);
+      if (rejection || error === "Consulta CNPJ não encontrada") setPending(null);
+      setMessage(rejection || (error === "Consulta CNPJ não encontrada" ? cnpjMissingRequest : "Não foi possível confirmar a atualização. Verifique esta tentativa antes de enviar outra."));
     } finally {
       setBusy(false);
       lock.current = false;
