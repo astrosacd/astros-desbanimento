@@ -30,3 +30,13 @@
 @container(max-width:780px){.prospect-page .prospect-quota{grid-template-columns:repeat(2,minmax(0,1fr))}.prospect-page .prospect-policy-grid{grid-template-columns:minmax(0,1fr)}}
 @container(max-width:480px){.prospect-page .prospect-quota{grid-template-columns:minmax(0,1fr)}.prospect-page .prospect-save-bar>*{width:100%}.prospect-page .prospect-tabs button{flex-basis:100%}.prospect-page .prospect-search-total{padding:16px}}
 @media(prefers-reduced-motion:reduce){.prospect-page .prospect-tabs button{transition:none}}
+.prospect-outreach{margin-top:20px;border:1px solid var(--border);border-radius:12px;background:var(--secondary);min-width:0}
+.prospect-outreach>summary{display:flex;align-items:center;gap:9px;cursor:pointer;padding:15px;font-size:13px;font-weight:650;min-height:48px}
+.prospect-outreach>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.prospect-outreach-body{display:grid;gap:12px;padding:0 15px 16px;min-width:0}
+.prospect-outreach-body label{font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.prospect-outreach-body p{font-size:12px;line-height:1.7;color:var(--muted-foreground)}
+.prospect-outreach-body textarea.field{resize:vertical;min-height:130px;font-size:14px;line-height:1.7;background:var(--card)}
+.prospect-outreach-actions{display:flex;flex-wrap:wrap;gap:10px;min-width:0}
+.prospect-outreach-actions>*{flex:1 1 160px;min-width:0;max-width:100%;text-align:center}
+@container(max-width:480px){.prospect-outreach-body textarea.field{font-size:16px}.prospect-outreach-actions>*{flex-basis:100%}}

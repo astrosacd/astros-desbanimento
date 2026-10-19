@@ -1,3 +1,4 @@
+import { LeadOutreach } from "./outreach";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2 } from "lucide-react";
@@ -273,6 +274,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                 {!!lead.snapshot.siteEmails?.length && <p className="break-all">E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}</p>}
                 <p>Trecho extraído da página, sem confirmação de vínculo ou validade dos contatos.</p>
               </details>}
+              <LeadOutreach lead={lead} />
               <label className="prospect-lead-stage">
                 Etapa do contato
                 <select
