@@ -35,14 +35,16 @@ import {
 export function ProspectRequests({
   adminId,
   userId,
+  title="Histórico de buscas",
 }: {
   adminId?: string | undefined;
   userId?: string | undefined;
+  title?: string;
 }) {
   const [deliveryScope, setDeliveryScope] = useState<DeliveryScope | null>(null);
   const [page, setPage] = useState(0);
   const q = useQuery({
-    queryKey: ["prospect-requests", adminId || userId, page],
+    queryKey: ["prospect-requests", adminId ? "admin" : "client", adminId || userId, page],
     queryFn: () =>
       adminId ? prospectAdminRequests({ data: { page } }) : prospectRequests({ data: { page } }),
     retry: false,
@@ -62,7 +64,7 @@ export function ProspectRequests({
     <section className="prospect-card">
       <header className="prospect-section-heading">
         <div>
-          <h2>Histórico de buscas</h2>
+          <h2>{title}</h2>
           <p>Quantidade solicitada, leads entregues e valor debitado.</p>
         </div>
         <Button variant="outline" disabled={q.isFetching} onClick={() => q.refetch()}>
@@ -171,7 +173,7 @@ export function ProspectRequests({
           ))}
         </div>
       )}
-      <div className="list-pagination">
+      {(rows.length > 0 || page > 0) && <div className="list-pagination">
         <Button
           variant="outline"
           disabled={!page || q.isFetching}
@@ -187,7 +189,7 @@ export function ProspectRequests({
         >
           Próxima
         </Button>
-      </div>
+      </div>}
     </section>
   );
 }

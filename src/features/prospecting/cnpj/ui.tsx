@@ -1,3 +1,4 @@
+import {displayCnpj} from "./details";
 import { SmsOptionPicker } from "../../sms/option-picker";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,7 +77,7 @@ function useRefresh() {
       ),
     );
 }
-export function CnpjPanel({ userId }: { userId: string }) {
+export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>void }) {
   const config = useQuery({
     queryKey: ["cnpj-config", userId],
     queryFn: () => cnpjConfig(),
@@ -436,7 +437,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
           <a href="/carteira">Ir para carteira e recargas</a>
         </Button>
       )}
-      {c?.installed && <CnpjOperations userId={userId} />}
+      {c?.installed && onHistory && <div className="prospect-history-shortcut"><div><strong>Acompanhe suas consultas</strong><p>Buscas CNPJ, atualizações e valores estão no Histórico de buscas.</p></div><Button variant="outline" onClick={onHistory}>Ver histórico CNPJ</Button></div>}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogHeader>
@@ -477,6 +478,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
     queryKey: [admin ? "cnpj-admin-history" : "cnpj-history", userId, page],
     queryFn: () => (admin ? cnpjAdminHistory({ data: { page } }) : cnpjHistory({ data: { page } })),
     retry: false,
+    refetchInterval: query => ((query.state.data?.requests || []) as Operation[]).some(row=>row.state === "processing") ? 10000 : false,
   });
   const rows = (q.data?.requests || []) as Operation[];
   return (
@@ -509,8 +511,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
                       : "Pesquisa por filtros"}
                 </strong>
                 <p>
-                  {r.criteria["cnpj"] ||
-                    [r.criteria["city"], r.criteria["uf"]].filter(Boolean).join(" · ")}
+                  {r.criteria["cnpj"] ? displayCnpj(r.criteria["cnpj"]) : [r.criteria["city"], r.criteria["uf"]].filter(Boolean).join(" · ")}
                 </p>
                 {admin && (
                   <p>
@@ -528,7 +529,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
                       : "Não concluída"}
                 </span>
                 <p>
-                  {r.delivered} novos leads · {money(r.charged_cents)}
+                  {r.criteria["refreshLeadId"] ? `Atualização cadastral · ${money(r.charged_cents)}` : r.operation === "enrich" ? `Dados complementares · ${money(r.charged_cents)}` : `${r.delivered} novos leads · ${money(r.charged_cents)}`}
                 </p>
                 {!admin && r.state === "failed" && (
                   <p>
@@ -549,7 +550,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
           ))}
         </div>
       )}
-      <div className="list-pagination">
+      {(rows.length > 0 || page > 0) && <div className="list-pagination">
         <Button
           variant="outline"
           disabled={!page || q.isFetching}
@@ -565,11 +566,11 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
         >
           Próxima
         </Button>
-      </div>
+      </div>}
     </section>
   );
 }
-export function CnpjAdmin({ adminId }: { adminId: string }) {
+export function CnpjAdmin({ adminId,onHistory }: { adminId: string;onHistory?:()=>void }) {
   const q = useQuery({
     queryKey: ["cnpj-admin-config", adminId],
     queryFn: () => cnpjAdminConfig(),
@@ -738,7 +739,7 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
           </div>
         </form>
       )}
-      {q.data && <CnpjOperations userId={adminId} admin />}
+      {q.data && onHistory && <div className="prospect-history-shortcut"><div><strong>Consultas e diagnósticos</strong><p>Acompanhe os clientes e os motivos de falha no histórico da prospecção.</p></div><Button variant="outline" onClick={onHistory}>Ver consultas CNPJ</Button></div>}
     </section>
   );
 }

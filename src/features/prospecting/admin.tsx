@@ -6,10 +6,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ExternalLink, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { prospectAdminConfig, prospectAdminSave, prospectAdminAccount } from "./actions";
-import { ProspectRequests } from "./history";
+import {ProspectActivityHistory,type ProspectActivitySource} from "./activity";
 import type { ProspectConfig } from "./types";
 import { accountCount } from "./account-display";
 export function ProspectingAdmin({ adminId }: { adminId: string }) {
+  const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
   const cache = useQueryClient();
   const query = useQuery({
     queryKey: ["prospect-admin-config", adminId],
@@ -95,18 +96,18 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
       <nav className="prospect-tabs" aria-label="Administração da prospecção">
         {[
           ["settings", "Configurações"],
-          ["capacity", "Cotas e processamento"],
-          ["requests", "Buscas dos clientes"],
-          ["base", "Base de empresas"],
           ["cnpj", "Empresas por CNPJ"],
+          ["capacity", "Cotas e processamento"],
+          ["base", "Base de empresas"],
+          ["requests", "Histórico de consultas"],
         ].map(([id, label]) => (
           <button type="button" key={id} aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             <span>{label}</span>
-            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps · limites e fila",requests:"Google Maps · consultas",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
+            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps · limites e fila",requests:"Google Maps e CNPJ · atividade",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
           </button>
         ))}
       </nav>
-      {tab === "cnpj" && <CnpjAdmin adminId={adminId}/>}
+      {tab === "cnpj" && <CnpjAdmin adminId={adminId} onHistory={()=>{setHistorySource("cnpj");setTab("requests");}}/>}
       <div hidden={tab !== "settings"}>
         <section className="prospect-card">
           <header className="prospect-section-heading">
@@ -300,7 +301,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         </section>
       </div>
       {tab === "base" && <ProspectBaseAdmin adminId={adminId} />}
-      {tab === "requests" && <ProspectRequests adminId={adminId} />}{" "}
+      {tab === "requests" && <ProspectActivityHistory adminId={adminId} initialSource={historySource}/>}{" "}
       {error && (
         <p role="alert" className="error-text">
           {error}

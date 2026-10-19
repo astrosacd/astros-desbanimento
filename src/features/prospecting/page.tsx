@@ -19,13 +19,15 @@ import {
 } from "@/components/ui/dialog";
 import { getWallet } from "../payments/actions";
 import { prospectConfig, prospectSearch, prospectStatus, prospectCities, prospectDailyQuota, prospectRequests } from "./actions";
-import { ProspectHistory, ProspectRequests } from "./history";
+import { ProspectHistory } from "./history";
+import {ProspectActivityHistory,type ProspectActivitySource} from "./activity";
 import { failureLabels, queueLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
 const countries = getCountries()
   .map((code) => ({ id: code, name: names.of(code) || code, iso: code }))
   .sort((a, b) => (a.id === "BR" ? -1 : b.id === "BR" ? 1 : a.name.localeCompare(b.name, "pt-BR")));
 export function ProspectingPage() {
+  const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
   const { client } = useRouteContext({ from: "__root__" });
   const cache = useQueryClient();
   const config = useQuery({
@@ -182,11 +184,11 @@ export function ProspectingPage() {
         ].map(([id, label]) => (
           <button key={id} type="button" aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             <span>{label}</span>
-            <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Resultados e valores debitados"}[id!]}</small>
+            <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Google Maps e CNPJ · consultas"}[id!]}</small>
           </button>
         ))}
       </nav>
-      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""}/>}
+      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
       {tab === "search" && (
         <div className="prospect-search-layout">
           <section className="prospect-card">
@@ -387,7 +389,7 @@ export function ProspectingPage() {
         </div>
       )}
       {tab === "leads" && <ProspectHistory userId={client?.id || ""} />}{" "}
-      {tab === "history" && <ProspectRequests userId={client?.id} />}
+      {tab === "history" && <ProspectActivityHistory userId={client?.id} initialSource={historySource}/>}
       <Dialog
         open={confirm}
         onOpenChange={(v) => {
