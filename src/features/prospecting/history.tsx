@@ -4,6 +4,13 @@ import { LeadOutreach } from "./outreach";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   prospectHistory,
@@ -195,6 +202,8 @@ export function ProspectHistory({ userId }: { userId: string }) {
     retry: false,
   });
   const leads: Lead[] = q.data?.leads ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = leads.find((lead) => lead.id === selectedId);
   async function change(id: string, status: string) {
     setBusy(id);
     setError("");
@@ -262,6 +271,14 @@ export function ProspectHistory({ userId }: { userId: string }) {
           {error}
         </p>
       )}
+      <div className="prospect-stage-legend" aria-label="Legenda das etapas do contato">
+        {Object.entries(stageLabels).map(([key, label]) => (
+          <span className={`prospect-stage-${key}`} key={key}>
+            <i aria-hidden="true" />
+            {label}
+          </span>
+        ))}
+      </div>
       {q.isPending ? (
         <p role="status">Consultando leads…</p>
       ) : q.isError ? (
@@ -273,90 +290,149 @@ export function ProspectHistory({ userId }: { userId: string }) {
       ) : (
         <div className="prospect-lead-grid">
           {leads.map((lead) => (
-            <article className="prospect-lead" key={lead.id}>
-              <div className="prospect-lead-title">
+            <article
+              className={`prospect-lead-compact prospect-stage-${lead.status}`}
+              key={lead.id}
+            >
+              <button
+                type="button"
+                className="prospect-lead-open"
+                aria-label={`Ver detalhes de ${lead.snapshot.name}`}
+                onClick={() => {
+                  setSelectedId(lead.id);
+                  setError("");
+                }}
+              >
+                <span className="prospect-stage-pill">{stageLabels[lead.status]}</span>
                 <h3>{lead.snapshot.name}</h3>
-                {lead.snapshot.rating !== null && (
-                  <span>
-                    ★ {lead.snapshot.rating.toLocaleString("pt-BR")}
-                    <small>{lead.snapshot.reviews ?? 0} avaliações</small>
-                  </span>
-                )}
-              </div>
-              <span className={`prospect-site prospect-site-${lead.snapshot.websiteStatus}`}>
-                {siteLabels[lead.snapshot.websiteStatus]}
-              </span>
-              <p className="prospect-address">
-                <MapPin size={15} />
-                {lead.snapshot.address || "Endereço não informado"}
-              </p>
-              <div className="prospect-lead-links">
-                {lead.snapshot.phone && (
-                  <a href={"tel:" + lead.snapshot.phone.replace(/[^+0-9]/g, "")}>
-                    <Phone size={15} />
-                    {lead.snapshot.phone}
-                  </a>
-                )}
-                {lead.snapshot.website && (
-                  <a href={lead.snapshot.website} target="_blank" rel="noopener noreferrer">
-                    <Globe2 size={15} />
-                    Abrir endereço informado
-                    <ArrowUpRight size={13} />
-                  </a>
-                )}
-                <a href={lead.snapshot.mapsUrl} target="_blank" rel="noopener noreferrer">
-                  Ver no Google Maps
-                  <ArrowUpRight size={14} />
-                </a>
-              </div>
-              <details className="prospect-site-details">
-                <summary>Sobre a verificação do site</summary>
-                <p>{lead.snapshot.websiteReason}</p>
-                <p>
-                  Verificado em {new Date(lead.snapshot.checkedAt).toLocaleString("pt-BR")}. A
-                  situação pode mudar.
-                </p>
-              </details>
-              {lead.snapshot.siteSummary && (
-                <details className="prospect-site-details">
-                  <summary>Conteúdo e contatos do site</summary>
-                  {lead.snapshot.siteTitle && (
-                    <p>
-                      <strong>{lead.snapshot.siteTitle}</strong>
-                    </p>
-                  )}
-                  <p className="break-words">{lead.snapshot.siteSummary}</p>
-                  {!!lead.snapshot.siteEmails?.length && (
-                    <p className="break-all">
-                      E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}
-                    </p>
-                  )}
-                  <p>
-                    Trecho extraído da página, sem confirmação de vínculo ou validade dos contatos.
-                  </p>
-                </details>
-              )}
-              <LeadContacts snapshot={lead.snapshot} />
-              <LeadOutreach lead={lead} />
-              <label className="prospect-lead-stage">
-                Etapa do contato
-                <select
-                  className="field"
-                  value={lead.status}
-                  disabled={!!busy}
-                  onChange={(e) => change(lead.id, e.target.value)}
-                >
-                  {Object.entries(stageLabels).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <span className="prospect-lead-compact-address">
+                  <MapPin size={14} aria-hidden="true" />
+                  <span>{lead.snapshot.address || "Endereço não informado"}</span>
+                </span>
+                <span className="prospect-lead-compact-phone">
+                  <Phone size={14} aria-hidden="true" />
+                  {lead.snapshot.phone || "Telefone não informado"}
+                </span>
+                <span className="prospect-lead-compact-footer">
+                  <span>{siteLabels[lead.snapshot.websiteStatus]}</span>
+                  <strong>
+                    Ver detalhes <ArrowUpRight size={14} aria-hidden="true" />
+                  </strong>
+                </span>
+              </button>
             </article>
           ))}
         </div>
       )}
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <DialogContent className="prospect-lead-dialog">
+          <DialogHeader>
+            <DialogTitle>{selected?.snapshot.name}</DialogTitle>
+            <DialogDescription>
+              Dados da empresa, contatos publicados e acompanhamento da prospecção.
+            </DialogDescription>
+          </DialogHeader>
+          {selected &&
+            ((lead: Lead) => (
+              <div className="prospect-lead prospect-lead-detail">
+                <div className="prospect-lead-title">
+                  <span className={`prospect-stage-pill prospect-stage-${lead.status}`}>
+                    {stageLabels[lead.status]}
+                  </span>
+                  {lead.snapshot.rating !== null && (
+                    <span>
+                      ★ {lead.snapshot.rating.toLocaleString("pt-BR")}
+                      <small>{lead.snapshot.reviews ?? 0} avaliações</small>
+                    </span>
+                  )}
+                </div>
+                <span className={`prospect-site prospect-site-${lead.snapshot.websiteStatus}`}>
+                  {siteLabels[lead.snapshot.websiteStatus]}
+                </span>
+                <p className="prospect-address">
+                  <MapPin size={15} />
+                  {lead.snapshot.address || "Endereço não informado"}
+                </p>
+                <div className="prospect-lead-links">
+                  {lead.snapshot.phone && (
+                    <a href={"tel:" + lead.snapshot.phone.replace(/[^+0-9]/g, "")}>
+                      <Phone size={15} />
+                      {lead.snapshot.phone}
+                    </a>
+                  )}
+                  {lead.snapshot.website && (
+                    <a href={lead.snapshot.website} target="_blank" rel="noopener noreferrer">
+                      <Globe2 size={15} />
+                      Abrir endereço informado
+                      <ArrowUpRight size={13} />
+                    </a>
+                  )}
+                  <a href={lead.snapshot.mapsUrl} target="_blank" rel="noopener noreferrer">
+                    Ver no Google Maps
+                    <ArrowUpRight size={14} />
+                  </a>
+                </div>
+                <details className="prospect-site-details">
+                  <summary>Sobre a verificação do site</summary>
+                  <p>{lead.snapshot.websiteReason}</p>
+                  <p>
+                    Verificado em {new Date(lead.snapshot.checkedAt).toLocaleString("pt-BR")}. A
+                    situação pode mudar.
+                  </p>
+                </details>
+                {lead.snapshot.siteSummary && (
+                  <details className="prospect-site-details">
+                    <summary>Conteúdo e contatos do site</summary>
+                    {lead.snapshot.siteTitle && (
+                      <p>
+                        <strong>{lead.snapshot.siteTitle}</strong>
+                      </p>
+                    )}
+                    <p className="break-words">{lead.snapshot.siteSummary}</p>
+                    {!!lead.snapshot.siteEmails?.length && (
+                      <p className="break-all">
+                        E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}
+                      </p>
+                    )}
+                    <p>
+                      Trecho extraído da página, sem confirmação de vínculo ou validade dos
+                      contatos.
+                    </p>
+                  </details>
+                )}
+                <LeadContacts snapshot={lead.snapshot} />
+                <LeadOutreach lead={lead} />
+                <label className="prospect-lead-stage">
+                  Etapa do contato
+                  <select
+                    className="field"
+                    value={lead.status}
+                    disabled={!!busy}
+                    onChange={(e) => change(lead.id, e.target.value)}
+                  >
+                    {Object.entries(stageLabels).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {error && (
+                  <p role="alert" className="error-text">
+                    {error}
+                  </p>
+                )}
+                {busy === lead.id && <p role="status">Salvando etapa…</p>}
+              </div>
+            ))(selected)}
+        </DialogContent>
+      </Dialog>
       <div className="list-pagination">
         <Button
           variant="outline"
