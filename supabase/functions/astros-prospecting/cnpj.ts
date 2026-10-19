@@ -317,12 +317,75 @@ const integer = (v: unknown, max = 10000) => {
     throw Error("Configuração CNPJ inválida");
   return v;
 };
+export function cnpjCreditBalance(value: Obj) {
+  if (
+    typeof value.saldo_total !== "number" ||
+    !Number.isFinite(value.saldo_total) ||
+    value.saldo_total < 0 ||
+    !value.saldos ||
+    typeof value.saldos !== "object" ||
+    Array.isArray(value.saldos) ||
+    Object.keys(value.saldos).length > 200
+  )
+    throw Error("CNPJ_invalid");
+  const date = (v: unknown) =>
+    typeof v === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(v) &&
+    v.length <= 64 &&
+    Number.isFinite(Date.parse(v))
+      ? v
+      : null;
+  return {
+    total: value.saldo_total,
+    lots: Object.entries(value.saldos).map(([id, raw]) => {
+      const lot = raw && typeof raw === "object" ? (raw as Obj) : {};
+      return {
+        id: cnpjText(id, 100),
+        value:
+          typeof lot.valor === "number" && Number.isFinite(lot.valor) && lot.valor >= 0
+            ? lot.valor
+            : null,
+        createdAt: date(lot.criado_em),
+        expiresAt: date(lot.expira_em),
+      };
+    }),
+    fetchedAt: new Date().toISOString(),
+  };
+}
 export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) {
   if (action === "cnpj-config" || action === "admin-cnpj-config")
     return db("rpc/astros_cnpj_config", "POST", {
       actor: actor.id,
       administrator: action.startsWith("admin-"),
     });
+  if (action === "admin-cnpj-balance") {
+    if (actor.tipo_usuario !== "admin") throw Error("Acesso administrativo necessário.");
+    const key = (await db("astros_cnpj_private?id=eq.true&select=api_key"))[0]?.api_key;
+    if (!key) throw Error("Configure a chave CNPJ antes de consultar o saldo.");
+    try {
+      return cnpjCreditBalance(
+        await provider("https://api.casadosdados.com.br/v5/saldo", {
+          method: "GET",
+          headers: { "api-key": key, Accept: "application/json" },
+        }),
+      );
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      throw Error(
+        (
+          {
+            CNPJ_auth: "A credencial foi recusada pela Casa dos Dados. Confira a chave cadastrada.",
+            CNPJ_forbidden:
+              "A Casa dos Dados não autorizou a consulta de saldo. Confira as permissões.",
+            CNPJ_rate:
+              "A Casa dos Dados limitou as consultas de saldo. Aguarde antes de atualizar.",
+            CNPJ_invalid: "A Casa dos Dados retornou um saldo em formato não reconhecido.",
+          } as Record<string, string>
+        )[code] ||
+          "Não foi possível atualizar o saldo da Casa dos Dados. Tente novamente mais tarde.",
+      );
+    }
+  }
   if (action === "admin-cnpj-save") {
     const settings = {
       enabled: data.enabled === true,
@@ -387,10 +450,21 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
   )
     throw Error("Referência CNPJ inválida");
   if (action === "cnpj-status") {
-    const result=await db("rpc/astros_cnpj_status", "POST", { actor: actor.id, request_id: data.requestId });
-    if(result.state === "completed" && result.criteria?.refreshLeadId) {
-      const row=(await db('astros_cnpj_deliveries?id=eq.'+encodeURIComponent(result.criteria.refreshLeadId)+'&user_id=eq.'+actor.id+'&select=snapshot&limit=1'))[0];
-      return {...result,leadSnapshot:row?.snapshot};
+    const result = await db("rpc/astros_cnpj_status", "POST", {
+      actor: actor.id,
+      request_id: data.requestId,
+    });
+    if (result.state === "completed" && result.criteria?.refreshLeadId) {
+      const row = (
+        await db(
+          "astros_cnpj_deliveries?id=eq." +
+            encodeURIComponent(result.criteria.refreshLeadId) +
+            "&user_id=eq." +
+            actor.id +
+            "&select=snapshot&limit=1",
+        )
+      )[0];
+      return { ...result, leadSnapshot: row?.snapshot };
     }
     return result;
   }

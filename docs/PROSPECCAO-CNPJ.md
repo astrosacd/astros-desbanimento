@@ -55,3 +55,13 @@ Leads antigos foram salvos sem os campos descartados: atualizar o código não p
 ## Navegação e histórico
 
 O cliente consulta Google Maps e CNPJ em **Histórico de buscas**; o administrador usa **Histórico de consultas**. O filtro mostra todas as modalidades ou uma delas. As listas são separadas por origem, com paginação própria; não representam uma única ordenação cronológica. O atalho na busca/configuração CNPJ abre o histórico já filtrado. As telas de busca e configuração não duplicam as listas de consultas. Nenhum SQL ou mudança de fornecedor é necessário para esta organização visual.
+
+## Saldo da Casa dos Dados no admin
+
+Em **Cotas e processamento → CNPJ / Casa dos Dados**, a aplicação consulta `GET https://api.casadosdados.com.br/v5/saldo` com a chave privada já cadastrada. A operação exige `requireAdmin` no servidor e autorização administrativa na Edge Function, antes da leitura da chave. Apenas a projeção `saldo_total`, lotes (`valor`, `criado_em`, `expira_em`) e instante da consulta é retornada. Nenhuma chave ou resposta bruta é exibida.
+
+O total é o valor retornado pelo fornecedor, sem conversão monetária, sem somar lotes e sem inferir quantidade de empresas por crédito. Campos ausentes não viram zero. Lotes podem incluir créditos com vencimento e são apresentados como informados. Criação e expiração não são pagamento, renovação ou limite de requisições. Não há dados de plano/hora inventados.
+
+Atualização ao abrir a área e a cada minuto enquanto estiver visível, com cache de tela de até um minuto e botão manual. Falha de atualização mantém o último resultado rotulado como anterior; sem resultado confirmado, saldo fica indisponível. A consulta de saldo não executa buscas, compra leads, altera a carteira ou modifica limites. Não é uma autorização financeira nem uma reserva de créditos. Os limites internos permanecem separados e identificados como configuração da aplicação.
+
+Esta atualização não exige SQL: atualizar a função `astros-prospecting` com o bundle atual e a interface. O reaproveitamento de resultados CNPJ continua validando filtros, validade e entregas por usuário; dados Maps e CNPJ não são misturados nem mesclados automaticamente.

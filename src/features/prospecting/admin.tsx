@@ -1,3 +1,4 @@
+import {CnpjCapacity} from "./cnpj/capacity";
 import {CnpjAdmin} from "./cnpj/ui";
 import { ProspectBaseAdmin } from "./base-admin";
 import "./layout.css";
@@ -11,6 +12,7 @@ import type { ProspectConfig } from "./types";
 import { accountCount } from "./account-display";
 export function ProspectingAdmin({ adminId }: { adminId: string }) {
   const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
+  const [capacitySource,setCapacitySource]=useState<"maps"|"cnpj">("maps");
   const cache = useQueryClient();
   const query = useQuery({
     queryKey: ["prospect-admin-config", adminId],
@@ -103,7 +105,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         ].map(([id, label]) => (
           <button type="button" key={id} aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             <span>{label}</span>
-            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps · limites e fila",requests:"Google Maps e CNPJ · atividade",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
+            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps e CNPJ · fornecedores",requests:"Google Maps e CNPJ · atividade",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
           </button>
         ))}
       </nav>
@@ -249,10 +251,12 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         </section>
       </div>
       <div hidden={tab !== "capacity"}>
-        <section className="prospect-card">
+        <section className="prospect-card prospect-capacity-switch"><header><h2>Cotas e processamento</h2><p>Consulte as informações de cada fornecedor e confira os limites da aplicação.</p></header><div className="prospect-activity-filters" role="group" aria-label="Fornecedor de prospecção"><Button variant={capacitySource === "maps"?"default":"outline"} aria-pressed={capacitySource === "maps"} onClick={()=>setCapacitySource("maps")}>Google Maps / SerpApi</Button><Button variant={capacitySource === "cnpj"?"default":"outline"} aria-pressed={capacitySource === "cnpj"} onClick={()=>setCapacitySource("cnpj")}>CNPJ / Casa dos Dados</Button></div></section>
+        {tab === "capacity" && capacitySource === "cnpj" && <CnpjCapacity adminId={adminId} onSettings={()=>setTab("cnpj")} onHistory={()=>{setHistorySource("cnpj");setTab("requests");}}/>}
+        <section hidden={capacitySource !== "maps"} className="prospect-card">
           <header className="prospect-section-heading">
             <div>
-              <h2>Cotas e processamento</h2>
+              <h2>Google Maps / SerpApi</h2>
               <p>Dados retornados pela API da SerpApi, sem estimar limites pelo nome do plano. A cota é compartilhada por toda a aplicação.</p>
             </div>
             <Button variant="outline" disabled={busy || !query.data?.hasKey} onClick={consult}>

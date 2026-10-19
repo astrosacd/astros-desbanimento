@@ -610,6 +610,7 @@ export function CnpjAdmin({ adminId,onHistory }: { adminId: string;onHistory?:()
       await Promise.all([
         cache.invalidateQueries({ queryKey: ["cnpj-admin-config"] }),
         cache.invalidateQueries({ queryKey: ["cnpj-config"] }),
+        cache.invalidateQueries({ queryKey: ["cnpj-provider-balance"] }),
       ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível salvar.");

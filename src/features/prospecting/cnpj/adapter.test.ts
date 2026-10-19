@@ -118,3 +118,13 @@ it('refresh derives the owned CNPJ and always reserves zero wallet debit',async(
  const db=vi.fn(async(path:string,_method?:string,body?:any)=>{if(path.startsWith('astros_cnpj_deliveries'))return [{cnpj:'11222333000181',snapshot:{source:'cnpj',name:'Empresa'}}];if(path.includes('astros_cnpj_begin')){expect(body.expected_unit).toBe(0);expect(body.input).toEqual({mode:'lookup',cnpj:'11222333000181',refreshLeadId:id});return {run:false,request:{state:'completed',charged_cents:0}};}throw Error(path);});
  const r=await handleCnpj('cnpj-refresh',{requestId:id,leadId:id,expectedUnitCents:999},{id:'owner'},db);expect(r.charged_cents).toBe(0);expect(r.leadSnapshot.name).toBe('Empresa');
 });
+it('projects real credit totals and lot dates without currency conversion, invented limits or raw data',async()=>{
+ const {cnpjCreditBalance}=await import('../../../../supabase/functions/astros-prospecting/cnpj');
+ const r=cnpjCreditBalance({saldo_total:200,saldos:{trial:{valor:200,criado_em:'2026-10-19T12:00:00Z',expira_em:'2026-10-26T12:00:00Z'},extra:{valor:null,criado_em:null,expira_em:'invalid'}},api_key:'do-not-return',plan:'not-a-documented-field'});
+ expect(r.total).toBe(200);expect(r.lots[0]).toEqual({id:'trial',value:200,createdAt:'2026-10-19T12:00:00Z',expiresAt:'2026-10-26T12:00:00Z'});expect(r.lots[1]).toEqual({id:'extra',value:null,createdAt:null,expiresAt:null});expect(JSON.stringify(r)).not.toMatch(/do-not-return|plan|hour|payment/);expect(()=>cnpjCreditBalance({saldo_total:'200',saldos:{}})).toThrow();expect(cnpjCreditBalance({saldo_total:0,saldos:{}}).total).toBe(0);
+});
+it('fetches credit balance from the fixed read-only endpoint without returning the private key',async()=>{
+ const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({saldo_total:200,saldos:{trial:{valor:200,criado_em:'2026-10-19',expira_em:'2026-10-26'}}})));vi.stubGlobal('fetch',fetch);
+ const db=vi.fn().mockResolvedValue([{api_key:'never-return-key'}]);const r=await handleCnpj('admin-cnpj-balance',{}, {id:'admin',tipo_usuario:'admin'},db);expect(r.total).toBe(200);expect(fetch).toHaveBeenCalledTimes(1);expect(fetch.mock.calls[0][0]).toBe('https://api.casadosdados.com.br/v5/saldo');expect(fetch.mock.calls[0][1].method).toBe('GET');expect(JSON.stringify(r)).not.toContain('never-return-key');expect(db).toHaveBeenCalledTimes(1);
+});
+it('rejects client balance reads before retrieving provider credentials',async()=>{const db=vi.fn();await expect(handleCnpj('admin-cnpj-balance',{}, {id:'client',tipo_usuario:'cliente'},db)).rejects.toThrow('Acesso administrativo');expect(db).not.toHaveBeenCalled();});
