@@ -88,7 +88,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         <div>
           <span className="eyebrow">PROSPECÇÃO / ADMINISTRAÇÃO</span>
           <h2>Empresas e oportunidades</h2>
-          <p>Integração, preço por lead e controle de consumo.</p>
+          <p>Organize as modalidades, acompanhe as consultas e controle a entrega aos clientes.</p>
         </div>
         <Search size={26} />
       </header>
@@ -100,8 +100,9 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           ["base", "Base de empresas"],
           ["cnpj", "Empresas por CNPJ"],
         ].map(([id, label]) => (
-          <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id!)}>
-            {label}
+          <button type="button" key={id} aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
+            <span>{label}</span>
+            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps · limites e fila",requests:"Google Maps · consultas",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
           </button>
         ))}
       </nav>

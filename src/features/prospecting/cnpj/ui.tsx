@@ -250,6 +250,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
                 </label>
               ) : (
                 <>
+                  <div className="prospect-full prospect-form-divider prospect-step-heading"><span>01 / LOCALIZAÇÃO</span><h3>Onde estão as empresas?</h3><p>Escolha o estado e informe o município da pesquisa.</p></div>
                   <SmsOptionPicker
                     id="cnpj-state"
                     label="Estado"
@@ -274,6 +275,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
                       placeholder="Ex.: Fortaleza"
                     />
                   </label>
+                  <div className="prospect-full prospect-form-divider prospect-step-heading"><span>02 / PERFIL DA EMPRESA</span><h3>Refine os resultados</h3><p>Os filtros abaixo são opcionais. Use apenas os que fizerem sentido para sua busca.</p></div>
                   <label>
                     CNAE principal (opcional)
                     <input
@@ -341,6 +343,7 @@ export function CnpjPanel({ userId }: { userId: string }) {
                       onChange={(e) => update("until", e.target.value)}
                     />
                   </label>
+                  <div className="prospect-full prospect-form-divider prospect-step-heading"><span>03 / ENTREGA</span><h3>Defina quantos contatos deseja</h3><p>Confira o valor máximo antes de confirmar.</p></div>
                   <label>
                     Quantidade de empresas
                     <input
@@ -496,7 +499,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
       ) : (
         <div className="prospect-request-list">
           {rows.map((r) => (
-            <article key={r.id}>
+            <article key={r.id} data-operation-state={r.state}>
               <div>
                 <strong>
                   {r.operation === "enrich"
@@ -633,6 +636,7 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
         </div>
       ) : (
         <form onSubmit={save} className="prospect-admin-form">
+          <div className="prospect-full prospect-form-divider prospect-step-heading"><span>01 / ACESSO</span><h3>Disponibilidade e integração</h3><p>Controle a liberação da modalidade e mantenha a credencial privada.</p></div>
           <label className="prospect-checkbox prospect-full">
             <input
               type="checkbox"
@@ -659,6 +663,7 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
             />
             <small>A chave fica apenas no servidor. Não é exibida novamente.</small>
           </label>
+          <div className="prospect-full prospect-form-divider prospect-step-heading"><span>02 / PREÇOS E CONSULTA COMPLEMENTAR</span><h3>Valores para o cliente</h3><p>Preços em reais, descontados da carteira conforme a operação confirmada.</p></div>
           {[
             ["unitCents", "Preço por novo lead CNPJ (R$)"],
             ["enrichCents", "Preço da consulta complementar (R$)"],
@@ -692,6 +697,7 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
             limite local é de 3 consultas por minuto para toda a aplicação. Não confirma telefone do
             proprietário e não altera a busca Google Maps.
           </p>
+          <div className="prospect-full prospect-form-divider prospect-step-heading"><span>03 / CONTROLE DE CONSUMO</span><h3>Limites e validade</h3><p>Separe o limite individual dos limites globais da aplicação.</p></div>
           {[
             ["dailyRequests", "Consultas CNPJ por conta por dia", 100],
             ["dailyCalls", "Máximo de chamadas CNPJ aos fornecedores por dia (aplicação)", 10000],
@@ -716,7 +722,9 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
             é por lead entregue; uma consulta sem novos leads não debita a carteira. O fornecedor
             pode cobrar suas pesquisas independentemente da quantidade entregue.
           </p>
-          <div className="prospect-full">
+          <div className="prospect-full prospect-save-bar">
+            <span>As alterações passam a valer para novas consultas.</span>
+            <div>
             {error && (
               <p role="alert" className="error-text">
                 {error}
@@ -726,6 +734,7 @@ export function CnpjAdmin({ adminId }: { adminId: string }) {
             <Button disabled={busy} type="submit">
               {busy ? "Salvando…" : "Salvar configuração CNPJ"}
             </Button>
+            </div>
           </div>
         </form>
       )}

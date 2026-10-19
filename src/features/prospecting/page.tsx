@@ -180,8 +180,9 @@ export function ProspectingPage() {
           ["leads", "Meus leads"],
           ["history", "Histórico de buscas"],
         ].map(([id, label]) => (
-          <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id!)}>
-            {label}
+          <button key={id} type="button" aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
+            <span>{label}</span>
+            <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Resultados e valores debitados"}[id!]}</small>
           </button>
         ))}
       </nav>
