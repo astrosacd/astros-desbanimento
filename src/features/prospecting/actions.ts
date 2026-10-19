@@ -106,3 +106,5 @@ export const cnpjStatus = createServerFn({method:"POST"}).inputValidator(z.objec
 export const cnpjEnrich = createServerFn({method:"POST"}).inputValidator(z.object({requestId:z.string().uuid(),leadId:z.string().uuid(),expectedUnitCents:z.number().int().min(0).max(10000)}).strict()).handler(async({data})=>(await import("./server")).prospectCall("cnpj-enrich",data));
 export const cnpjHistory = createServerFn({method:"POST"}).inputValidator(z.object({page:z.number().int().min(0).max(10000)}).strict()).handler(async({data})=>(await import("./server")).prospectCall("cnpj-history",data));
 export const cnpjAdminHistory = createServerFn({method:"POST"}).inputValidator(z.object({page:z.number().int().min(0).max(10000)}).strict()).handler(async({data})=>(await import("./server")).prospectCall("admin-cnpj-history",data,true));
+
+export const cnpjRefresh = createServerFn({method:"POST"}).inputValidator(z.object({requestId:z.string().uuid(),leadId:z.string().uuid()}).strict()).handler(async({data})=>(await import("./server")).prospectCall("cnpj-refresh",data));

@@ -502,7 +502,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
             <article key={r.id} data-operation-state={r.state}>
               <div>
                 <strong>
-                  {r.operation === "enrich"
+                  {r.criteria["refreshLeadId"] ? "Atualização cadastral" : r.operation === "enrich"
                     ? "Dados complementares"
                     : r.operation === "lookup"
                       ? "Consulta por CNPJ"

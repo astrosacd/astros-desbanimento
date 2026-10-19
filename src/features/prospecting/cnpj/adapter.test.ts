@@ -109,3 +109,12 @@ it("does not expose technical diagnostics in customer history",async()=>{
  const db=vi.fn().mockResolvedValue([{id,state:"failed",diagnostic:"auth",charged_cents:0}]);
  const r=await handleCnpj("cnpj-history",{page:0},{id:"owner"},db);expect(r.requests[0]).not.toHaveProperty("diagnostic");expect(r.requests[0].failureReason).toBe("unavailable");
 });
+it('reads nested cadastral contacts and alternative status formats without personal partner documents',()=>{
+ const r=companySnapshot({cnpj:'11222333000181',razao_social:'Empresa exemplo',situacao_cadastral:{descricao:'ATIVA',data:'2023-12-17T00:00:00Z',motivo:'SEM MOTIVO'},contato:{email:['EMPRESA@EXAMPLE.TEST'],telefone:[{ddd:'85',numero:'933334444'}]},atividade_principal:{codigo:'5819100',descricao:'Atividade exemplo'},atividades_secundarias:[{codigo:'1821100',descricao:'Outra atividade'}],codigo_natureza_juridica:'2135',descricao_natureza_juridica:'Empresário (Individual)',matriz_filial:'MATRIZ',mei:{optante:true,data_opcao:'2023-12-17'},simples:{optante:false},quadro_societario:[{documento:'do-not-store',nome:'do-not-store'}]})!;
+ expect(r.registrationStatus).toBe('ATIVA');expect(r.registrationDate).toBe('2023-12-17T00:00:00Z');expect(r.contacts.map(c=>c.value)).toEqual(['85933334444','empresa@example.test']);expect(r.secondaryActivities).toEqual(['1821100 · Outra atividade']);expect(r.legalNature).toBe('2135 · Empresário (Individual)');expect(r.mei).toBe(true);expect(r.simples).toBe(false);expect(JSON.stringify(r)).not.toContain('do-not-store');
+ expect(companySnapshot({cnpj:'11222333000181',razao_social:'Empresa',situacao_cadastral:'ATIVA'})!.registrationStatus).toBe('ATIVA');
+});
+it('refresh derives the owned CNPJ and always reserves zero wallet debit',async()=>{
+ const db=vi.fn(async(path:string,_method?:string,body?:any)=>{if(path.startsWith('astros_cnpj_deliveries'))return [{cnpj:'11222333000181',snapshot:{source:'cnpj',name:'Empresa'}}];if(path.includes('astros_cnpj_begin')){expect(body.expected_unit).toBe(0);expect(body.input).toEqual({mode:'lookup',cnpj:'11222333000181',refreshLeadId:id});return {run:false,request:{state:'completed',charged_cents:0}};}throw Error(path);});
+ const r=await handleCnpj('cnpj-refresh',{requestId:id,leadId:id,expectedUnitCents:999},{id:'owner'},db);expect(r.charged_cents).toBe(0);expect(r.leadSnapshot.name).toBe('Empresa');
+});

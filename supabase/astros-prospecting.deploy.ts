@@ -192,40 +192,66 @@ export function casaBody(c: Obj, page: number) {
     pagina: page,
   };
 }
+const cnpjValue = (v: unknown, max = 200) =>
+  typeof v === "number" && Number.isFinite(v) ? String(v) : cnpjText(v, max);
+const cnpjDescription = (v: any) =>
+  typeof v === "string" ? cnpjText(v) : cnpjText(v?.descricao || v?.text || v?.nome);
+const cnpjActivity = (v: any) =>
+  typeof v === "string"
+    ? cnpjText(v, 500)
+    : [cnpjValue(v?.codigo || v?.code, 20), cnpjDescription(v)].filter(Boolean).join(" · ");
+const cnpjBoolean = (v: any) =>
+  typeof v === "boolean"
+    ? v
+    : typeof v === "string" && /^(sim|não|nao|true|false)$/i.test(v)
+      ? /^(sim|true)$/i.test(v)
+      : null;
 export function companySnapshot(r: Obj, receita = false) {
   const cnpj = cnpjText(r.cnpj, 30).replace(/\D/g, "");
   if (!validCnpj(cnpj)) return null;
-  const address = receita ? r : r.endereco || {},
+  const address = receita ? r : r.endereco || r,
     legalName = cnpjText(receita ? r.nome : r.razao_social),
     tradeName = cnpjText(receita ? r.fantasia : r.nome_fantasia),
     name = tradeName || legalName;
   if (!name) return null;
-  const now = new Date().toISOString(),
-    phones = (
-      Array.isArray(r.telefones) ? r.telefones : typeof r.telefone === "string" ? [r.telefone] : []
-    )
-      .flatMap((v: unknown) => {
-        const raw =
-          typeof v === "string"
-            ? v
-            : v && typeof v === "object"
-              ? String((v as Obj).ddd || "") +
-                String((v as Obj).numero || (v as Obj).telefone || "")
-              : "";
-        return raw
-          .split(/[\/;,]/)
-          .map((p) => p.replace(/\D/g, ""))
-          .filter((p) => /^\d{10,13}$/.test(p));
-      })
-      .slice(0, 4);
-  const emails = (Array.isArray(r.emails) ? r.emails : typeof r.email === "string" ? [r.email] : [])
-    .map((v: unknown) =>
-      cnpjText(
-        typeof v === "string" ? v : v && typeof v === "object" ? (v as Obj).email : "",
-        254,
-      ).toLowerCase(),
-    )
+  const now = new Date().toISOString();
+  const contact =
+    r.contato && typeof r.contato === "object" && !Array.isArray(r.contato) ? r.contato : {};
+  const list = (v: any) => (Array.isArray(v) ? v : v == null ? [] : [v]);
+  const phones = [
+    ...list(r.telefones),
+    ...list(r.telefone),
+    ...list(contact.telefones),
+    ...list(contact.telefone),
+    ...[1, 2].flatMap((n) =>
+      r["telefone_" + n] ? [{ ddd: r["ddd_" + n], numero: r["telefone_" + n] }] : [],
+    ),
+  ]
+    .flatMap((v: any) => {
+      const raw =
+        typeof v === "string"
+          ? v
+          : v && typeof v === "object"
+            ? cnpjValue(v.ddd, 3) + cnpjValue(v.numero || v.telefone, 30)
+            : "";
+      return raw
+        .split(/[;,/]/)
+        .map((v: string) => v.replace(/\D/g, ""))
+        .filter((v: string) => /^\d{10,13}$/.test(v));
+    })
+    .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+    .slice(0, 5);
+  const emails = [
+    ...list(r.emails),
+    ...list(r.email),
+    ...list(r.correio_eletronico),
+    ...list(contact.emails),
+    ...list(contact.email),
+  ]
+    .flatMap((v: any) => cnpjText(typeof v === "string" ? v : v?.email, 500).split(/[;,]/))
+    .map((v: string) => v.trim().toLowerCase())
     .filter((v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+    .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
     .slice(0, 5);
   const contacts = [
     ...phones.map((phone: string) => ({
@@ -243,7 +269,21 @@ export function companySnapshot(r: Obj, receita = false) {
       source: "cnpj",
     })),
   ];
-  const activity = receita ? r.atividade_principal?.[0] : r.atividade_principal || r.cnae_principal;
+  const activity = receita
+    ? r.atividade_principal?.[0]
+    : r.atividade_principal ||
+      r.cnae_principal || {
+        codigo: r.codigo_atividade_principal,
+        descricao: r.descricao_atividade_principal,
+      };
+  const status = r.situacao_cadastral;
+  const secondary = list(r.atividades_secundarias || r.atividade_secundaria || r.cnaes_secundarios)
+    .map(cnpjActivity)
+    .filter(Boolean)
+    .slice(0, 100);
+  const mei = r.mei ?? r.simei;
+  const simples = r.simples ?? r.simples_nacional;
+
   return {
     id: "cnpj:" + cnpj,
     source: "cnpj",
@@ -282,9 +322,31 @@ export function companySnapshot(r: Obj, receita = false) {
         ? activity
         : activity?.descricao || activity?.text || r.descricao_atividade_principal,
     ),
-    activityCode: cnpjText(activity?.codigo || activity?.code || r.codigo_atividade_principal, 20),
-    size: cnpjText(receita ? r.porte : r.porte_empresa?.descricao),
-    registrationStatus: cnpjText(receita ? r.situacao : r.situacao_cadastral?.situacao_cadastral),
+    activityCode: cnpjValue(activity?.codigo || activity?.code || r.codigo_atividade_principal, 20),
+    size: cnpjDescription(receita ? r.porte : r.porte_empresa),
+    registrationStatus: cnpjText(
+      receita
+        ? r.situacao
+        : typeof status === "string"
+          ? status
+          : status?.situacao_cadastral || status?.descricao || status?.situacao,
+    ),
+    registrationDate: cnpjText(status?.data || r.data_situacao_cadastral || r.data_situacao, 40),
+    registrationReason: cnpjDescription(status?.motivo || r.motivo_situacao_cadastral),
+    legalNature: [
+      cnpjValue(r.codigo_natureza_juridica || r.natureza_juridica?.codigo, 20),
+      cnpjDescription(r.descricao_natureza_juridica || r.natureza_juridica),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    secondaryActivities: secondary,
+    branch: cnpjDescription(r.matriz_filial),
+    mei: cnpjBoolean(typeof mei === "object" ? mei?.optante : mei),
+    simples: cnpjBoolean(typeof simples === "object" ? simples?.optante : simples),
+    meiSince: cnpjText(mei?.data_opcao, 40),
+    simplesSince: cnpjText(simples?.data_opcao, 40),
+    providerUpdatedAt: cnpjText(r.atualizado_em || r.ultima_atualizacao || r.atualizado, 40),
+    dataVersion: 2,
     openedAt: cnpjText(receita ? r.abertura : r.data_abertura, 20),
     capitalSocial:
       typeof r.capital_social === "number" && Number.isFinite(r.capital_social)
@@ -401,17 +463,23 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
       hasMore: rows.length > 20,
     };
   }
-  if (!["cnpj-search", "cnpj-enrich", "cnpj-status"].includes(action))
+  if (!["cnpj-search", "cnpj-enrich", "cnpj-status", "cnpj-refresh"].includes(action))
     throw Error("Operação CNPJ indisponível");
   if (
     typeof data.requestId !== "string" ||
     !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(data.requestId)
   )
     throw Error("Referência CNPJ inválida");
-  if (action === "cnpj-status")
-    return db("rpc/astros_cnpj_status", "POST", { actor: actor.id, request_id: data.requestId });
+  if (action === "cnpj-status") {
+    const result=await db("rpc/astros_cnpj_status", "POST", { actor: actor.id, request_id: data.requestId });
+    if(result.state === "completed" && result.criteria?.refreshLeadId) {
+      const row=(await db('astros_cnpj_deliveries?id=eq.'+encodeURIComponent(result.criteria.refreshLeadId)+'&user_id=eq.'+actor.id+'&select=snapshot&limit=1'))[0];
+      return {...result,leadSnapshot:row?.snapshot};
+    }
+    return result;
+  }
   let input: Obj, op: string, wanted: number, original: Obj | undefined;
-  if (action === "cnpj-enrich") {
+  if (action === "cnpj-enrich" || action === "cnpj-refresh") {
     if (
       typeof data.leadId !== "string" ||
       !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(data.leadId)
@@ -427,9 +495,12 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
       )
     )[0];
     if (!row) throw Error("Lead CNPJ não encontrado");
-    input = { leadId: data.leadId, cnpj: row.cnpj };
+    input =
+      action === "cnpj-refresh"
+        ? { mode: "lookup", refreshLeadId: data.leadId, cnpj: row.cnpj }
+        : { leadId: data.leadId, cnpj: row.cnpj };
     original = row.snapshot;
-    op = "enrich";
+    op = action === "cnpj-refresh" ? "lookup" : "enrich";
     wanted = 1;
   } else {
     input = cnpjCriteria(data);
@@ -443,9 +514,12 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
     op,
     input,
     wanted,
-    expected_unit: integer(data.expectedUnitCents),
+    expected_unit: action === "cnpj-refresh" ? 0 : integer(data.expectedUnitCents),
   });
-  if (!job.run) return job.request;
+  if (!job.run)
+    return action === "cnpj-refresh" && job.request.state === "completed"
+      ? { ...job.request, leadSnapshot: original }
+      : job.request;
   let rows: Obj[] = [],
     hasNext = false;
   if (job.fetch) {
@@ -518,12 +592,25 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
       });
     }
   }
-  return db("rpc/astros_cnpj_finish", "POST", {
+  const result = await db("rpc/astros_cnpj_finish", "POST", {
     actor: actor.id,
     request_id: data.requestId,
     rows_input: rows,
     has_next: hasNext,
   });
+  if (action === "cnpj-refresh" && result.state === "completed") {
+    const updated = (
+      await db(
+        "astros_cnpj_deliveries?id=eq." +
+          encodeURIComponent(data.leadId) +
+          "&user_id=eq." +
+          actor.id +
+          "&select=snapshot&limit=1",
+      )
+    )[0];
+    return { ...result, leadSnapshot: updated?.snapshot };
+  }
+  return result;
 }
 
 declare const Deno:{env:{get:(name:string)=>string|undefined};serve:(handler:(req:Request)=>Promise<Response>)=>void};

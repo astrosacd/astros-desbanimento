@@ -30,6 +30,7 @@ export type Lead = {
   snapshot: {
     id: string;
     source?: "cnpj" | "maps";
+    registrationDate?:string; registrationReason?:string; legalNature?:string; secondaryActivities?:string[]; branch?:string; mei?:boolean|null; simples?:boolean|null; meiSince?:string; simplesSince?:string; providerUpdatedAt?:string; dataVersion?:number;
     cnpj?: string; legalName?:string; tradeName?:string; activity?:string; activityCode?:string; size?:string; registrationStatus?:string; openedAt?:string; capitalSocial?:string; enriched?:boolean;
     name: string;
     address: string;

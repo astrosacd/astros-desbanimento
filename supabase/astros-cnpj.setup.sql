@@ -44,8 +44,13 @@ begin
  end if;
  select * into s from public.astros_cnpj_settings where id for update;
  if not s.enabled then raise exception 'Busca CNPJ temporariamente indisponível';end if;
- if request_id is null or op not in ('search','lookup','enrich') or wanted is null or wanted not between 1 and 20 or expected_unit is distinct from (case when op='enrich' then s.enrich_cents else s.unit_cents end) then raise exception 'Consulte o preço CNPJ novamente';end if;
+ if request_id is null or op not in ('search','lookup','enrich') or wanted is null or wanted not between 1 and 20 or expected_unit is distinct from (case when input?'refreshLeadId' then 0 when op='enrich' then s.enrich_cents else s.unit_cents end) then raise exception 'Consulte o preço CNPJ novamente';end if;
  if input is null or jsonb_typeof(input)<>'object' or length(input::text)>2000 then raise exception 'Filtros CNPJ inválidos';end if;
+ if input?'refreshLeadId' then
+  if op<>'lookup' or wanted<>1 then raise exception 'Filtros CNPJ inválidos';end if;
+  select * into d from public.astros_cnpj_deliveries where id=(input->>'refreshLeadId')::uuid and user_id=actor;
+  if not found or d.cnpj is distinct from input->>'cnpj' then raise exception 'Lead CNPJ não encontrado';end if;
+ end if;
  if op='enrich' then
   if not s.enrich_enabled then raise exception 'Consulta complementar indisponível';end if;
   select * into d from public.astros_cnpj_deliveries where id=(input->>'leadId')::uuid and user_id=actor;
@@ -60,7 +65,7 @@ begin
   select * into q from public.astros_cnpj_queries where id=key for update;
   if q.fetched_at<now()-make_interval(days=>s.cache_days) and coalesce(q.lease_until,now())<=now() then update public.astros_cnpj_queries set page=1,exhausted=false,fetched_at=now() where id=key returning * into q;end if;
   fetch_needed:=(select count(*) from public.astros_cnpj_candidates(actor,key,wanted))<wanted and not q.exhausted;
-  if op='lookup' and exists(select 1 from public.astros_cnpj_deliveries where user_id=actor and cnpj=input->>'cnpj') then fetch_needed:=false;end if;
+  if input?'refreshLeadId' then fetch_needed:=true;elsif op='lookup' and exists(select 1 from public.astros_cnpj_deliveries where user_id=actor and cnpj=input->>'cnpj') then fetch_needed:=false;end if;
   if fetch_needed and q.lease_until>now() then raise exception 'Esta pesquisa CNPJ já está em andamento';end if;
  else fetch_needed:=coalesce((d.snapshot->>'enriched')::boolean,false)=false;end if;
  if coalesce(balance,0)<wanted*expected_unit/100.0 and not (op='enrich' and not fetch_needed) and not (op='lookup' and exists(select 1 from public.astros_cnpj_deliveries where user_id=actor and cnpj=input->>'cnpj')) then raise exception 'Saldo insuficiente. Faça uma recarga';end if;
@@ -89,7 +94,16 @@ begin
   if q.lease_id=r.id then update public.astros_cnpj_queries set lease_id=null,lease_until=null where id=q.id;end if;
   return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));
  end if;
- if r.operation='enrich' then
+ if r.criteria?'refreshLeadId' then
+  select * into d from public.astros_cnpj_deliveries where id=(r.criteria->>'refreshLeadId')::uuid and user_id=actor for update;
+  if not found then raise exception 'Lead CNPJ não encontrado';end if;
+  if jsonb_array_length(rows_input)<>1 then raise exception 'Resposta CNPJ inválida';end if;
+  item:=rows_input->0;
+  if item->>'cnpj' is distinct from d.cnpj or item->>'source' is distinct from 'cnpj' then raise exception 'Resposta CNPJ inválida';end if;
+  update public.astros_cnpj_deliveries set snapshot=item||jsonb_build_object('enriched',coalesce((d.snapshot->>'enriched')::boolean,false),'contacts',coalesce((select jsonb_agg(v) from(select distinct value as v from jsonb_array_elements(coalesce(item->'contacts','[]')||coalesce(d.snapshot->'contacts','[]')) limit 20)c),'[]'::jsonb)) where id=d.id;
+  update public.astros_cnpj_businesses set snapshot=item,updated_at=now() where cnpj=d.cnpj;
+  if q.lease_id=r.id then update public.astros_cnpj_queries set lease_id=null,lease_until=null where id=q.id;end if;
+ elsif r.operation='enrich' then
   select * into d from public.astros_cnpj_deliveries where id=r.lead_id and user_id=actor for update;
   if not found then raise exception 'Lead CNPJ não encontrado';end if;
   if coalesce((d.snapshot->>'enriched')::boolean,false)=false and jsonb_array_length(rows_input)=1 then

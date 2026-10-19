@@ -1,3 +1,4 @@
+import {CnpjDetails,displayCnpj} from "./cnpj/details";
 import {CnpjEnrichButton} from "./cnpj/ui";
 import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
@@ -271,7 +272,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
         >
           <span className="prospect-stage-pill">{stageLabels[lead.status]}</span>
           <h3>{lead.snapshot.name}</h3>
-          <small className="prospect-source-label">{lead.snapshot.source === "cnpj" ? "CNPJ · " + lead.snapshot.cnpj : "Google Maps"}</small>
+          <small className="prospect-source-label">{lead.snapshot.source === "cnpj" ? "CNPJ · " + displayCnpj(lead.snapshot.cnpj) : "Google Maps"}</small>
           <span className="prospect-lead-compact-address">
             <MapPin size={14} aria-hidden="true" />
             <span>{lead.snapshot.address || "Endereço não informado"}</span>
@@ -477,7 +478,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                     situação pode mudar.
                   </p>
                 </details>}
-                {lead.snapshot.source === "cnpj" && <><dl className="prospect-cnpj-data">{[["CNPJ",lead.snapshot.cnpj],["Razão social",lead.snapshot.legalName],["Nome fantasia",lead.snapshot.tradeName],["Atividade",[lead.snapshot.activityCode,lead.snapshot.activity].filter(Boolean).join(" · ")],["Porte",lead.snapshot.size],["Situação cadastral",lead.snapshot.registrationStatus],["Abertura",lead.snapshot.openedAt],["Capital social informado",lead.snapshot.capitalSocial]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||"Não informado"}</dd></div>)}</dl><CnpjEnrichButton key={lead.id} lead={lead}/></>}
+                {lead.snapshot.source === "cnpj" && <><CnpjDetails lead={lead} onUpdated={snapshot=>{setInspected(current=>current?.id===lead.id?{...current,snapshot}:current);cache.setQueriesData({queryKey:["prospect-leads",userId]},(current:any)=>current?.leads?{...current,leads:current.leads.map((row:Lead)=>row.id===lead.id?{...row,snapshot}:row)}:current);}}/><CnpjEnrichButton key={lead.id} lead={lead}/></>}
                 {lead.snapshot.siteSummary && (
                   <details className="prospect-site-details">
                     <summary>Conteúdo e contatos do site</summary>
