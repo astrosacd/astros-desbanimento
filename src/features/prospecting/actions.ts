@@ -84,3 +84,6 @@ export const prospectAdminBase = createServerFn({ method: "POST" })
 export const prospectCities = createServerFn({ method: "POST" })
  .inputValidator(z.object({state:z.string().regex(/^[A-Z]{2}$/)}).strict())
  .handler(async({data})=>(await import("./server")).prospectCall("cities",data));
+
+export const prospectDailyQuota = createServerFn({ method: "GET" })
+ .handler(async()=>(await import("./server")).prospectCall("daily-quota"));

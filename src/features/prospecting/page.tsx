@@ -1,3 +1,4 @@
+import {DailyQuotaNotice,type DailyQuota} from "./daily-quota";
 import { brazilStates } from "../../../supabase/functions/astros-prospecting/geography";
 import "./layout.css";
 import { useEffect, useRef, useState } from "react";
@@ -16,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getWallet } from "../payments/actions";
-import { prospectConfig, prospectSearch, prospectStatus, prospectCities } from "./actions";
+import { prospectConfig, prospectSearch, prospectStatus, prospectCities, prospectDailyQuota } from "./actions";
 import { ProspectHistory, ProspectRequests } from "./history";
 import { failureLabels, queueLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
@@ -36,6 +37,9 @@ export function ProspectingPage() {
     queryFn: () => getWallet(),
     retry: false,
   });
+  const daily = useQuery({queryKey:["prospect-daily-quota",client?.id],queryFn:()=>prospectDailyQuota(),retry:false,refetchInterval:60000});
+  const dailyQuota=daily.data as DailyQuota|undefined;
+  const dailyBlocked=dailyQuota?.remaining===0;
   const [tab, setTab] = useState("search"),
     [niche, setNiche] = useState(""),
     [country, setCountry] = useState("BR"),
@@ -55,6 +59,7 @@ export function ProspectingPage() {
   const maximum = (c?.unitCents ?? 0) * quantity;
   const valid =
     !!c?.enabled &&
+    !dailyBlocked &&
     niche.trim().length >= 2 &&
     city.trim().length >= 2 &&
     (country!=="BR" || !!stateCode && availableCities.some(option=>option.name===city)) &&
@@ -65,6 +70,7 @@ export function ProspectingPage() {
   async function refresh() {
     await Promise.all([
       cache.invalidateQueries({ queryKey: ["prospect-leads"] }),
+      cache.invalidateQueries({ queryKey: ["prospect-daily-quota"] }),
       cache.invalidateQueries({ queryKey: ["prospect-requests"] }),
       cache.invalidateQueries({ queryKey: ["wallet"] }),
       cache.invalidateQueries({ queryKey: ["prospect-wallet"] }),
@@ -169,6 +175,8 @@ export function ProspectingPage() {
               </div>
               <Search size={22} />
             </header>
+            {dailyQuota && typeof dailyQuota.remaining === "number" && <DailyQuotaNotice quota={dailyQuota} updatedAt={daily.dataUpdatedAt} onRenew={()=>void daily.refetch()}/>}
+            {daily.isError && <p className="prospect-help">Não foi possível atualizar seu limite diário. A disponibilidade será conferida ao confirmar a busca.</p>}
             {config.isPending ? (
               <p role="status">Consultando disponibilidade…</p>
             ) : config.isError ? (
@@ -245,7 +253,7 @@ export function ProspectingPage() {
                     <strong>Até {money(maximum)}</strong>
                     <small>Você paga somente pelos leads novos que receber.</small>
                   </div>
-                  {insufficient ? (
+                  {dailyBlocked ? (<Button disabled type="button">Limite diário atingido</Button>) : insufficient ? (
                     <Button asChild>
                       <Link to="/carteira">Adicionar saldo</Link>
                     </Button>
@@ -256,7 +264,7 @@ export function ProspectingPage() {
                     </Button>
                   )}
                 </div>
-                {insufficient && (
+                {insufficient && !dailyBlocked && (
                   <p className="error-text mt-3">Saldo insuficiente para a quantidade desejada.</p>
                 )}
               </form>

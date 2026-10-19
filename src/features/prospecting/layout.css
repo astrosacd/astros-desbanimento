@@ -67,3 +67,11 @@
 @container(max-width:850px){.prospect-base-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.prospect-base-queries{grid-template-columns:minmax(0,1fr)}}
 @container(max-width:480px){.prospect-base-businesses article{grid-template-columns:minmax(0,1fr)}.prospect-base-totals{grid-template-columns:minmax(0,1fr)}}
 .prospect-location-help{font-size:11px;color:var(--muted-foreground);line-height:1.7;margin:0}
+.prospect-daily-quota{display:flex;gap:12px;padding:16px;background:var(--secondary);border:1px solid var(--border);border-radius:12px;margin-bottom:22px;min-width:0}
+.prospect-daily-quota>svg{flex-shrink:0;color:var(--primary);margin-top:2px}
+.prospect-daily-quota>div{min-width:0;display:grid;gap:6px}
+.prospect-daily-quota strong{font-size:13px;font-weight:650;line-height:1.6}
+.prospect-daily-quota p{font-size:12px;line-height:1.7;color:var(--muted-foreground)}
+.prospect-daily-blocked{background:#fff8eb;border-color:#ead8b0}
+.prospect-daily-blocked>svg{color:#8b6116}
+.prospect-quota-clock{font-size:clamp(22px,5vw,30px);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.025em;color:#755019;overflow-wrap:anywhere}
