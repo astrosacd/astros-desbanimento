@@ -10,6 +10,8 @@ import {
   prospectStatus,
 } from "./actions";
 import {
+  failureLabels,
+  queueLabels,
   stageLabels,
   siteLabels,
   exportLeads,
@@ -73,7 +75,7 @@ export function ProspectRequests({
                 <span className="prospect-badge">
                   {row.state === "completed"
                     ? "Concluída"
-                    : row.state === "processing"
+                    : row.state === "queued" ? "Na fila" : row.state === "processing"
                       ? "Em andamento"
                       : "Não concluída"}
                 </span>
@@ -81,7 +83,8 @@ export function ProspectRequests({
                   {row.delivered} de {row.quantity} leads ·{" "}
                   <strong>{money(row.charged_cents)}</strong>
                 </p>
-                {row.state === "failed" && <small>Nenhum valor debitado nesta busca.</small>}
+                {row.state === "queued" && <p>{queueLabels[row.queue_reason || "capacity"] || queueLabels["capacity"]} Nenhum valor foi debitado enquanto aguarda.</p>}
+                {row.state === "failed" && <small>{failureLabels[row.failureReason || "unavailable"] || failureLabels["unavailable"]}</small>}
                 {row.state === "completed" && row.delivered === 0 && (
                   <small>Nenhum lead novo entregue nesta tentativa.</small>
                 )}
@@ -92,13 +95,13 @@ export function ProspectRequests({
                       ? "Consulta ao fornecedor não confirmada"
                       : row.diagnostic === "balance"
                         ? "Saldo insuficiente ao concluir"
-                        : row.diagnostic === "expired"
+                        : row.diagnostic === "quota" ? "Cota de pesquisas do fornecedor esgotada" : row.diagnostic === "paused" ? "Novas buscas pausadas" : row.diagnostic === "account" ? "Conta não disponível" : row.diagnostic === "uncertain" ? "Consulta interrompida; não foi repetida" : row.diagnostic === "expired"
                           ? "Prazo de processamento encerrado"
                           : "Verificação não concluída"}
                   </small>
                 )}
               </div>
-              {row.state==='processing'&&!adminId&&<ProspectCheck id={row.id} onDone={()=>q.refetch()}/>}
+              {['queued','processing'].includes(row.state)&&!adminId&&<ProspectCheck id={row.id} onDone={()=>q.refetch()}/>}
               <details>
                 <summary>Referência</summary>
                 <code>{row.id}</code>
@@ -310,4 +313,4 @@ export function ProspectHistory({ userId }: { userId: string }) {
   );
 }
 
-function ProspectCheck({id,onDone}:{id:string;onDone:()=>unknown}){const cache=useQueryClient();const [busy,setBusy]=useState(false),[message,setMessage]=useState('');async function check(){setBusy(true);setMessage('');try{const r=await prospectStatus({data:{requestId:id}}) as ProspectRequest;setMessage(r.state==='processing'?'A busca ainda está em andamento.':r.state==='completed'?`${r.delivered} leads entregues. Valor debitado: ${money(r.charged_cents)}.`:'Busca encerrada sem débito.');await onDone();await Promise.all([cache.invalidateQueries({queryKey:['prospect-leads']}),cache.invalidateQueries({queryKey:['wallet']}),cache.invalidateQueries({queryKey:['prospect-wallet']})]);}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível confirmar.');}finally{setBusy(false);}}return <div><Button variant="outline" disabled={busy} onClick={check}>{busy?'Verificando…':'Verificar busca'}</Button>{message&&<p role="status">{message}</p>}</div>;}
+function ProspectCheck({id,onDone}:{id:string;onDone:()=>unknown}){const cache=useQueryClient();const [busy,setBusy]=useState(false),[message,setMessage]=useState('');async function check(){setBusy(true);setMessage('');try{const r=await prospectStatus({data:{requestId:id}}) as ProspectRequest;setMessage(r.state==='queued'?'A busca continua na fila, sem débito.':r.state==='processing'?'A busca ainda está em andamento.':r.state==='completed'?`${r.delivered} leads entregues. Valor debitado: ${money(r.charged_cents)}.`:'Busca encerrada sem débito.');await onDone();await Promise.all([cache.invalidateQueries({queryKey:['prospect-leads']}),cache.invalidateQueries({queryKey:['wallet']}),cache.invalidateQueries({queryKey:['prospect-wallet']})]);}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível confirmar.');}finally{setBusy(false);}}return <div><Button variant="outline" disabled={busy} onClick={check}>{busy?'Verificando…':'Verificar busca'}</Button>{message&&<p role="status">{message}</p>}</div>;}

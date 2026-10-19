@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import { getCountries } from "libphonenumber-js";
@@ -16,7 +16,7 @@ import {
 import { getWallet } from "../payments/actions";
 import { prospectConfig, prospectSearch, prospectStatus } from "./actions";
 import { ProspectHistory, ProspectRequests } from "./history";
-import { money, type ProspectConfig, type ProspectRequest } from "./types";
+import { failureLabels, queueLabels, money, type ProspectConfig, type ProspectRequest } from "./types";
 const names = new Intl.DisplayNames(["pt-BR"], { type: "region" });
 const countries = getCountries()
   .map((code) => ({ id: code, name: names.of(code) || code, iso: code }))
@@ -86,7 +86,7 @@ export function ProspectingPage() {
         },
       })) as ProspectRequest;
       setResult(r);
-      if (r.state !== "processing") setPending(null);
+      if (!["queued","processing"].includes(r.state)) setPending(null);
       setConfirm(false);
       await refresh();
     } catch (e) {
@@ -95,7 +95,7 @@ export function ProspectingPage() {
       );
       setConfirm(false);
       const message=e instanceof Error?e.message:'';
-      if(['Saldo insuficiente. Faça uma recarga','Consulte o preço novamente','Prospecção temporariamente indisponível','Limite diário de buscas atingido','Confira a busca anterior antes de iniciar outra'].includes(message)){setPending(null);void cache.invalidateQueries({queryKey:['prospect-config']});void refresh();}
+      if(['Saldo insuficiente. Faça uma recarga','Consulte o preço novamente','Prospecção temporariamente indisponível','Limite diário de buscas atingido','Confira a busca anterior antes de iniciar outra','Ative o processamento automático de Prospecção'].includes(message)){setPending(null);void cache.invalidateQueries({queryKey:['prospect-config']});void refresh();}
     } finally {
       lock.current = false;
       setBusy(false);
@@ -109,7 +109,7 @@ export function ProspectingPage() {
     try {
       const r = (await prospectStatus({ data: { requestId: pending } })) as ProspectRequest;
       setResult(r);
-      if (r.state !== "processing") setPending(null);
+      if (!["queued","processing"].includes(r.state)) setPending(null);
       await refresh();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Não foi possível confirmar.";
@@ -122,6 +122,7 @@ export function ProspectingPage() {
       setBusy(false);
     }
   }
+  useEffect(()=>{if(!pending)return;const timer=setInterval(()=>void check(),10000);return()=>clearInterval(timer);},[pending]);
   return (
     <div className="prospect-page">
       <header className="prospect-heading">
@@ -272,13 +273,13 @@ export function ProspectingPage() {
             {pending && (
               <div className="prospect-notice" role="status">
                 <strong>
-                  {busy
+                  {result?.state === "queued" ? "Busca na fila" : busy
                     ? "Buscando e verificando empresas…"
                     : "Confira o resultado desta tentativa"}
                 </strong>
                 <p>
-                  A busca pode levar alguns instantes. Não é necessário enviar novamente. Confira o
-                  resultado antes de iniciar outra.
+                  {result?.state === "queued" ? queueLabels[result.queue_reason || "capacity"] || queueLabels["capacity"] : "A busca pode levar alguns instantes. Não é necessário enviar novamente."}
+                  {" "}Acompanhamos automaticamente. O saldo só é descontado quando os leads são entregues. Se o saldo ficar insuficiente antes da entrega, a busca será encerrada sem cobrança.
                 </p>
                 <code>{pending}</code>
                 <Button disabled={busy} variant="outline" onClick={check}>
@@ -286,7 +287,7 @@ export function ProspectingPage() {
                 </Button>
               </div>
             )}
-            {result && result.state !== "processing" && (
+            {result && !["queued","processing"].includes(result.state) && (
               <div className="prospect-result" role="status">
                 <CheckCircle2 size={22} />
                 <div>
@@ -298,7 +299,7 @@ export function ProspectingPage() {
                   <p>
                     {result.state === "completed"
                       ? `Foram debitados ${money(result.charged_cents)} da sua carteira.`
-                      : "Nenhum valor foi debitado nesta busca."}
+                      : failureLabels[result.failureReason || "unavailable"] || failureLabels["unavailable"]}
                   </p>
                   {result.state === "completed" && result.delivered < result.quantity && (
                     <p>

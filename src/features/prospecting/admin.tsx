@@ -21,13 +21,10 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
     [calls, setCalls] = useState(20),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
-    [account, setAccount] = useState<{
-      plan: string;
-      remaining: number;
-      used: number;
-      monthly: number;
-    } | null>(null);
+    [message, setMessage] = useState("");
+  const capacity=useQuery({queryKey:["prospect-capacity",adminId],queryFn:()=>prospectAdminAccount({data:{force:false}}),retry:false,refetchInterval:60000});
+  const account=capacity.data;
+
   useEffect(() => {
     if (!query.data) return;
     const s = query.data as ProspectConfig;
@@ -62,6 +59,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
       await Promise.all([
         cache.invalidateQueries({ queryKey: ["prospect-admin-config", adminId] }),
         cache.invalidateQueries({ queryKey: ["prospect-config"] }),
+        cache.invalidateQueries({ queryKey: ["prospect-capacity"] }),
       ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível salvar.");
@@ -73,7 +71,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
     setBusy(true);
     setError("");
     try {
-      setAccount(await prospectAdminAccount());
+      await prospectAdminAccount({data:{force:true}});await capacity.refetch();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível consultar a cota.");
     } finally {
@@ -200,19 +198,18 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
                   </small>
                 </label>
                 <label>
-                  Máximo de pesquisas na SerpApi por dia
+                  Teto diário da aplicação (opcional)
                   <input
                     className="field"
                     type="number"
-                    min={1}
-                    max={5000}
+                    min={0}
+                    max={1000000}
                     value={calls}
                     onChange={(e) => setCalls(Number(e.target.value))}
                     required
                   />
                   <small>
-                    Limite compartilhado por toda a aplicação. Uma pesquisa pode retornar várias
-                    empresas.
+                    Use 0 para não impor um teto diário adicional. Os limites por hora e a cota do plano continuam protegidos. Este teto é global, não por cliente.
                   </small>
                 </label>
                 <label className="prospect-checkbox prospect-full">
@@ -240,14 +237,15 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           <header className="prospect-section-heading">
             <div>
               <h2>Consultas disponíveis no fornecedor</h2>
-              <p>Consulta manual da cota atual da SerpApi, sem expor a chave.</p>
+              <p>Plano e limites sincronizados automaticamente. A cota é compartilhada por toda a aplicação.</p>
             </div>
             <Button variant="outline" disabled={busy || !query.data?.hasKey} onClick={consult}>
               <RefreshCw size={16} />
               Consultar cota
             </Button>
           </header>
-          {account ? (
+          {capacity.isError && <p role="alert" className="error-text">Não foi possível atualizar os limites. Buscas que precisam de nova consulta aguardam uma cota confirmada.</p>}
+          {account?.syncedAt ? (
             <div className="prospect-quota">
               <div>
                 <span>Plano</span>
@@ -261,10 +259,20 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
                 <span>Uso neste mês</span>
                 <strong>{account.used.toLocaleString("pt-BR")}</strong>
               </div>
+              <div><span>Cota do plano por ciclo</span><strong>{account.monthly.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Limite do fornecedor por hora</span><strong>{account.hourLimit.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Uso informado nesta hora</span><strong>{account.hourUsed.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Renovação informada</span><strong>{account.renewal || "Não informada"}</strong></div>
+              <div><span>Última sincronização</span><strong>{new Date(account.syncedAt).toLocaleString("pt-BR")}</strong></div>
+              <div><span>Processamento automático</span><strong>{account.workerSeenAt && Date.now()-Date.parse(account.workerSeenAt)<240000?"Ativo":"Verificar ativação"}</strong></div>
             </div>
           ) : (
-            <p className="prospect-help">Clique em Consultar cota para conferir os dados atuais.</p>
+            <p className="prospect-help">Aguardando sincronização da conta. Você também pode clicar em Consultar cota.</p>
           )}
+          <p className="prospect-help">Uma consulta pode retornar várias empresas. Cota restante é uma leitura do fornecedor; reservas em andamento também são consideradas antes de novas chamadas. Ao atingir o limite por hora, a busca aguarda na fila. Se a cota acabar, consultas sem entrega são encerradas sem débito. A fila expira após 24 horas. O processamento local mantém até três consultas externas em andamento; o limite do plano é um teto, não uma promessa de velocidade.</p>
+          {account?.syncedAt && Date.now()-Date.parse(account.syncedAt)>300000 && <p role="alert" className="prospect-notice">A sincronização da cota está atrasada. Novas consultas externas aguardam uma confirmação atualizada. Confira a integração e o processamento automático.</p>}
+          {account?.syncedAt && account.remaining>0 && account.remaining<=Math.max(10,Math.ceil(account.monthly*0.1)) && <p role="status" className="prospect-notice">Cota de pesquisa baixa. Acompanhe o consumo e a renovação para evitar indisponibilidade.</p>}
+          {account?.remaining === 0 && account.syncedAt && <p role="status" className="prospect-notice">A cota de pesquisa está esgotada. Amplie ou renove seu plano. A base já coletada ainda pode atender buscas.</p>}
           <a
             className="prospect-provider-link"
             href="https://serpapi.com/dashboard"

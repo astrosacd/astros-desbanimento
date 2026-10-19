@@ -50,7 +50,10 @@ export type ProspectRequest = {
   id: string;
   quantity: number;
   unit_cents: number;
-  state: "processing" | "completed" | "failed";
+  state: "queued" | "processing" | "completed" | "failed";
+  failureReason?: string;
+  queue_reason?: string;
+  next_attempt_at?: string;
   delivered: number;
   charged_cents: number;
   created_at: string;
@@ -102,3 +105,7 @@ export function exportLeads(leads: Lead[]) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export const queueLabels:Record<string,string>={hourly:"Aguardando capacidade de pesquisa. A busca continuará automaticamente.",daily:"Aguardando a renovação do limite diário definido pela equipe.",shared:"Aguardando uma coleta em andamento para aproveitar os resultados.",checking:"Conferindo a disponibilidade do serviço de pesquisa.",capacity:"Sua busca está na fila e será processada automaticamente."};
+
+export const failureLabels:Record<string,string>={capacity:"Novas pesquisas estão temporariamente indisponíveis. Nenhum valor foi debitado. Tente novamente mais tarde.",balance:"O saldo ficou insuficiente antes da entrega. Nenhum valor foi debitado. Faça uma recarga antes de uma nova busca.",expired:"O prazo de processamento encerrou. Nenhum valor foi debitado.",paused:"Novas buscas foram pausadas pela equipe. Nenhum valor foi debitado.",unavailable:"Não foi possível concluir a pesquisa. Nenhum valor foi debitado."};

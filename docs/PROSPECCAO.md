@@ -2,21 +2,23 @@
 
 Módulo separado no cliente e no admin. Usa a carteira compartilhada, sem disparar mensagens ou abordar empresas automaticamente.
 
-## Ativação desta atualização
-1. No SQL Editor do Supabase, execute `supabase/migrations/20261018_prospecting.sql`.
+## Instalação completa em uma base nova
+1. Execute `supabase/migrations/20261018_prospecting.sql` no SQL Editor.
 2. Execute `supabase/migrations/20261018_prospecting_finance.sql` para classificar os débitos no financeiro.
-3. Crie a Edge Function **astros-prospecting**, cole todo o conteúdo de `supabase/astros-prospecting.deploy.ts` e faça Deploy. Desative a verificação JWT legada somente nesta função: ela valida a identidade pelo Supabase Auth internamente. Não altere as configurações globais de autenticação.
-4. No admin → Prospecção, salve sua chave privada da SerpApi. Ela não é retornada ao navegador depois de salva. Configure preço por lead, validade do cache e limites diários. O módulo começa pausado.
-5. Consulte a conta do fornecedor, confira a cota e faça uma busca pequena controlada. Pode configurar preço zero para o primeiro teste. Depois confira leads, histórico, carteira e financeiro antes de liberar buscas pagas.
+3. Execute `supabase/migrations/20261018_prospecting_capacity_queue.sql` para instalar capacidade e fila.
+4. Crie a Edge Function **astros-prospecting**, cole todo o conteúdo de `supabase/astros-prospecting.deploy.ts` e faça Deploy. Desative a verificação JWT legada somente nesta função: ela valida a identidade pelo Supabase Auth e o worker pelo segredo privado. Não altere autenticação global.
+5. Execute `supabase/migrations/20261018_prospecting_queue_schedule.sql` para instalar o processamento a cada minuto.
+6. No admin → Prospecção, salve sua chave SerpApi e configure preço por lead, validade da base, limite individual e teto global diário opcional. O módulo começa pausado. Confira a sincronização e o processamento Ativo antes de liberar.
+7. Faça uma busca pequena controlada. Pode configurar preço zero para o primeiro teste. Confira leads, histórico, carteira e financeiro antes de liberar buscas pagas.
 
 Os secrets padrão SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são fornecidos pelo ambiente da função. Nunca coloque a chave SerpApi no GitHub, em variáveis VITE ou no chat. Publicar no Lovable não executa SQL nem publica funções no Supabase. A VPS continua na imagem atual até atualização manual.
 
 ## Busca e cobrança
 O cliente informa nicho, país e cidade/região. A situação do site é verificada automaticamente e exibida nos resultados; não é uma escolha no formulário. Cada busca pede de 1 a 20 leads. Uma tentativa consulta no máximo uma página de até 20 resultados do Google Maps pela SerpApi, podendo entregar menos após filtros e exclusão de repetidos. Apenas leads efetivamente entregues são debitados. Uma busca sem entregas não cobra.
 
-A entrega, o débito e o movimento da carteira são gravados na mesma transação. Um UUID identifica a tentativa: reenviar a mesma referência não faz nova cobrança. Se a resposta se perder, use Verificar esta busca ou o histórico; não inicie outra tentativa para descobrir o resultado. Uma busca pendente expira sem débito caso não tenha concluído a entrega.
+A entrega, o débito e o movimento da carteira são gravados na mesma transação. Um UUID identifica a tentativa: reenviar a mesma referência não faz nova cobrança. Se a resposta se perder, use Verificar esta busca ou o histórico; não inicie outra tentativa para descobrir o resultado. Uma busca na fila pode aguardar até 24 horas e não reserva saldo. Ao começar o processamento, tem três minutos para concluir. Se expirar ou o saldo ficar insuficiente, encerra sem débito.
 
-O preço é por lead entregue, em reais. Não representa o preço da SerpApi nem garantia de lucro. O custo do fornecedor é suportado pela conta administrativa conforme seu plano e uso. Há limites de buscas por conta e de chamadas globais por dia, considerando America/Fortaleza. Atualizar a conta do fornecedor também usa seu endpoint de conta, sem coletar leads.
+O preço é por lead entregue, em reais. Não representa o preço da SerpApi nem garantia de lucro. O custo do fornecedor é suportado pela conta administrativa conforme seu plano e uso. Há limite de buscas por conta e um teto global diário opcional, considerando America/Fortaleza. Definir o teto global como 0 desativa apenas esse teto; não desativa limites do fornecedor. Atualizar a conta do fornecedor também usa seu endpoint de conta, sem coletar leads.
 
 ## Cache e repetição
 As empresas e consultas formam uma base compartilhada privada. Uma consulta equivalente pode aproveitar resultados recentes sem uma nova chamada ao fornecedor. O cache tem validade configurável de 1 a 30 dias. A paginação avança de 20 em 20, até seis páginas por janela. Uma trava impede chamadas simultâneas para a mesma página.
@@ -50,7 +52,7 @@ Teste transacional isolado, com PGlite instalado fora do projeto:
 ASTROS_PGLITE_MODULE=/caminho/node_modules/@electric-sql/pglite node scripts/check-prospecting-sql.cjs
 ```
 
-Os testes locais não comprovam a chave, a cota nem uma chamada real da instalação. Não há cron necessário nesta primeira versão. Nenhuma integração externa é acionada pelos testes simulados.
+Os testes locais não comprovam a chave, a cota nem uma chamada real da instalação. A versão com fila depende do cron exclusivo `astros-prospect-queue`. Nenhuma integração externa é acionada pelos testes simulados.
 
 ## Leitura complementar com Jina Reader
 A função também consulta `https://r.jina.ai/` para ler páginas públicas de sites próprios classificados como acessíveis ou inconclusivos. Guarda somente título, trecho de até 600 caracteres, até cinco e-mails publicados e data da leitura. A interface e o CSV mostram esses campos quando disponíveis. Não gera abordagem, não envia mensagem, não executa instruções encontradas na página e não confirma a validade ou titularidade dos contatos. O trecho é uma extração, não uma avaliação por IA.
@@ -62,3 +64,28 @@ A integração tenta o acesso básico sem chave. Isso está sujeito aos limites 
 A leitura usa prazo e resposta limitados, solicita conteúdo atualizado sem cache do fornecedor e omite parâmetros de consulta do endereço. Só chama o domínio fixo Jina, nunca repassa cookies ou tokens da sessão. URLs sociais, locais, com credenciais e endereços DNS privados são recusados. A verificação direta mantém a proteção de conexão descrita acima; a navegação executada pela Jina depende das proteções do fornecedor.
 
 Falhas, bloqueios, limites e respostas inconsistentes da Jina são opcionais: não impedem a entrega dos demais dados. Não mudam uma verificação direta conclusiva. Uma leitura válida pode esclarecer um resultado antes inconclusivo. O processamento tem orçamento de tempo compartilhado; chegar ao limite mantém os casos restantes inconclusivos. A base compartilhada reaproveita os dados para reduzir chamadas.
+
+## Atualização de capacidade e fila em uma instalação existente
+1. Aplique **20261018_prospecting_capacity_queue.sql**. Ele preserva saldos, leads, configurações e histórico; acrescenta capacidade, reservas de consulta e estado de fila.
+2. Substitua o código de **astros-prospecting** por **astros-prospecting.deploy.ts** atualizado e faça Deploy. A verificação JWT legada deve continuar desativada apenas nessa função; login e worker são validados internamente.
+3. Aplique **20261018_prospecting_queue_schedule.sql**. Ele cria/recria somente o cron deste módulo, a cada minuto, com segredo gerado e guardado na tabela privada. Não pede chave manual nem altera crons de outros módulos.
+4. No admin, confira o plano, cota do ciclo, limite por hora, uso informado, renovação, horário da sincronização e processamento Ativo. Pode levar o primeiro minuto para o cron confirmar o heartbeat. Novas buscas são recusadas enquanto o processamento não estiver confirmado.
+5. Configure o teto diário global: **0** significa sem teto diário adicional. Mantenha o limite individual adequado ao atendimento. A chave é a referência do plano; não há lista fixa de planos para escolher. Trocas de plano são refletidas pela conta do fornecedor.
+
+O worker consulta a Account API no máximo a cada dois minutos na rotina automática; o admin pode solicitar atualização explícita. A leitura não consome créditos de pesquisa segundo a documentação do fornecedor. O painel atualiza a exibição enquanto aberto a cada minuto. A cota é compartilhada por todos os clientes e também pode ser consumida por outras integrações que usem a mesma conta.
+
+Antes de uma chamada externa, o banco combina a cota informada com reservas feitas após o início da sincronização, contabilizando solicitações ainda em andamento. Para o limite por hora, considera também as reservas locais dos últimos 60 minutos. Esses guardas são conservadores e podem aguardar a próxima sincronização. O fornecedor continua sendo a autoridade final; uso por outras integrações entre sincronizações não é instantaneamente visível.
+
+O processamento local mantém no máximo três consultas externas em andamento. Cada execução agendada considera até 20 tentativas vencidas para espera e despacha até três trabalhos. O ritmo local não promete atingir todo o throughput máximo de um plano grande. A fila aguarda capacidade por hora, teto diário ou coleta da mesma região. Dados suficientes na base são entregues sem reservar chamada SerpApi, inclusive se a cota externa estiver esgotada. Se precisar de consulta nova e a cota do plano acabar, encerra sem débito e informa indisponibilidade ao cliente; o admin recebe o diagnóstico de cota.
+
+O preço por lead aceito na confirmação é congelado para a tentativa. Alterar a configuração não altera pedidos na fila. A carteira é conferida de novo antes do trabalho e na transação final de entrega. Contatos só aparecem para a conta na mesma transação que registra o débito proporcional. Nenhuma cobrança ocorre por aguardar na fila.
+
+Reservas são feitas uma única vez por UUID antes da chamada externa. Uma tentativa interrompida ou de resultado incerto não é reenviada automaticamente, para evitar consumir consultas duplicadas; expira sem débito e o cliente pode iniciar outra tentativa explícita. Reservas locais podem contar consultas que o fornecedor não cobrou (falhas/cache), protegendo a cota de forma conservadora até a sincronização/janela seguinte. Elas são removidas após 35 dias; o histórico de pedidos e a unicidade de entregas permanecem.
+
+Verificações adicionais isoladas:
+
+```bash
+ASTROS_PGLITE_MODULE=/caminho/node_modules/@electric-sql/pglite node scripts/check-prospecting-queue-sql.cjs
+```
+
+Os testes simulam cota mensal, limite horário, teto diário, cache compartilhado, fila, preços congelados, saldo insuficiente, expiração, três vagas externas, segredo do worker e permissões. A instalação real do cron e a sincronização com sua conta precisam ser conferidas após o Deploy.

@@ -56,15 +56,15 @@ export const prospectAdminSave = createServerFn({ method: "POST" })
         unitCents: z.number().int().min(0).max(10000),
         cacheDays: z.number().int().min(1).max(30),
         dailyRequests: z.number().int().min(1).max(100),
-        dailyCalls: z.number().int().min(1).max(5000),
+        dailyCalls: z.number().int().min(0).max(1000000),
         apiKey: z.string().trim().max(200),
       })
       .strict(),
   )
   .handler(async ({ data }) => (await import("./server")).prospectCall("admin-save", data, true));
-export const prospectAdminAccount = createServerFn({ method: "POST" }).handler(async () =>
-  (await import("./server")).prospectCall("admin-account", {}, true),
-);
+export const prospectAdminAccount = createServerFn({ method: "POST" })
+ .inputValidator(z.object({force:z.boolean().default(false)}).strict())
+ .handler(async ({data})=>(await import("./server")).prospectCall("admin-account",data,true));
 export const prospectAdminRequests = createServerFn({ method: "POST" })
   .inputValidator(z.object({ page: z.number().int().min(0).max(10000) }).strict())
   .handler(async ({ data }) =>
