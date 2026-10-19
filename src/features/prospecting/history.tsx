@@ -3,7 +3,7 @@ import { LeadContacts } from "./contacts";
 import { LeadOutreach } from "./outreach";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2 } from "lucide-react";
+import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -595,13 +595,28 @@ function ProspectBoard({
   renderCard: (lead: Lead, drag?: (lead: Lead | null) => void) => React.ReactNode;
 }) {
   const [dragged, setDragged] = useState<Lead | null>(null);
+  const board = useRef<HTMLDivElement>(null);
+  function scrollColumns(direction: number) {
+    const element = board.current;
+    if (!element) return;
+    const column = element.querySelector<HTMLElement>(".prospect-board-column");
+    element.scrollBy({ left: direction * ((column?.getBoundingClientRect().width || 250) + 14), behavior: "auto" });
+  }
   return (
     <div className="prospect-board-section">
       <p className="prospect-board-help">
-        Arraste pela alça para mudar de etapa ou use “Mover para” em cada cartão. No celular,
-        deslize o quadro para ver as colunas. Cada coluna tem sua própria paginação.
+        Arraste pela alça para mudar de etapa ou use “Mover para” em cada cartão. Em telas menores,
+        use as setas ou deslize o quadro para ver as colunas. Cada coluna tem sua própria paginação.
       </p>
+      <div className="prospect-board-navigation" role="group" aria-label="Navegar pelas etapas">
+        <span>Novo → Contatado → Em negociação → Fechado → Descartado</span>
+        <div>
+          <Button variant="outline" aria-label="Ver etapas anteriores" onClick={() => scrollColumns(-1)}><ChevronLeft size={17} /> Anteriores</Button>
+          <Button variant="outline" aria-label="Ver próximas etapas" onClick={() => scrollColumns(1)}>Próximas <ChevronRight size={17} /></Button>
+        </div>
+      </div>
       <div
+        ref={board}
         className="prospect-board"
         aria-label="Quadro de acompanhamento"
         role="region"

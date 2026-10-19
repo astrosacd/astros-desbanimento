@@ -335,3 +335,24 @@
 .prospect-summary-error { padding:14px; border:1px solid var(--border); border-radius:10px; margin-bottom:20px; font-size:13px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
 @container (max-width:900px) { .prospect-lead-summary dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @container (max-width:480px) { .prospect-lead-summary dl { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Quadro: cinco etapas inteiras em telas largas; navegação explícita nas menores. */
+.prospect-board-navigation { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+.prospect-board-navigation > span { font-size:11px; line-height:1.8; color:var(--muted-foreground); }
+.prospect-board-navigation > div { display:flex; gap:8px; }
+.prospect-board-navigation button { font-size:12px; }
+.prospect-board { scrollbar-color:#8ba2b6 var(--secondary); scroll-padding-inline:2px; }
+.prospect-board-column { scroll-snap-align:start; }
+.prospect-board-cards { scrollbar-gutter:stable; }
+@container (min-width:1100px) {
+  .prospect-board-section .prospect-board { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; overflow-x:visible; }
+  .prospect-board-section .prospect-board-column { width:auto; min-width:0; padding:10px; }
+  .prospect-board-navigation { display:none; }
+  .prospect-board-column > footer { flex-wrap:wrap; justify-content:center; }
+  .prospect-board-column > footer span { order:-1; width:100%; text-align:center; }
+  .prospect-board .prospect-lead-open { padding:12px; }
+}
+@container (max-width:480px) {
+  .prospect-board-navigation > div { width:100%; }
+  .prospect-board-navigation button { flex:1; min-width:0; }
+}
