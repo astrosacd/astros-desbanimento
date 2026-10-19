@@ -40,3 +40,11 @@
 .prospect-outreach-actions{display:flex;flex-wrap:wrap;gap:10px;min-width:0}
 .prospect-outreach-actions>*{flex:1 1 160px;min-width:0;max-width:100%;text-align:center}
 @container(max-width:480px){.prospect-outreach-body textarea.field{font-size:16px}.prospect-outreach-actions>*{flex-basis:100%}}
+.prospect-contacts{margin-top:20px;padding-top:18px;border-top:1px solid var(--border);min-width:0}
+.prospect-contacts h4{font-size:13px;font-weight:650;margin-bottom:12px}
+.prospect-contacts>div{display:grid;gap:9px}
+.prospect-contacts a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:10px;min-height:48px}
+.prospect-contacts a>span{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;font-size:12px}
+.prospect-contacts a strong{font-weight:650;color:var(--primary)}
+.prospect-contacts a svg{flex-shrink:0;color:var(--muted-foreground)}
+.prospect-contacts>p{font-size:11px;line-height:1.7;color:var(--muted-foreground);margin-top:10px}

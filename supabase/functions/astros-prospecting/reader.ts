@@ -1,6 +1,6 @@
 import {lookup as readerLookup} from 'node:dns/promises';
-import {publicWebsite,publicIPv4,socialWebsite,siteEvidence} from './website.ts';
-export type SiteReading={siteTitle:string;siteSummary:string;siteEmails:string[];siteReadAt:string};
+import {publicWebsite,publicIPv4,socialWebsite,siteEvidence,publishedContacts,contactLink} from './website.ts';
+export type SiteReading={siteTitle:string;siteSummary:string;siteEmails:string[];siteReadAt:string;contacts:ReturnType<typeof publishedContacts>};
 const text=(v:unknown,n:number)=>typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,n):'';
 export function readerContent(value:unknown,original:URL):SiteReading|null{
  const v=value as {code?:number;data?:{url?:string;title?:string;content?:string;httpStatus?:number}}|null;
@@ -10,7 +10,7 @@ export function readerContent(value:unknown,original:URL):SiteReading|null{
  if(body.trim().length<80||/verify (you are|that you are) human|checking your browser|just a moment|access denied|captcha|cloudflare ray id/i.test(body))return null;
  const emails=[...new Set((body.match(/[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}/gi)||[]).filter(e=>e.length<=254&&!/\.(png|jpe?g|webp|svg|gif)$/i.test(e)))].slice(0,5);
  const summary=text(body.replace(/!\[[^\]]*\]\([^)]*\)/g,' ').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/https?:\/\/\S+/g,' ').replace(/[#*`>|]/g,' '),600);
- return {siteTitle:text(v.data.title,160),siteSummary:summary,siteEmails:emails,siteReadAt:new Date().toISOString()};
+ return {siteTitle:text(v.data.title,160),siteSummary:summary,siteEmails:emails,contacts:[...publishedContacts(body),...emails.map(e=>contactLink('mailto:'+e)).filter((c):c is NonNullable<typeof c>=>!!c)].filter((c,i,a)=>a.findIndex(v=>v.url===c.url)===i).slice(0,20),siteReadAt:new Date().toISOString()};
 }
 // Only public business URLs. Never forward session cookies or provider credentials.
 export async function readWebsite(value:unknown,key='',deadline=Date.now()+8500):Promise<SiteReading|null>{
@@ -31,7 +31,7 @@ export async function readWebsite(value:unknown,key='',deadline=Date.now()+8500)
 }
 export function enrichWebsite<T extends {websiteStatus:string;websiteReason:string}>(site:T,reading:SiteReading|null){
  if(!reading)return site;
- if(site.websiteStatus!=='unknown')return {...site,...reading};
+ if(site.websiteStatus!=='unknown')return {...site,...reading,contacts:[...((site as T & {contacts?:SiteReading['contacts']}).contacts||[]),...reading.contacts].filter((c,i,a)=>a.findIndex(v=>v.url===c.url)===i).slice(0,20)};
  const evidence=siteEvidence(200,reading.siteSummary.replace(/[<>]/g,' '));
- return {...site,...reading,websiteStatus:evidence.status,websiteReason:evidence.status==='online'?'A leitura complementar encontrou conteúdo na página nesta verificação.':evidence.reason};
+ return {...site,...reading,contacts:[...((site as T & {contacts?:SiteReading['contacts']}).contacts||[]),...reading.contacts].filter((c,i,a)=>a.findIndex(v=>v.url===c.url)===i).slice(0,20),websiteStatus:evidence.status,websiteReason:evidence.status==='online'?'A leitura complementar encontrou conteúdo na página nesta verificação.':evidence.reason};
 }

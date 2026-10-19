@@ -89,3 +89,9 @@ ASTROS_PGLITE_MODULE=/caminho/node_modules/@electric-sql/pglite node scripts/che
 ```
 
 Os testes simulam cota mensal, limite horário, teto diário, cache compartilhado, fila, preços congelados, saldo insuficiente, expiração, três vagas externas, segredo do worker e permissões. A instalação real do cron e a sincronização com sua conta precisam ser conferidas após o Deploy.
+
+### Contatos publicados nos leads
+
+A coleta aproveita o telefone e o endereço de site efetivamente retornados na pesquisa. Quando esse endereço é uma rede social, o link é identificado como origem Google Maps. A verificação direta do site e a leitura complementar também extraem links publicados de redes sociais, WhatsApp, telefone e e-mail, com origem site da empresa. Links de compartilhamento, endereços inseguros e duplicados são descartados; não se procura um perfil pelo nome nem se confirma titularidade/WhatsApp. Até 20 contatos são armazenados por nova coleta. O cartão reúne esses contatos com os e-mails de leituras anteriores, e o CSV inclui origem e valor. A coleta respeita os limites e tempos existentes, sem chamadas extras à SerpApi. Falha na leitura não cancela a entrega do lead.
+
+Ativação: atualize a função `astros-prospecting` com `supabase/astros-prospecting.deploy.ts`. Não exige novo SQL. A versão de leitura é 2; novas coletas reavaliam dados antigos quando passam pela coleta normal. Snapshots de leads já entregues permanecem preservados; não se promete preenchimento retroativo nem nova cobrança para atualizá-los.
