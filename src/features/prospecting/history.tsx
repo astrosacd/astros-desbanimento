@@ -1,7 +1,7 @@
 import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
 import { LeadOutreach } from "./outreach";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Download, MapPin, Phone, RefreshCw, Globe2 } from "lucide-react";
 import {
@@ -190,6 +190,10 @@ export function ProspectRequests({
 }
 export function ProspectHistory({ userId }: { userId: string }) {
   const cache = useQueryClient();
+  const [view, setView] = useState<"cards" | "board">("cards");
+  const [inspected, setInspected] = useState<Lead | null>(null);
+  const saving = useRef(false);
+  const [notice, setNotice] = useState("");
   const [page, setPage] = useState(0),
     [search, setSearch] = useState(""),
     [applied, setApplied] = useState(""),
@@ -200,21 +204,101 @@ export function ProspectHistory({ userId }: { userId: string }) {
     queryKey: ["prospect-leads", userId, page, applied, status],
     queryFn: () => prospectHistory({ data: { page, search: applied, status: status as "all" } }),
     retry: false,
+    enabled: view === "cards",
   });
   const leads: Lead[] = q.data?.leads ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = leads.find((lead) => lead.id === selectedId);
+  const [selectedOwner,setSelectedOwner] = useState(userId);
+  const selected = selectedOwner !== userId ? undefined :
+    (view === "cards" ? leads.find((lead) => lead.id === selectedId) : undefined) ||
+    (inspected?.id === selectedId ? inspected : undefined);
   async function change(id: string, status: string) {
+    if (saving.current) return;
+    saving.current = true;
+    setNotice("");
     setBusy(id);
     setError("");
     try {
       await prospectLeadStatus({ data: { id, status: status as keyof typeof stageLabels } });
+      setInspected((current) =>
+        current?.id === id ? { ...current, status: status as keyof typeof stageLabels } : current,
+      );
+      setNotice(`Etapa atualizada para ${stageLabels[status as keyof typeof stageLabels]}.`);
       await cache.invalidateQueries({ queryKey: ["prospect-leads", userId] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível atualizar.");
     } finally {
+      saving.current = false;
       setBusy("");
     }
+  }
+  function renderCard(lead: Lead, drag?: (lead: Lead | null) => void) {
+    return (
+      <article className={`prospect-lead-compact prospect-stage-${lead.status}`} key={lead.id}>
+        {drag && (
+          <button
+            type="button"
+            className="prospect-drag-handle"
+            draggable={!busy}
+            disabled={!!busy}
+            aria-label={`Arrastar ${lead.snapshot.name}`}
+            title="Arraste para outra etapa ou use Mover para"
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", lead.id);
+              drag(lead);
+            }}
+            onDragEnd={() => drag(null)}
+          >
+            ⠿ <span>Arrastar</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="prospect-lead-open"
+          aria-label={`Ver detalhes de ${lead.snapshot.name}`}
+          onClick={() => {
+            setSelectedOwner(userId);
+            setSelectedId(lead.id);
+            setInspected(lead);
+            setError("");
+          }}
+        >
+          <span className="prospect-stage-pill">{stageLabels[lead.status]}</span>
+          <h3>{lead.snapshot.name}</h3>
+          <span className="prospect-lead-compact-address">
+            <MapPin size={14} aria-hidden="true" />
+            <span>{lead.snapshot.address || "Endereço não informado"}</span>
+          </span>
+          <span className="prospect-lead-compact-phone">
+            <Phone size={14} aria-hidden="true" />
+            {lead.snapshot.phone || "Telefone não informado"}
+          </span>
+          <span className="prospect-lead-compact-footer">
+            <span>{siteLabels[lead.snapshot.websiteStatus]}</span>
+            <strong>
+              Ver detalhes <ArrowUpRight size={14} aria-hidden="true" />
+            </strong>
+          </span>
+        </button>
+        <label className="prospect-quick-stage">
+          Mover para
+          <select
+            className="field"
+            aria-label={`Etapa de ${lead.snapshot.name}`}
+            value={lead.status}
+            disabled={!!busy}
+            onChange={(e) => void change(lead.id, e.target.value)}
+          >
+            {Object.entries(stageLabels).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </article>
+    );
   }
   return (
     <section className="prospect-card">
@@ -223,11 +307,29 @@ export function ProspectHistory({ userId }: { userId: string }) {
           <h2>Meus leads</h2>
           <p>Empresas já entregues à sua conta. Organize seu acompanhamento.</p>
         </div>
-        <Button variant="outline" disabled={!leads.length} onClick={() => exportLeads(leads)}>
-          <Download size={16} />
-          Exportar esta página
-        </Button>
+        {view === "cards" && (
+          <Button variant="outline" disabled={!leads.length} onClick={() => exportLeads(leads)}>
+            <Download size={16} />
+            Exportar esta página
+          </Button>
+        )}
       </header>
+      <div className="prospect-crm-toolbar" role="group" aria-label="Visualização dos leads">
+        <Button
+          variant={view === "cards" ? "default" : "outline"}
+          aria-pressed={view === "cards"}
+          onClick={() => setView("cards")}
+        >
+          Cartões
+        </Button>
+        <Button
+          variant={view === "board" ? "default" : "outline"}
+          aria-pressed={view === "board"}
+          onClick={() => setView("board")}
+        >
+          Quadro de etapas
+        </Button>
+      </div>
       <form
         className="prospect-history-filters"
         onSubmit={(e) => {
@@ -246,24 +348,26 @@ export function ProspectHistory({ userId }: { userId: string }) {
             placeholder="Nome da empresa"
           />
         </label>
-        <label>
-          Etapa
-          <select
-            className="field"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(0);
-            }}
-          >
-            <option value="all">Todas</option>
-            {Object.entries(stageLabels).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {view === "cards" && (
+          <label>
+            Etapa
+            <select
+              className="field"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(0);
+              }}
+            >
+              <option value="all">Todas</option>
+              {Object.entries(stageLabels).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <Button type="submit">Pesquisar</Button>
       </form>
       {error && (
@@ -279,7 +383,20 @@ export function ProspectHistory({ userId }: { userId: string }) {
           </span>
         ))}
       </div>
-      {q.isPending ? (
+      {notice && (
+        <p role="status" className="prospect-crm-notice">
+          {notice}
+        </p>
+      )}
+      {view === "board" ? (
+        <ProspectBoard
+          userId={userId}
+          search={applied}
+          busy={busy}
+          change={change}
+          renderCard={renderCard}
+        />
+      ) : q.isPending ? (
         <p role="status">Consultando leads…</p>
       ) : q.isError ? (
         <p role="alert" className="error-text">
@@ -288,41 +405,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
       ) : !leads.length ? (
         <p className="prospect-empty">Nenhum lead encontrado para esses filtros.</p>
       ) : (
-        <div className="prospect-lead-grid">
-          {leads.map((lead) => (
-            <article
-              className={`prospect-lead-compact prospect-stage-${lead.status}`}
-              key={lead.id}
-            >
-              <button
-                type="button"
-                className="prospect-lead-open"
-                aria-label={`Ver detalhes de ${lead.snapshot.name}`}
-                onClick={() => {
-                  setSelectedId(lead.id);
-                  setError("");
-                }}
-              >
-                <span className="prospect-stage-pill">{stageLabels[lead.status]}</span>
-                <h3>{lead.snapshot.name}</h3>
-                <span className="prospect-lead-compact-address">
-                  <MapPin size={14} aria-hidden="true" />
-                  <span>{lead.snapshot.address || "Endereço não informado"}</span>
-                </span>
-                <span className="prospect-lead-compact-phone">
-                  <Phone size={14} aria-hidden="true" />
-                  {lead.snapshot.phone || "Telefone não informado"}
-                </span>
-                <span className="prospect-lead-compact-footer">
-                  <span>{siteLabels[lead.snapshot.websiteStatus]}</span>
-                  <strong>
-                    Ver detalhes <ArrowUpRight size={14} aria-hidden="true" />
-                  </strong>
-                </span>
-              </button>
-            </article>
-          ))}
-        </div>
+        <div className="prospect-lead-grid">{leads.map((lead) => renderCard(lead))}</div>
       )}
       <Dialog
         open={!!selected}
@@ -433,23 +516,25 @@ export function ProspectHistory({ userId }: { userId: string }) {
             ))(selected)}
         </DialogContent>
       </Dialog>
-      <div className="list-pagination">
-        <Button
-          variant="outline"
-          disabled={!page || q.isFetching}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Anterior
-        </Button>
-        <span>Página {page + 1}</span>
-        <Button
-          variant="outline"
-          disabled={!q.data?.hasMore || q.isFetching}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Próxima
-        </Button>
-      </div>
+      {view === "cards" && (
+        <div className="list-pagination">
+          <Button
+            variant="outline"
+            disabled={!page || q.isFetching}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Anterior
+          </Button>
+          <span>Página {page + 1}</span>
+          <Button
+            variant="outline"
+            disabled={!q.data?.hasMore || q.isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -491,5 +576,143 @@ function ProspectCheck({ id, onDone }: { id: string; onDone: () => unknown }) {
       </Button>
       {message && <p role="status">{message}</p>}
     </div>
+  );
+}
+
+function ProspectBoard({
+  userId,
+  search,
+  busy,
+  change,
+  renderCard,
+}: {
+  userId: string;
+  search: string;
+  busy: string;
+  change: (id: string, status: string) => Promise<void>;
+  renderCard: (lead: Lead, drag?: (lead: Lead | null) => void) => React.ReactNode;
+}) {
+  const [dragged, setDragged] = useState<Lead | null>(null);
+  return (
+    <div className="prospect-board-section">
+      <p className="prospect-board-help">
+        Arraste pela alça para mudar de etapa ou use “Mover para” em cada cartão. No celular,
+        deslize o quadro para ver as colunas. Cada coluna tem sua própria paginação.
+      </p>
+      <div
+        className="prospect-board"
+        aria-label="Quadro de acompanhamento"
+        role="region"
+        tabIndex={0}
+      >
+        {Object.entries(stageLabels).map(([stage, label]) => (
+          <ProspectBoardColumn
+            key={userId + search + stage}
+            {...{ userId, search, busy, change, renderCard, dragged, setDragged }}
+            stage={stage as keyof typeof stageLabels}
+            label={label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+function ProspectBoardColumn({
+  userId,
+  search,
+  busy,
+  change,
+  renderCard,
+  dragged,
+  setDragged,
+  stage,
+  label,
+}: {
+  userId: string;
+  search: string;
+  busy: string;
+  stage: keyof typeof stageLabels;
+  label: string;
+  change: (id: string, status: string) => Promise<void>;
+  renderCard: (lead: Lead, drag?: (lead: Lead | null) => void) => React.ReactNode;
+  dragged: Lead | null;
+  setDragged: (lead: Lead | null) => void;
+}) {
+  const [page, setPage] = useState(0);
+  const [over, setOver] = useState(false);
+  const q = useQuery({
+    queryKey: ["prospect-leads", userId, "board", search, stage, page],
+    queryFn: () => prospectHistory({ data: { page, search, status: stage } }),
+    retry: false,
+  });
+  const leads: Lead[] = q.data?.leads ?? [];
+  return (
+    <section
+      className={`prospect-board-column prospect-stage-${stage}${over ? " prospect-board-over" : ""}`}
+      aria-label={`Etapa ${label}`}
+      onDragOver={(e) => {
+        if (dragged && !busy) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        if (
+          dragged &&
+          !busy &&
+          dragged.status !== stage &&
+          e.dataTransfer.getData("text/plain") === dragged.id
+        )
+          void change(dragged.id, stage);
+        setDragged(null);
+      }}
+    >
+      <header>
+        <h3>{label}</h3>
+        <span>
+          {leads.length}
+          {q.data?.hasMore ? "+" : ""} nesta página
+        </span>
+      </header>
+      <div className="prospect-board-cards">
+        {q.isPending ? (
+          <p role="status">Carregando…</p>
+        ) : q.isError ? (
+          <div role="alert">
+            <p>Não foi possível carregar esta etapa.</p>
+            <Button variant="outline" onClick={() => void q.refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : leads.length ? (
+          leads.map((lead) => renderCard(lead, setDragged))
+        ) : (
+          <p className="prospect-board-empty">Nenhum lead nesta página.</p>
+        )}
+      </div>
+      <footer>
+        <Button
+          variant="outline"
+          disabled={!page || q.isFetching || !!busy}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Anterior
+        </Button>
+        <span>Pág. {page + 1}</span>
+        <Button
+          variant="outline"
+          disabled={!q.data?.hasMore || q.isFetching || !!busy}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Próxima
+        </Button>
+      </footer>
+    </section>
   );
 }

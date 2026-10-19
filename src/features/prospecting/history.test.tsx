@@ -30,3 +30,43 @@ it("saves the selected stage and refreshes card text and color from the server",
  await waitFor(()=>expect(document.querySelector('.prospect-lead-compact')).toHaveClass('prospect-stage-won'));
 });
 
+
+it('moves a lead by dragging and loads each column using its server stage filter',async()=>{
+ let status='new';
+ api.history.mockImplementation(async({data})=>({leads:data.status==='all'||data.status===status?[{...lead,status}]:[],hasMore:false}));
+ api.stage.mockImplementation(async({data})=>{status=data.status;return {saved:true};});
+ mount();await screen.findByRole('button',{name:'Ver detalhes de Empresa de exemplo'});
+ fireEvent.click(screen.getByRole('button',{name:'Quadro de etapas'}));
+ const handle=await screen.findByRole('button',{name:'Arrastar Empresa de exemplo'});
+ const transfer={effectAllowed:'',dropEffect:'',setData:vi.fn(),getData:()=>lead.id};
+ fireEvent.dragStart(handle,{dataTransfer:transfer});
+ fireEvent.dragOver(screen.getByRole('region',{name:'Quadro de acompanhamento'}).querySelector('.prospect-stage-negotiating')!,{dataTransfer:transfer});
+ fireEvent.drop(screen.getByRole('region',{name:'Etapa Em negociação'}),{dataTransfer:transfer});
+ await waitFor(()=>expect(api.stage).toHaveBeenCalledWith({data:{id:lead.id,status:'negotiating'}}));
+ await waitFor(()=>expect(within(screen.getByRole('region',{name:'Etapa Em negociação'})).getByRole('button',{name:'Ver detalhes de Empresa de exemplo'})).toBeTruthy());
+ for(const stage of ['new','contacted','negotiating','won','discarded'])expect(api.history).toHaveBeenCalledWith({data:{page:0,search:'',status:stage}});
+});
+it('shows a failed save and keeps the lead in its original column',async()=>{
+ api.history.mockImplementation(async({data})=>({leads:data.status==='all'||data.status==='new'?[lead]:[],hasMore:false}));
+ api.stage.mockRejectedValue(Error('Não foi possível salvar a etapa.'));
+ mount();await screen.findByRole('button',{name:'Ver detalhes de Empresa de exemplo'});
+ fireEvent.click(screen.getByRole('button',{name:'Quadro de etapas'}));
+ const select=await screen.findByLabelText('Etapa de Empresa de exemplo');
+ fireEvent.change(select,{target:{value:'won'}});
+ await screen.findByText('Não foi possível salvar a etapa.');
+ expect(select).toHaveValue('new');
+ expect(within(screen.getByRole('region',{name:'Etapa Novo'})).getByRole('button',{name:'Ver detalhes de Empresa de exemplo'})).toBeTruthy();
+ expect(screen.queryByText('Etapa atualizada para Fechado.')).toBeNull();
+});
+it('paginates columns independently and ignores drops without a matching local drag',async()=>{
+ api.history.mockImplementation(async({data})=>({leads:data.status==='all'||data.status==='new'?[lead]:[],hasMore:data.status==='new'&&data.page===0}));
+ mount();await screen.findByRole('button',{name:'Ver detalhes de Empresa de exemplo'});
+ fireEvent.click(screen.getByRole('button',{name:'Quadro de etapas'}));
+ const column=screen.getByRole('region',{name:'Etapa Novo'});
+ await waitFor(()=>expect(within(column).getByRole('button',{name:'Próxima'})).not.toBeDisabled());
+ fireEvent.click(within(column).getByRole('button',{name:'Próxima'}));
+ await waitFor(()=>expect(api.history).toHaveBeenCalledWith({data:{page:1,search:'',status:'new'}}));
+ expect(within(screen.getByRole('region',{name:'Etapa Fechado'})).getByText('Pág. 1')).toBeTruthy();
+ fireEvent.drop(screen.getByRole('region',{name:'Etapa Fechado'}),{dataTransfer:{getData:()=>lead.id}});
+ expect(api.stage).not.toHaveBeenCalled();
+});
