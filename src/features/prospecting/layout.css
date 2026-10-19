@@ -325,3 +325,13 @@
 .prospect-board-empty { padding:24px 10px; border:1px dashed var(--border); border-radius:9px; text-align:center; font-size:12px; color:var(--muted-foreground); }
 .prospect-board .prospect-lead-open { padding:14px; }
 @container (max-width:480px) { .prospect-board-column { flex-basis:250px; width:250px; } .prospect-crm-toolbar > button { flex:1; } }
+
+.prospect-lead-summary { margin-bottom:24px; min-width:0; }
+.prospect-lead-summary > p { font-size:12px; line-height:1.8; color:var(--muted-foreground); margin-bottom:12px; }
+.prospect-lead-summary dl { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; }
+.prospect-lead-summary dl > div { border:1px solid var(--border); border-top:3px solid var(--lead-color,var(--primary)); background:var(--lead-tint,var(--secondary)); border-radius:10px; padding:15px; min-width:0; }
+.prospect-lead-summary dt { font-size:12px; line-height:1.6; color:var(--muted-foreground); overflow-wrap:anywhere; }
+.prospect-lead-summary dd { font-size:25px; line-height:1.5; font-weight:700; font-variant-numeric:tabular-nums; margin-top:8px; color:var(--lead-color,var(--foreground)); overflow-wrap:anywhere; }
+.prospect-summary-error { padding:14px; border:1px solid var(--border); border-radius:10px; margin-bottom:20px; font-size:13px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+@container (max-width:900px) { .prospect-lead-summary dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@container (max-width:480px) { .prospect-lead-summary dl { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -106,6 +106,7 @@ async function worker(req:Request){const key=(await db('astros_prospect_private?
 const statuses=['new','contacted','negotiating','won','discarded'];
 export async function handler(req:Request){try{
  if(req.method!=='POST')return json({error:'Método indisponível.'},405);if(Number(req.headers.get('content-length')||0)>32768)return json({error:'Pedido muito grande.'},413);const raw=await req.text();if(raw.length>32768)return json({error:'Pedido muito grande.'},413);const body=JSON.parse(raw),action=String(body.action),data=body.data??{};if(action==='worker')return await worker(req);const actor=await user(req);const admin=action.startsWith('admin-');if(admin&&actor['tipo_usuario']!=='admin')throw Error('Acesso administrativo necessário.');
+ if(action==='lead-summary')return json(await db('rpc/astros_prospect_lead_summary','POST',{actor:actor['id']}));
  if(action==='daily-quota')return json(await db('rpc/astros_prospect_daily_quota','POST',{actor:actor['id']}));
  if(action==='cities')return json({cities:await brazilCities(clean(data.state,2).toUpperCase())});
  if(action==='config'||action==='admin-config'){const s=(await db('astros_prospect_settings?id=eq.true'))[0];if(!s)throw Error('Ative o SQL de prospecção.');return json({enabled:s.enabled,unitCents:s.unit_cents,maxQuantity:20,...(admin?{cacheDays:s.cache_days,dailyRequests:s.daily_requests,dailyCalls:s.daily_calls,hasKey:!!(await db('astros_prospect_private?id=eq.true&select=api_key'))[0]?.api_key}:{})});}

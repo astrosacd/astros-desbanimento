@@ -127,3 +127,9 @@ Na Base de empresas, use **Ver entregas por cliente**, o atalho no indicador de 
 **Ver dados entregues** mostra uma projeção explícita do snapshot da entrega, nunca o cadastro atual da empresa: contato, endereço, site, avaliação, evidência da verificação, conteúdo e links publicados que estavam presentes. Dados que não foram armazenados não são reconstruídos. Nome/e-mail do destinatário e etapa do contato são os valores atuais da conta/entrega; a referência da busca e a data original permitem rastreamento. O total da busca é separado do valor por lead, sem inventar uma nova movimentação financeira.
 
 Ativação: execute `supabase/migrations/20261019_prospecting_admin_deliveries.sql` e atualize `astros-prospecting` com o arquivo único. A consulta só lê entregas existentes, verifica admin no servidor, na Edge Function e na RPC service-only e não chama fornecedores, não altera carteira, snapshots, status ou cron. A resposta exclui metadados privados e limita contatos a 20 e e-mails a cinco por snapshot. O acesso do cliente permanece ao próprio histórico; o novo relatório não tem rota de cliente. Verificação SQL: `ASTROS_PGLITE_MODULE=/caminho/@electric-sql/pglite node scripts/check-prospecting-deliveries-sql.cjs`.
+
+### Resumo de etapas dos leads
+
+O resumo de Meus leads usa a consulta somente de leitura `astros_prospect_lead_summary`, limitada à conta autenticada. Total e cinco etapas incluem todas as páginas e não mudam com os filtros da lista. Mover um lead invalida o resumo e as colunas. Falhas exibem indisponibilidade, sem substituir contagens por zero.
+
+Ativação: executar `supabase/migrations/20261019_prospecting_lead_summary.sql` e atualizar a função `astros-prospecting` com `supabase/astros-prospecting.deploy.ts`. Não altera carteira, entregas, snapshots ou a base compartilhada. Validação isolada: `scripts/check-prospecting-lead-summary-sql.cjs`.

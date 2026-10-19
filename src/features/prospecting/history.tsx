@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
+  prospectLeadSummary,
   prospectHistory,
   prospectLeadStatus,
   prospectRequests,
@@ -314,6 +315,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
           </Button>
         )}
       </header>
+      <ProspectLeadSummary userId={userId} />
       <div className="prospect-crm-toolbar" role="group" aria-label="Visualização dos leads">
         <Button
           variant={view === "cards" ? "default" : "outline"}
@@ -715,4 +717,18 @@ function ProspectBoardColumn({
       </footer>
     </section>
   );
+}
+
+function ProspectLeadSummary({ userId }: { userId: string }) {
+  const q = useQuery({ queryKey: ["prospect-leads", userId, "summary"], queryFn: () => prospectLeadSummary(), retry: false });
+  const counts = q.data as ({total:number} & Record<keyof typeof stageLabels,number>) | undefined;
+  if(q.isPending) return <p role="status" className="prospect-help">Conferindo o total de leads…</p>;
+  if(q.isError || !counts || ![counts.total,...Object.keys(stageLabels).map(stage=>counts[stage as keyof typeof stageLabels])].every(n=>Number.isSafeInteger(n)&&n>=0)) return <div className="prospect-summary-error" role="alert"><p>Não foi possível carregar as quantidades de leads.</p><Button variant="outline" onClick={()=>void q.refetch()}>Atualizar quantidades</Button></div>;
+  return <section className="prospect-lead-summary" aria-label="Quantidades de todos os seus leads">
+    <p>Total da sua conta, incluindo todas as páginas e etapas. Os filtros abaixo não alteram este resumo.</p>
+    <dl>
+      <div className="prospect-summary-total"><dt>Total de leads</dt><dd>{counts.total.toLocaleString("pt-BR")}</dd></div>
+      {Object.entries(stageLabels).map(([stage,label])=><div key={stage} className={`prospect-stage-${stage}`}><dt>{label}</dt><dd>{counts[stage as keyof typeof stageLabels].toLocaleString("pt-BR")}</dd></div>)}
+    </dl>
+  </section>;
 }

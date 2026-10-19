@@ -1,8 +1,8 @@
-import { afterEach, it, expect, vi } from "vitest";
+import { beforeEach, afterEach, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, within, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const api = vi.hoisted(() => ({ history: vi.fn(), stage: vi.fn() }));
-vi.mock("./actions", () => ({ prospectHistory: api.history, prospectLeadStatus: api.stage }));
+const api = vi.hoisted(() => ({ history: vi.fn(), stage: vi.fn(), summary: vi.fn() }));
+vi.mock("./actions", () => ({ prospectLeadSummary:api.summary, prospectHistory: api.history, prospectLeadStatus: api.stage }));
 vi.mock("./outreach", () => ({ LeadOutreach: () => <div>Preparar mensagem</div> }));
 import { ProspectHistory } from "./history";
 const lead = { id:"lead-1",status:"new",snapshot:{name:"Empresa de exemplo",address:"Fortaleza, CE",phone:"85999999999",website:"https://example.com",mapsUrl:"https://maps.google.com",websiteStatus:"online",websiteReason:"Página acessível",checkedAt:"2026-10-19T12:00:00Z",rating:4.9,reviews:10} };
@@ -28,6 +28,7 @@ it("saves the selected stage and refreshes card text and color from the server",
  fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('Etapa do contato'),{target:{value:'won'}});
  await waitFor(()=>expect(api.stage).toHaveBeenCalledWith({data:{id:'lead-1',status:'won'}}));
  await waitFor(()=>expect(document.querySelector('.prospect-lead-compact')).toHaveClass('prospect-stage-won'));
+  await waitFor(()=>expect(api.summary.mock.calls.length).toBeGreaterThanOrEqual(2));
 });
 
 
@@ -69,4 +70,20 @@ it('paginates columns independently and ignores drops without a matching local d
  expect(within(screen.getByRole('region',{name:'Etapa Fechado'})).getByText('Pág. 1')).toBeTruthy();
  fireEvent.drop(screen.getByRole('region',{name:'Etapa Fechado'}),{dataTransfer:{getData:()=>lead.id}});
  expect(api.stage).not.toHaveBeenCalled();
+});
+
+beforeEach(()=>{api.summary.mockResolvedValue({total:130,new:100,contacted:10,negotiating:12,won:5,discarded:3});});
+it('shows account totals beyond the current page and preserves the same totals in board view',async()=>{
+ api.history.mockResolvedValue({leads:[lead],hasMore:false});mount();
+ const summary=await screen.findByRole('region',{name:'Quantidades de todos os seus leads'});
+ expect(within(summary).getByText('130')).toBeTruthy();expect(within(summary).getByText('100')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Etapa'),{target:{value:'won'}});
+ expect(within(summary).getByText('130')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Quadro de etapas'}));
+ expect(within(summary).getByText('130')).toBeTruthy();
+});
+it('does not show fabricated zero totals if the summary is unavailable',async()=>{
+ api.summary.mockRejectedValue(Error('Unavailable'));api.history.mockResolvedValue({leads:[],hasMore:false});mount();
+ await screen.findByText('Não foi possível carregar as quantidades de leads.');
+ expect(screen.queryByRole('region',{name:'Quantidades de todos os seus leads'})).toBeNull();
 });
