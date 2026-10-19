@@ -211,9 +211,22 @@ export function companySnapshot(r: Obj, receita = false) {
 }
 async function provider(url: string, options: RequestInit) {
   const r = await fetch(url, { ...options, redirect: "error", signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw Error("CNPJ_PROVIDER");
+  if (!r.ok) {
+    const code =
+      (
+        {
+          400: "request",
+          401: "auth",
+          402: "billing",
+          403: "forbidden",
+          404: "not_found",
+          429: "rate",
+        } as Record<number, string>
+      )[r.status] || (r.status >= 500 ? "outage" : "http");
+    throw Error("CNPJ_" + code);
+  }
   const reader = r.body?.getReader();
-  if (!reader) throw Error("CNPJ_PROVIDER");
+  if (!reader) throw Error("CNPJ_invalid");
   let size = 0,
     result = "";
   const decoder = new TextDecoder();
@@ -223,13 +236,18 @@ async function provider(url: string, options: RequestInit) {
     size += chunk.value.length;
     if (size > 2 * 1024 * 1024) {
       await reader.cancel();
-      throw Error("CNPJ_PROVIDER");
+      throw Error("CNPJ_invalid");
     }
     result += decoder.decode(chunk.value, { stream: true });
   }
   result += decoder.decode();
-  const v = JSON.parse(result);
-  if (!v || typeof v !== "object" || v.error || v.status === "ERROR") throw Error("CNPJ_PROVIDER");
+  let v: Obj;
+  try {
+    v = JSON.parse(result);
+  } catch {
+    throw Error("CNPJ_invalid");
+  }
+  if (!v || typeof v !== "object" || v.error || v.status === "ERROR") throw Error("CNPJ_invalid");
   return v as Obj;
 }
 const integer = (v: unknown, max = 10000) => {
@@ -275,14 +293,29 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
     const p = new URLSearchParams({
       select: action.startsWith("admin-")
         ? "id,operation,criteria,state,quantity,delivered,charged_cents,created_at,user_id,diagnostic,painel_de_desbanimento(nome,email)"
-        : "id,operation,criteria,state,quantity,delivered,charged_cents,created_at",
+        : "id,operation,criteria,state,quantity,delivered,charged_cents,created_at,diagnostic",
       order: "created_at.desc,id.desc",
       limit: "21",
       offset: String(integer(data.page ?? 0) * 20),
     });
     if (!action.startsWith("admin-")) p.set("user_id", "eq." + actor.id);
     const rows = await db("astros_cnpj_requests?" + p);
-    return { requests: rows.slice(0, 20), hasMore: rows.length > 20 };
+    return {
+      requests: rows.slice(0, 20).map((row: Obj) =>
+        action.startsWith("admin-")
+          ? row
+          : (({ diagnostic, ...safe }) => ({
+              ...safe,
+              failureReason:
+                diagnostic === "balance"
+                  ? "balance"
+                  : row.state === "failed"
+                    ? "unavailable"
+                    : null,
+            }))(row),
+      ),
+      hasMore: rows.length > 20,
+    };
   }
   if (!["cnpj-search", "cnpj-enrich", "cnpj-status"].includes(action))
     throw Error("Operação CNPJ indisponível");
@@ -338,7 +371,7 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
           headers: { Accept: "application/json" },
         });
         const enriched = companySnapshot(v, true);
-        if (!enriched || enriched.cnpj !== input.cnpj) throw Error("CNPJ_PROVIDER");
+        if (!enriched || enriched.cnpj !== input.cnpj) throw Error("CNPJ_invalid");
         rows = [
           {
             ...original,
@@ -351,7 +384,7 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
         ];
       } else {
         const key = (await db("astros_cnpj_private?id=eq.true&select=api_key"))[0]?.api_key;
-        if (!key) throw Error("CNPJ_PROVIDER");
+        if (!key) throw Error("CNPJ_invalid");
         const v = await provider(
           "https://api.casadosdados.com.br/" +
             (op === "lookup" ? "v4/cnpj/" + input.cnpj : "v5/cnpj/pesquisa"),
@@ -366,22 +399,38 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
           },
         );
         const found = op === "lookup" ? [v] : v.cnpjs;
-        if (!Array.isArray(found)) throw Error("CNPJ_PROVIDER");
-        if (found.length > 20) throw Error("CNPJ_PROVIDER");
+        if (!Array.isArray(found)) throw Error("CNPJ_invalid");
+        if (found.length > 20) throw Error("CNPJ_invalid");
         rows = found.map((r) => companySnapshot(r)).filter(Boolean) as Obj[];
-        if (rows.length !== found.length) throw Error("CNPJ_PROVIDER");
+        if (rows.length !== found.length) throw Error("CNPJ_invalid");
         rows = rows.filter((r, i, a) => a.findIndex((v) => v.cnpj === r.cnpj) === i);
         if (op === "lookup" && (!rows[0] || rows[0].cnpj !== input.cnpj))
-          throw Error("CNPJ_PROVIDER");
+          throw Error("CNPJ_invalid");
         hasNext =
           op === "search" &&
           (typeof v.total === "number" ? job.page * 20 < v.total : found.length === 20);
       }
-    } catch {
+    } catch (error) {
+      const code = error instanceof Error ? error.message.replace(/^CNPJ_/, "") : "";
+      const diagnostic = [
+        "auth",
+        "billing",
+        "forbidden",
+        "request",
+        "not_found",
+        "rate",
+        "outage",
+        "http",
+        "invalid",
+      ].includes(code)
+        ? code
+        : error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+          ? "timeout"
+          : "connection";
       return db("rpc/astros_cnpj_finish", "POST", {
         actor: actor.id,
         request_id: data.requestId,
-        failure: "provider",
+        failure: diagnostic,
       });
     }
   }

@@ -78,7 +78,7 @@ it("uses a fixed endpoint, refuses redirects and fails without charge on malform
   });
   const r = await handleCnpj("cnpj-search", input, { id: "owner" }, db);
   expect(r.charged_cents).toBe(0);
-  expect(r.failure).toBe("provider");
+  expect(r.failure).toBe("invalid");
   expect(fetch.mock.calls[0][0]).toBe("https://api.casadosdados.com.br/v5/cnpj/pesquisa");
   expect(fetch.mock.calls[0][1].redirect).toBe("error");
 });
@@ -98,4 +98,14 @@ it("derives enrichment CNPJ from the owned record rather than caller supplied CN
       db,
     ),
   ).rejects.toThrow("Lead CNPJ não encontrado");
+});
+
+it.each([[401,"auth"],[402,"billing"],[403,"forbidden"],[429,"rate"],[503,"outage"]])("records only a safe category for HTTP %s",async(status,code)=>{
+ vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response("secret raw provider body",{status})));
+ const db=vi.fn(async(path:string,_method?:string,body?:any)=>{if(path.includes("begin"))return {run:true,fetch:true,page:1};if(path.startsWith("astros_cnpj_private"))return [{api_key:"private-key"}];if(path.includes("finish"))return {state:"failed",charged_cents:0,...body};throw Error(path);});
+ const r=await handleCnpj("cnpj-search",input,{id:"owner"},db);expect(r.failure).toBe(code);expect(JSON.stringify(r)).not.toMatch(/secret|private-key/);
+});
+it("does not expose technical diagnostics in customer history",async()=>{
+ const db=vi.fn().mockResolvedValue([{id,state:"failed",diagnostic:"auth",charged_cents:0}]);
+ const r=await handleCnpj("cnpj-history",{page:0},{id:"owner"},db);expect(r.requests[0]).not.toHaveProperty("diagnostic");expect(r.requests[0].failureReason).toBe("unavailable");
 });

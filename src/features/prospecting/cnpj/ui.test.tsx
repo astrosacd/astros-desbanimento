@@ -27,3 +27,9 @@ it('searches states by name or abbreviation in a bounded list and keeps the save
  expect(screen.queryByLabelText('Pesquisar estado')).toBeNull();
  expect(api.search).not.toHaveBeenCalled();
 });
+it.each(['unavailable','balance'])('shows safe customer feedback for %s without supplier diagnostics',async(reason)=>{
+ api.search.mockResolvedValue({id:'ref',state:'failed',delivered:0,charged_cents:0,failureReason:reason});mount(<CnpjPanel userId="owner"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Consultar um CNPJ'}));await waitFor(()=>expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).not.toBeDisabled());fireEvent.change(screen.getByLabelText('CNPJ numérico (14 dígitos)'),{target:{value:'11222333000181'}});fireEvent.click(screen.getByRole('button',{name:'Conferir consulta CNPJ'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Confirmar consulta'}));
+ await screen.findByText(reason==='balance'?'Saldo insuficiente na carteira':'Não foi possível concluir sua consulta agora');expect(screen.queryByText(/HTTP|Credencial recusada|Fornecedor recusou/)).toBeNull();
+ if(reason==='balance')expect(screen.getByRole('link',{name:'Ir para carteira e recargas'})).toHaveAttribute('href','/carteira');
+});

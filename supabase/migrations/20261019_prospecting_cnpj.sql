@@ -39,7 +39,7 @@ begin
  select * into r from public.astros_cnpj_requests where id=request_id for update;
  if found then
   if r.user_id<>actor or r.operation<>op or r.criteria is distinct from input or r.quantity is distinct from wanted or r.unit_cents is distinct from expected_unit then raise exception 'Referência CNPJ divergente';end if;
-  return jsonb_build_object('run',false,'request',to_jsonb(r)-'user_id'-'diagnostic');
+  return jsonb_build_object('run',false,'request',(to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end)));
  end if;
  select * into s from public.astros_cnpj_settings where id for update;
  if not s.enabled then raise exception 'Busca CNPJ temporariamente indisponível';end if;
@@ -70,7 +70,7 @@ begin
   insert into public.astros_cnpj_calls(request_id,provider) values(request_id,provider_name);
   if op<>'enrich' then update public.astros_cnpj_queries set lease_id=request_id,lease_until=now()+interval '5 minutes' where id=key;end if;
  end if;
- return jsonb_build_object('run',true,'fetch',fetch_needed,'page',coalesce(q.page,1),'request',to_jsonb(r)-'user_id'-'diagnostic');
+ return jsonb_build_object('run',true,'fetch',fetch_needed,'page',coalesce(q.page,1),'request',(to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end)));
 end $$;
 create or replace function public.astros_cnpj_finish(actor uuid,request_id uuid,rows_input jsonb default '[]',has_next boolean default false,failure text default '') returns jsonb language plpgsql security definer set search_path='' as $$
 declare r public.astros_cnpj_requests;q public.astros_cnpj_queries;item jsonb;ids text[];n integer:=0;charge integer:=0;balance numeric;d public.astros_cnpj_deliveries;
@@ -79,14 +79,14 @@ begin
  select recarga into balance from public.painel_de_desbanimento where id=actor for update;
  select * into r from public.astros_cnpj_requests where id=request_id and user_id=actor for update;
  if not found then raise exception 'Consulta CNPJ não encontrada';end if;
- if r.state<>'processing' then return to_jsonb(r)-'user_id'-'diagnostic';end if;
+ if r.state<>'processing' then return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));end if;
  if r.expires_at<=now() then failure:='expired';end if;
  if jsonb_typeof(rows_input)<>'array' or jsonb_array_length(rows_input)>20 then raise exception 'Resposta CNPJ inválida';end if;
  if r.query_id is not null then select * into q from public.astros_cnpj_queries where id=r.query_id for update;end if;
  if failure<>'' then
-  update public.astros_cnpj_requests set state='failed',diagnostic=case when failure in ('expired','provider','invalid') then failure else 'provider' end,completed_at=now() where id=r.id returning * into r;
+  update public.astros_cnpj_requests set state='failed',diagnostic=case when failure in ('expired','provider','invalid','auth','billing','forbidden','request','not_found','rate','outage','http','timeout','connection') then failure else 'provider' end,completed_at=now() where id=r.id returning * into r;
   if q.lease_id=r.id then update public.astros_cnpj_queries set lease_id=null,lease_until=null where id=q.id;end if;
-  return to_jsonb(r)-'user_id'-'diagnostic';
+  return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));
  end if;
  if r.operation='enrich' then
   select * into d from public.astros_cnpj_deliveries where id=r.lead_id and user_id=actor for update;
@@ -112,20 +112,20 @@ begin
    insert into public.astros_cnpj_deliveries(user_id,cnpj,request_id,snapshot,original_snapshot) select actor,b.cnpj,r.id,b.snapshot,b.snapshot from public.astros_cnpj_businesses b where b.cnpj=any(ids);
   end if;
  end if;
- if failure<>'' then update public.astros_cnpj_requests set state='failed',diagnostic='balance',completed_at=now() where id=r.id returning * into r;return to_jsonb(r)-'user_id'-'diagnostic';end if;
+ if failure<>'' then update public.astros_cnpj_requests set state='failed',diagnostic='balance',completed_at=now() where id=r.id returning * into r;return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));end if;
  if charge>0 then
   update public.painel_de_desbanimento set recarga=recarga-charge/100.0 where id=actor;
   insert into public.astros_wallet_movements(user_id,amount_cents,kind,reference) values(actor,-charge,'debit','prospect:cnpj:'||r.id);
  end if;
  update public.astros_cnpj_requests set state='completed',delivered=n,charged_cents=charge,completed_at=now() where id=r.id returning * into r;
- return to_jsonb(r)-'user_id'-'diagnostic';
+ return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));
 end $$;
 create or replace function public.astros_cnpj_status(actor uuid,request_id uuid) returns jsonb language plpgsql security definer set search_path='' as $$
 declare r public.astros_cnpj_requests;begin
  perform public.astros_prospect_actor(actor);
  update public.astros_cnpj_requests set state='failed',diagnostic='expired',completed_at=now() where id=request_id and user_id=actor and state='processing' and expires_at<=now();
  select * into r from public.astros_cnpj_requests where id=request_id and user_id=actor;
- if not found then raise exception 'Consulta CNPJ não encontrada';end if;return to_jsonb(r)-'user_id'-'diagnostic';
+ if not found then raise exception 'Consulta CNPJ não encontrada';end if;return (to_jsonb(r)-'user_id'-'diagnostic'||jsonb_build_object('failureReason',case when r.diagnostic='balance' then 'balance' when r.state='failed' then 'unavailable' else null end));
 end $$;
 create or replace function public.astros_prospect_crm_history(actor uuid,page_number integer default 0,search_text text default '',stage text default 'all',source_filter text default 'all') returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare result jsonb;begin

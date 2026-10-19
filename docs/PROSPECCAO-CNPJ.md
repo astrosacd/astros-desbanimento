@@ -35,3 +35,9 @@ Entrega, débito e movimento de carteira são uma transação atômica com bloqu
 - Com PGlite disponível: `ASTROS_PGLITE_MODULE=/caminho/pglite node scripts/check-prospecting-cnpj-sql.cjs` e `node scripts/check-prospecting-cnpj-finance.cjs` com a mesma variável. Verificam reaplicação, propriedade, idempotência, saldo, cache, falhas, etapas, enriquecimento e classificação financeira.
 
 Fontes do contrato: [Casa dos Dados](https://docs.casadosdados.com.br/) e [ReceitaWS](https://developers.receitaws.com.br/).
+
+## Diagnósticos de consultas
+
+Para instalações anteriores, execute `supabase/migrations/20261019_prospecting_cnpj_diagnostics.sql` e atualize a função `astros-prospecting` com o bundle regenerado. O patch apenas amplia os motivos operacionais e projeta uma categoria pública (`balance` ou `unavailable`); preserva carteira, transações, UUIDs e históricos. Não altera Maps.
+
+Clientes recebem aviso amigável sem nomes de fornecedores ou erros HTTP. Saldo insuficiente na carteira tem CTA de recarga. Apenas o administrador recebe as categorias técnicas: 401 credencial, 402 recusa por cobrança, 403 recurso não autorizado, 400 requisição, 404 consulta/recurso, 429 limite, 5xx servidor, timeout, conexão e formato inesperado. HTTP 403 não comprova falta de saldo. Mensagens brutas, corpos HTTP e chaves nunca são registrados. Registros antigos `provider` continuam genéricos: não podem ser reclassificados sem evidência. Novas tentativas exigem nova confirmação e UUID; não reenviar automaticamente consultas incertas.

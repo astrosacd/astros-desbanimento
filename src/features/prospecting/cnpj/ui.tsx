@@ -44,8 +44,29 @@ type Operation = {
   charged_cents: number;
   created_at: string;
   diagnostic?: string;
+  failureReason?: string;
   painel_de_desbanimento?: { nome: string; email: string };
 };
+export function cnpjDiagnosticLabel(code: string) {
+  const labels: Record<string, string> = {
+    balance: "Saldo insuficiente na carteira do cliente",
+    expired: "Prazo de confirmação encerrado",
+    auth: "Credencial recusada pelo fornecedor (HTTP 401). Confira a chave cadastrada.",
+    billing: "Fornecedor recusou por cobrança (HTTP 402). Confira créditos e plano.",
+    forbidden:
+      "Recurso não autorizado pelo fornecedor (HTTP 403). Confira permissões e plano; isso não confirma falta de saldo.",
+    request: "Requisição recusada pelo fornecedor (HTTP 400). Confira a integração e os filtros.",
+    not_found: "Consulta ou recurso não encontrado no fornecedor (HTTP 404).",
+    rate: "Limite de chamadas do fornecedor atingido (HTTP 429).",
+    outage: "Falha no servidor do fornecedor (HTTP 5xx).",
+    http: "Fornecedor retornou um erro HTTP não classificado.",
+    invalid: "A resposta do fornecedor não corresponde ao formato esperado.",
+    timeout: "Tempo de resposta do fornecedor excedido.",
+    connection: "Não foi possível estabelecer ou concluir a conexão com o fornecedor.",
+    provider: "Fornecedor ou resposta indisponível. Registro antigo sem diagnóstico detalhado.",
+  };
+  return labels[code] || "Motivo técnico não identificado.";
+}
 function useRefresh() {
   const cache = useQueryClient();
   return () =>
@@ -145,9 +166,10 @@ export function CnpjPanel({ userId }: { userId: string }) {
       if (r.state !== "processing") setPending(null);
       await refresh();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Confira esta mesma consulta antes de tentar outra.",
-      );
+      const message = e instanceof Error ? e.message : "Confira esta mesma consulta antes de tentar outra.";
+      const unavailable = ["Limite de consultas CNPJ ao fornecedor atingido", "Busca CNPJ temporariamente indisponível"].includes(message);
+      if (unavailable || message === "Saldo insuficiente. Faça uma recarga") setPending(null);
+      setError(unavailable ? "As consultas estão temporariamente indisponíveis. Tente novamente mais tarde." : message);
     } finally {
       setBusy(false);
       lock.current = false;
@@ -233,8 +255,11 @@ export function CnpjPanel({ userId }: { userId: string }) {
                     label="Estado"
                     placeholder="Selecione o estado"
                     value={form.uf}
-                    options={brazilStates.map(state => ({id:state.id,name:`${state.name} (${state.id})`}))}
-                    onChange={value => update("uf",value)}
+                    options={brazilStates.map((state) => ({
+                      id: state.id,
+                      name: `${state.name} (${state.id})`,
+                    }))}
+                    onChange={(value) => update("uf", value)}
                     disabled={busy || !!pending}
                   />
                   <label>
@@ -341,7 +366,13 @@ export function CnpjPanel({ userId }: { userId: string }) {
               </div>
               <Button
                 type="submit"
-                disabled={busy || !!pending || history.isPending || history.isError || (mode === "search" && !form.uf)}
+                disabled={
+                  busy ||
+                  !!pending ||
+                  history.isPending ||
+                  history.isError ||
+                  (mode === "search" && !form.uf)
+                }
               >
                 Conferir consulta CNPJ
               </Button>
@@ -362,6 +393,11 @@ export function CnpjPanel({ userId }: { userId: string }) {
           {error}
         </p>
       )}
+      {error === "Saldo insuficiente. Faça uma recarga" && (
+        <Button asChild variant="outline">
+          <a href="/carteira">Ir para carteira e recargas</a>
+        </Button>
+      )}
       {pending && (
         <div className="prospect-search-progress">
           <strong>Confirmando consulta CNPJ…</strong>
@@ -379,14 +415,23 @@ export function CnpjPanel({ userId }: { userId: string }) {
           <strong>
             {result.state === "completed"
               ? `${result.delivered} novos leads entregues`
-              : "Consulta não concluída"}
+              : result.failureReason === "balance"
+                ? "Saldo insuficiente na carteira"
+                : "Não foi possível concluir sua consulta agora"}
           </strong>
           <p>
             {result.state === "completed"
               ? `Valor debitado: ${money(result.charged_cents)}. Consulte os contatos em Meus leads. Se não houver novos resultados, amplie os filtros.`
-              : "Nenhum valor foi debitado nesta consulta. Confira o histórico e tente mais tarde."}
+              : result.failureReason === "balance"
+                ? "Seu saldo ficou insuficiente para concluir a entrega. Nenhum valor foi descontado. Faça uma recarga para uma nova consulta."
+                : "Nenhum valor foi descontado da sua carteira. Tente novamente mais tarde."}
           </p>
         </div>
+      )}
+      {result?.state === "failed" && result.failureReason === "balance" && (
+        <Button asChild variant="outline">
+          <a href="/carteira">Ir para carteira e recargas</a>
+        </Button>
       )}
       {c?.installed && <CnpjOperations userId={userId} />}
       <Dialog open={confirm} onOpenChange={setConfirm}>
@@ -482,15 +527,15 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
                 <p>
                   {r.delivered} novos leads · {money(r.charged_cents)}
                 </p>
+                {!admin && r.state === "failed" && (
+                  <p>
+                    {r.failureReason === "balance"
+                      ? "Saldo insuficiente na carteira. Nenhum valor foi descontado."
+                      : "Não foi possível concluir a consulta. Nenhum valor foi descontado. Tente novamente mais tarde."}
+                  </p>
+                )}
                 {admin && r.diagnostic && (
-                  <small>
-                    Motivo:{" "}
-                    {r.diagnostic === "balance"
-                      ? "Saldo insuficiente"
-                      : r.diagnostic === "expired"
-                        ? "Tempo de confirmação encerrado"
-                        : "Fornecedor ou resposta indisponível"}
-                  </small>
+                  <small>Motivo: {cnpjDiagnosticLabel(r.diagnostic)}</small>
                 )}
               </div>
               <details>
