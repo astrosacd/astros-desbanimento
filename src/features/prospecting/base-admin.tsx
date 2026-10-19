@@ -82,59 +82,39 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
       />
     );
   return (
-    <section className="prospect-card">
+    <section className="prospect-card prospect-base-admin">
       <header className="prospect-section-heading">
         <div>
           <span className="eyebrow">CONTROLE DA BASE</span>
-          <h2>Empresas coletadas e entregas</h2>
+          <h2>Base de empresas</h2>
           <p>
-            Veja o que ficou salvo e o que cada conta já recebeu. Esta consulta não consome SerpApi.
+            Consulte as empresas salvas, acompanhe as entregas e confira o que cada cliente já
+            recebeu.
           </p>
         </div>
-        <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
-          <RefreshCw size={16} /> Atualizar base
-        </Button>
+        <div className="prospect-base-actions">
+          <Button
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            <RefreshCw size={16} /> Atualizar base
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDeliveryScope({
+                queryId: "",
+                businessId: "",
+                label: "Todas as entregas",
+                email: filters.email,
+              })
+            }
+          >
+            Ver entregas por cliente
+          </Button>
+        </div>
       </header>
-      <Button
-        variant="outline"
-        className="prospect-delivery-open"
-        onClick={() =>
-          setDeliveryScope({
-            queryId: "",
-            businessId: "",
-            label: "Todas as entregas",
-            email: filters.email,
-          })
-        }
-      >
-        Ver entregas por cliente
-      </Button>
-      <form className="prospect-history-filters" onSubmit={apply}>
-        <label>
-          Nicho ou localização
-          <input
-            className="field"
-            value={search}
-            maxLength={80}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ex.: dentistas ou Fortaleza"
-          />
-        </label>
-        <label>
-          E-mail da conta (opcional)
-          <input
-            type="email"
-            className="field"
-            value={email}
-            maxLength={254}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="E-mail completo do cliente"
-          />
-        </label>
-        <Button type="submit" disabled={query.isFetching}>
-          <Search size={15} /> Consultar base
-        </Button>
-      </form>
       {query.isPending ? (
         <p role="status">Conferindo empresas e entregas…</p>
       ) : query.isError ? (
@@ -159,30 +139,62 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                 <div key={String(label)}>
                   <span>{label}</span>
                   <strong>{accountCount(value)}</strong>
-                  {label === "Entregas para contas" && (
-                    <button
-                      type="button"
-                      className="prospect-metric-link"
-                      onClick={() =>
-                        setDeliveryScope({
-                          queryId: "",
-                          businessId: "",
-                          label: "Todas as entregas",
-                          email: filters.email,
-                        })
-                      }
-                    >
-                      Ver destinatários e empresas
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
-            <p className="prospect-help">
-              Totais de toda a aplicação. Uma empresa pode gerar entregas para contas diferentes;
-              por isso, entregas não devem ser subtraídas do total de empresas. Leitura em{" "}
-              {date(report.asOf)}.
-            </p>
+            <div className="prospect-base-meta">
+              <span>Visão geral da aplicação · Os filtros abaixo não alteram estes totais.</span>
+              <span>Atualizado em {date(report.asOf)}</span>
+            </div>
+            <div className="prospect-base-filter-heading">
+              <h3>Localizar pesquisas</h3>
+              <p>
+                Busque pelo nicho ou local. Informe uma conta para conferir suas entregas e a
+                disponibilidade individual.
+              </p>
+            </div>
+            <form className="prospect-history-filters prospect-base-filters" onSubmit={apply}>
+              <label>
+                Nicho ou localização
+                <input
+                  className="field"
+                  value={search}
+                  maxLength={80}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ex.: dentistas ou Fortaleza"
+                />
+              </label>
+              <label>
+                E-mail da conta (opcional)
+                <input
+                  type="email"
+                  className="field"
+                  value={email}
+                  maxLength={254}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-mail completo do cliente"
+                />
+              </label>
+              <Button type="submit" disabled={query.isFetching}>
+                <Search size={15} /> Consultar base
+              </Button>
+              {(filters.search || filters.email) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("");
+                    setEmail("");
+                    setFilters({ search: "", email: "" });
+                    setPage(0);
+                    setSelected(null);
+                    setBusinessPage(0);
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </form>
             {report.targetRequested && (
               <div className="prospect-notice" role="status">
                 {report.target ? (
@@ -201,7 +213,7 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                 )}
               </div>
             )}
-            <div className="prospect-section-heading mt-6">
+            <div className="prospect-section-heading prospect-base-results-heading">
               <div>
                 <h3>{selected ? "Empresas desta pesquisa" : "Pesquisas e resultados salvos"}</h3>
                 <p>
@@ -271,29 +283,30 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                           </dl>
                         )}
                         <p className="prospect-help">Última coleta salva: {date(q.lastSeen)}</p>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelected(q);
-                            setBusinessPage(0);
-                          }}
-                        >
-                          Ver empresas salvas
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="prospect-query-deliveries"
-                          onClick={() =>
-                            setDeliveryScope({
-                              queryId: q.id,
-                              businessId: "",
-                              label: q.niche + " · " + q.city,
-                              email: filters.email,
-                            })
-                          }
-                        >
-                          Ver entregas desta pesquisa
-                        </Button>
+                        <footer className="prospect-base-query-actions">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelected(q);
+                              setBusinessPage(0);
+                            }}
+                          >
+                            Ver empresas salvas
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setDeliveryScope({
+                                queryId: q.id,
+                                businessId: "",
+                                label: q.niche + " · " + q.city,
+                                email: filters.email,
+                              })
+                            }
+                          >
+                            Ver entregas desta pesquisa
+                          </Button>
+                        </footer>
                       </article>
                     ))}
                   </div>
@@ -393,8 +406,10 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
             <details className="prospect-site-details">
               <summary>Como interpretar estes números</summary>
               <p>
-                A base mostra empresas únicas efetivamente salvas e o histórico de entregas. Não é o
-                total bruto originalmente retornado pelo fornecedor: respostas repetidas, sem
+                Esta consulta não consome SerpApi. Uma empresa pode gerar entregas para contas
+                diferentes; por isso, entregas não devem ser subtraídas do total de empresas. A base
+                mostra empresas únicas efetivamente salvas e o histórico de entregas. Não é o total
+                bruto originalmente retornado pelo fornecedor: respostas repetidas, sem
                 identificação válida ou descartadas não são reconstruídas como novos resultados. Uma
                 empresa pode aparecer em mais de uma pesquisa; os totais por pesquisa não devem ser
                 somados como empresas únicas da aplicação. Os números por conta representam dados

@@ -101,3 +101,158 @@
 .prospect-delivery-original h4{font-weight:600;margin:12px 0 6px}
 @container(max-width:600px){.prospect-delivery-list article{grid-template-columns:minmax(0,1fr)}.prospect-delivery-list footer>button{width:100%;margin-left:0}.prospect-query-deliveries{margin-left:0;width:100%}.prospect-delivery-actions{width:100%}.prospect-delivery-actions>button{flex:1}}
 @media(max-width:600px){.prospect-delivery-detail-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Base administrativa: resumo, consulta e resultados com hierarquia própria. */
+.prospect-base-admin .prospect-base-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.prospect-base-admin > .prospect-section-heading > div:first-child {
+  flex: 1 1 320px;
+}
+.prospect-base-admin .prospect-base-totals {
+  gap: 12px;
+}
+.prospect-base-admin .prospect-base-totals > div {
+  min-height: 112px;
+  gap: 12px;
+  border-top: 3px solid hsl(var(--primary) / 0.35);
+}
+.prospect-base-admin .prospect-base-totals > div:nth-child(2) {
+  border-top-color: #8b5cf6;
+}
+.prospect-base-admin .prospect-base-totals > div:nth-child(3) {
+  border-top-color: #10b981;
+}
+.prospect-base-admin .prospect-base-totals > div:nth-child(4) {
+  border-top-color: #f59e0b;
+}
+.prospect-base-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 20px;
+  margin: 14px 0 28px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.7;
+}
+.prospect-base-filter-heading h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+.prospect-base-filter-heading p {
+  margin: 6px 0 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+}
+.prospect-base-admin .prospect-base-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 14px;
+}
+.prospect-base-admin .prospect-base-filters label {
+  min-width: 0;
+}
+.prospect-base-admin .prospect-base-results-heading {
+  margin-top: 28px;
+}
+.prospect-base-admin .prospect-base-queries {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  align-items: stretch;
+}
+.prospect-base-admin .prospect-base-queries article {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  background: hsl(var(--background));
+}
+.prospect-base-admin .prospect-base-queries article header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.prospect-base-admin .prospect-base-queries article header > svg {
+  flex-shrink: 0;
+  color: hsl(var(--primary));
+}
+.prospect-base-admin .prospect-base-metrics {
+  gap: 18px;
+}
+.prospect-base-admin .prospect-base-metrics dd {
+  margin-top: 4px;
+  font-size: 23px;
+}
+.prospect-base-query-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 18px;
+}
+.prospect-base-query-actions > button {
+  flex: 1 1 200px;
+}
+.prospect-base-admin .prospect-base-businesses article {
+  align-items: start;
+}
+.prospect-base-admin .prospect-base-businesses article > div {
+  min-width: 0;
+}
+.prospect-base-admin .prospect-base-businesses article > div:last-child {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.prospect-base-admin .prospect-base-businesses article button {
+  height: auto;
+  min-height: 40px;
+  white-space: normal;
+  text-align: left;
+}
+.prospect-base-admin > .prospect-site-details {
+  margin-top: 24px;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 18px;
+}
+@container (max-width:850px) {
+  .prospect-base-admin .prospect-base-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width:480px) {
+  .prospect-base-admin .prospect-base-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .prospect-base-admin .prospect-base-totals > div {
+    padding: 14px;
+    min-height: 112px;
+  }
+  .prospect-base-admin .prospect-base-totals span {
+    font-size: 11px;
+  }
+  .prospect-base-admin .prospect-base-filters {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+  .prospect-base-actions {
+    width: 100%;
+  }
+  .prospect-base-actions > button {
+    width: 100%;
+  }
+  .prospect-base-admin .prospect-base-queries article {
+    padding: 16px;
+  }
+  .prospect-base-query-actions > button {
+    width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 40px;
+  }
+}
