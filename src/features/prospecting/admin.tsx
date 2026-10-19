@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { prospectAdminConfig, prospectAdminSave, prospectAdminAccount } from "./actions";
 import { ProspectRequests } from "./history";
 import type { ProspectConfig } from "./types";
+import { accountCount } from "./account-display";
 export function ProspectingAdmin({ adminId }: { adminId: string }) {
   const cache = useQueryClient();
   const query = useQuery({
@@ -237,14 +238,14 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           <header className="prospect-section-heading">
             <div>
               <h2>Consultas disponíveis no fornecedor</h2>
-              <p>Plano e limites sincronizados automaticamente. A cota é compartilhada por toda a aplicação.</p>
+              <p>Dados retornados pela API da SerpApi, sem estimar limites pelo nome do plano. A cota é compartilhada por toda a aplicação.</p>
             </div>
             <Button variant="outline" disabled={busy || !query.data?.hasKey} onClick={consult}>
               <RefreshCw size={16} />
               Consultar cota
             </Button>
           </header>
-          {capacity.isError && <p role="alert" className="error-text">Não foi possível atualizar os limites. Buscas que precisam de nova consulta aguardam uma cota confirmada.</p>}
+          {capacity.isError && <p role="alert" className="error-text">Não foi possível atualizar os limites. Os dados abaixo, quando disponíveis, são da última sincronização confirmada; não representam uma nova consulta. Buscas externas aguardam uma cota atualizada.</p>}
           {account?.syncedAt ? (
             <div className="prospect-quota">
               <div>
@@ -253,21 +254,21 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
               </div>
               <div>
                 <span>Consultas restantes</span>
-                <strong>{account.remaining.toLocaleString("pt-BR")}</strong>
+                <strong>{accountCount(account.remaining)}</strong>
               </div>
               <div>
                 <span>Uso neste mês</span>
-                <strong>{account.used.toLocaleString("pt-BR")}</strong>
+                <strong>{accountCount(account.used)}</strong>
               </div>
-              <div><span>Cota do plano por ciclo</span><strong>{account.monthly.toLocaleString("pt-BR")}</strong></div>
-              <div><span>Limite do fornecedor por hora</span><strong>{account.hourLimit.toLocaleString("pt-BR")}</strong></div>
-              <div><span>Uso informado nesta hora</span><strong>{account.hourUsed.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Cota do plano por ciclo</span><strong>{accountCount(account.monthly)}</strong></div>
+              <div><span>Limite do fornecedor por hora</span><strong>{accountCount(account.hourLimit)}</strong></div>
+              <div><span>Uso informado nesta hora</span><strong>{accountCount(account.hourUsed)}</strong></div>
               <div><span>Renovação informada</span><strong>{account.renewal || "Não informada"}</strong></div>
               <div><span>Última sincronização</span><strong>{new Date(account.syncedAt).toLocaleString("pt-BR")}</strong></div>
               <div><span>Processamento automático</span><strong>{account.workerSeenAt && Date.now()-Date.parse(account.workerSeenAt)<240000?"Ativo":"Verificar ativação"}</strong></div>
             </div>
           ) : (
-            <p className="prospect-help">Aguardando sincronização da conta. Você também pode clicar em Consultar cota.</p>
+            <p className="prospect-help">Limites não informados: aguardando a primeira sincronização confirmada da API. Clique em Consultar cota para atualizar.</p>
           )}
           <p className="prospect-help">Uma consulta pode retornar várias empresas. Cota restante é uma leitura do fornecedor; reservas em andamento também são consideradas antes de novas chamadas. Ao atingir o limite por hora, a busca aguarda na fila. Se a cota acabar, consultas sem entrega são encerradas sem débito. A fila expira após 24 horas. O processamento local mantém até três consultas externas em andamento; o limite do plano é um teto, não uma promessa de velocidade.</p>
           {account?.syncedAt && Date.now()-Date.parse(account.syncedAt)>300000 && <p role="alert" className="prospect-notice">A sincronização da cota está atrasada. Novas consultas externas aguardam uma confirmação atualizada. Confira a integração e o processamento automático.</p>}
