@@ -1,3 +1,4 @@
+import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
 import { LeadOutreach } from "./outreach";
 import { useState } from "react";
@@ -28,15 +29,25 @@ export function ProspectRequests({
   adminId?: string | undefined;
   userId?: string | undefined;
 }) {
+  const [deliveryScope, setDeliveryScope] = useState<DeliveryScope | null>(null);
   const [page, setPage] = useState(0);
   const q = useQuery({
     queryKey: ["prospect-requests", adminId || userId, page],
     queryFn: () =>
       adminId ? prospectAdminRequests({ data: { page } }) : prospectRequests({ data: { page } }),
     retry: false,
-    refetchInterval: 10000,
+    refetchInterval: deliveryScope ? false : 10000,
   });
   const rows: ProspectRequest[] = q.data?.requests ?? [];
+  if (adminId && deliveryScope)
+    return (
+      <ProspectDeliveriesAdmin
+        adminId={adminId}
+        scope={deliveryScope}
+        backLabel="Voltar às buscas"
+        onBack={() => setDeliveryScope(null)}
+      />
+    );
   return (
     <section className="prospect-card">
       <header className="prospect-section-heading">
@@ -77,16 +88,28 @@ export function ProspectRequests({
                 <span className="prospect-badge">
                   {row.state === "completed"
                     ? "Concluída"
-                    : row.state === "queued" ? "Na fila" : row.state === "processing"
-                      ? "Em andamento"
-                      : "Não concluída"}
+                    : row.state === "queued"
+                      ? "Na fila"
+                      : row.state === "processing"
+                        ? "Em andamento"
+                        : "Não concluída"}
                 </span>
                 <p>
                   {row.delivered} de {row.quantity} leads ·{" "}
                   <strong>{money(row.charged_cents)}</strong>
                 </p>
-                {row.state === "queued" && <p>{queueLabels[row.queue_reason || "capacity"] || queueLabels["capacity"]} Nenhum valor foi debitado enquanto aguarda.</p>}
-                {row.state === "failed" && <small>{failureLabels[row.failureReason || "unavailable"] || failureLabels["unavailable"]}</small>}
+                {row.state === "queued" && (
+                  <p>
+                    {queueLabels[row.queue_reason || "capacity"] || queueLabels["capacity"]} Nenhum
+                    valor foi debitado enquanto aguarda.
+                  </p>
+                )}
+                {row.state === "failed" && (
+                  <small>
+                    {failureLabels[row.failureReason || "unavailable"] ||
+                      failureLabels["unavailable"]}
+                  </small>
+                )}
                 {row.state === "completed" && row.delivered === 0 && (
                   <small>Nenhum lead novo entregue nesta tentativa.</small>
                 )}
@@ -97,13 +120,39 @@ export function ProspectRequests({
                       ? "Consulta ao fornecedor não confirmada"
                       : row.diagnostic === "balance"
                         ? "Saldo insuficiente ao concluir"
-                        : row.diagnostic === "quota" ? "Cota de pesquisas do fornecedor esgotada" : row.diagnostic === "paused" ? "Novas buscas pausadas" : row.diagnostic === "account" ? "Conta não disponível" : row.diagnostic === "uncertain" ? "Consulta interrompida; não foi repetida" : row.diagnostic === "expired"
-                          ? "Prazo de processamento encerrado"
-                          : "Verificação não concluída"}
+                        : row.diagnostic === "quota"
+                          ? "Cota de pesquisas do fornecedor esgotada"
+                          : row.diagnostic === "paused"
+                            ? "Novas buscas pausadas"
+                            : row.diagnostic === "account"
+                              ? "Conta não disponível"
+                              : row.diagnostic === "uncertain"
+                                ? "Consulta interrompida; não foi repetida"
+                                : row.diagnostic === "expired"
+                                  ? "Prazo de processamento encerrado"
+                                  : "Verificação não concluída"}
                   </small>
                 )}
               </div>
-              {['queued','processing'].includes(row.state)&&!adminId&&<ProspectCheck id={row.id} onDone={()=>q.refetch()}/>}
+              {["queued", "processing"].includes(row.state) && !adminId && (
+                <ProspectCheck id={row.id} onDone={() => q.refetch()} />
+              )}
+              {adminId && row.delivered > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setDeliveryScope({
+                      queryId: "",
+                      businessId: "",
+                      requestId: row.id,
+                      label: "Busca selecionada",
+                      email: row.painel_de_desbanimento?.email || "",
+                    })
+                  }
+                >
+                  Ver leads desta busca
+                </Button>
+              )}
               <details>
                 <summary>Referência</summary>
                 <code>{row.id}</code>
@@ -268,13 +317,25 @@ export function ProspectHistory({ userId }: { userId: string }) {
                   situação pode mudar.
                 </p>
               </details>
-              {lead.snapshot.siteSummary && <details className="prospect-site-details">
-                <summary>Conteúdo e contatos do site</summary>
-                {lead.snapshot.siteTitle && <p><strong>{lead.snapshot.siteTitle}</strong></p>}
-                <p className="break-words">{lead.snapshot.siteSummary}</p>
-                {!!lead.snapshot.siteEmails?.length && <p className="break-all">E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}</p>}
-                <p>Trecho extraído da página, sem confirmação de vínculo ou validade dos contatos.</p>
-              </details>}
+              {lead.snapshot.siteSummary && (
+                <details className="prospect-site-details">
+                  <summary>Conteúdo e contatos do site</summary>
+                  {lead.snapshot.siteTitle && (
+                    <p>
+                      <strong>{lead.snapshot.siteTitle}</strong>
+                    </p>
+                  )}
+                  <p className="break-words">{lead.snapshot.siteSummary}</p>
+                  {!!lead.snapshot.siteEmails?.length && (
+                    <p className="break-all">
+                      E-mails publicados: {lead.snapshot.siteEmails.join(" · ")}
+                    </p>
+                  )}
+                  <p>
+                    Trecho extraído da página, sem confirmação de vínculo ou validade dos contatos.
+                  </p>
+                </details>
+              )}
               <LeadContacts snapshot={lead.snapshot} />
               <LeadOutreach lead={lead} />
               <label className="prospect-lead-stage">
@@ -317,4 +378,42 @@ export function ProspectHistory({ userId }: { userId: string }) {
   );
 }
 
-function ProspectCheck({id,onDone}:{id:string;onDone:()=>unknown}){const cache=useQueryClient();const [busy,setBusy]=useState(false),[message,setMessage]=useState('');async function check(){setBusy(true);setMessage('');try{const r=await prospectStatus({data:{requestId:id}}) as ProspectRequest;setMessage(r.state==='queued'?'A busca continua na fila, sem débito.':r.state==='processing'?'A busca ainda está em andamento.':r.state==='completed'?`${r.delivered} leads entregues. Valor debitado: ${money(r.charged_cents)}.`:'Busca encerrada sem débito.');await onDone();await Promise.all([cache.invalidateQueries({queryKey:['prospect-leads']}),cache.invalidateQueries({queryKey:['wallet']}),cache.invalidateQueries({queryKey:['prospect-wallet']})]);}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível confirmar.');}finally{setBusy(false);}}return <div><Button variant="outline" disabled={busy} onClick={check}>{busy?'Verificando…':'Verificar busca'}</Button>{message&&<p role="status">{message}</p>}</div>;}
+function ProspectCheck({ id, onDone }: { id: string; onDone: () => unknown }) {
+  const cache = useQueryClient();
+  const [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  async function check() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const r = (await prospectStatus({ data: { requestId: id } })) as ProspectRequest;
+      setMessage(
+        r.state === "queued"
+          ? "A busca continua na fila, sem débito."
+          : r.state === "processing"
+            ? "A busca ainda está em andamento."
+            : r.state === "completed"
+              ? `${r.delivered} leads entregues. Valor debitado: ${money(r.charged_cents)}.`
+              : "Busca encerrada sem débito.",
+      );
+      await onDone();
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: ["prospect-leads"] }),
+        cache.invalidateQueries({ queryKey: ["wallet"] }),
+        cache.invalidateQueries({ queryKey: ["prospect-wallet"] }),
+      ]);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Não foi possível confirmar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div>
+      <Button variant="outline" disabled={busy} onClick={check}>
+        {busy ? "Verificando…" : "Verificar busca"}
+      </Button>
+      {message && <p role="status">{message}</p>}
+    </div>
+  );
+}

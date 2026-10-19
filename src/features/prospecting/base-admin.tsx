@@ -1,3 +1,4 @@
+import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Database, RefreshCw, Search, ArrowLeft } from "lucide-react";
@@ -49,6 +50,7 @@ const date = (value: string | null) =>
     ? new Date(value).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" })
     : "Sem coleta salva";
 export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
+  const [deliveryScope, setDeliveryScope] = useState<DeliveryScope | null>(null);
   const [search, setSearch] = useState(""),
     [email, setEmail] = useState(""),
     [filters, setFilters] = useState({ search: "", email: "" }),
@@ -71,6 +73,14 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
     setSelected(null);
     setBusinessPage(0);
   }
+  if (deliveryScope)
+    return (
+      <ProspectDeliveriesAdmin
+        adminId={adminId}
+        scope={deliveryScope}
+        onBack={() => setDeliveryScope(null)}
+      />
+    );
   return (
     <section className="prospect-card">
       <header className="prospect-section-heading">
@@ -85,6 +95,20 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
           <RefreshCw size={16} /> Atualizar base
         </Button>
       </header>
+      <Button
+        variant="outline"
+        className="prospect-delivery-open"
+        onClick={() =>
+          setDeliveryScope({
+            queryId: "",
+            businessId: "",
+            label: "Todas as entregas",
+            email: filters.email,
+          })
+        }
+      >
+        Ver entregas por cliente
+      </Button>
       <form className="prospect-history-filters" onSubmit={apply}>
         <label>
           Nicho ou localização
@@ -135,6 +159,22 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                 <div key={String(label)}>
                   <span>{label}</span>
                   <strong>{accountCount(value)}</strong>
+                  {label === "Entregas para contas" && (
+                    <button
+                      type="button"
+                      className="prospect-metric-link"
+                      onClick={() =>
+                        setDeliveryScope({
+                          queryId: "",
+                          businessId: "",
+                          label: "Todas as entregas",
+                          email: filters.email,
+                        })
+                      }
+                    >
+                      Ver destinatários e empresas
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -240,6 +280,20 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                         >
                           Ver empresas salvas
                         </Button>
+                        <Button
+                          variant="outline"
+                          className="prospect-query-deliveries"
+                          onClick={() =>
+                            setDeliveryScope({
+                              queryId: q.id,
+                              businessId: "",
+                              label: q.niche + " · " + q.city,
+                              email: filters.email,
+                            })
+                          }
+                        >
+                          Ver entregas desta pesquisa
+                        </Button>
                       </article>
                     ))}
                   </div>
@@ -290,6 +344,19 @@ export function ProspectBaseAdmin({ adminId }: { adminId: string }) {
                             {b.fresh ? "Dentro da validade" : "Dados vencidos"}
                           </span>
                           <p>Entregue a {accountCount(b.deliveries)} conta(s)</p>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setDeliveryScope({
+                                queryId: "",
+                                businessId: b.id,
+                                label: b.name,
+                                email: filters.email,
+                              })
+                            }
+                          >
+                            Ver destinatários desta empresa
+                          </Button>
                           {report.target && (
                             <strong className="prospect-base-account-state">
                               {b.deliveredToAccount

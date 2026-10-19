@@ -75,3 +75,29 @@
 .prospect-daily-blocked{background:#fff8eb;border-color:#ead8b0}
 .prospect-daily-blocked>svg{color:#8b6116}
 .prospect-quota-clock{font-size:clamp(22px,5vw,30px);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.025em;color:#755019;overflow-wrap:anywhere}
+.prospect-delivery-open{margin-bottom:20px}
+.prospect-query-deliveries{margin:10px 0 0 8px}
+.prospect-page .prospect-metric-link{color:var(--primary);text-align:left;text-decoration:underline;text-underline-offset:3px;font-size:12px;line-height:1.6;padding:0;min-height:36px}
+.prospect-delivery-actions{display:flex;flex-wrap:wrap;gap:10px}
+.prospect-delivery-filters{margin-top:22px}
+.prospect-delivery-list{display:grid;gap:16px}
+.prospect-delivery-list article{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;border:1px solid var(--border);border-radius:13px;padding:20px;min-width:0}
+.prospect-delivery-recipient,.prospect-delivery-company{display:flex;align-items:start;gap:12px;min-width:0}
+.prospect-delivery-list svg{flex-shrink:0;color:var(--primary);margin-top:3px}
+.prospect-delivery-list article>div>div{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}
+.prospect-delivery-list h3{font-size:15px;font-weight:650;line-height:1.6}
+.prospect-delivery-list p{font-size:13px;line-height:1.7}
+.prospect-delivery-list span{font-size:12px;line-height:1.7;color:var(--muted-foreground)}
+.prospect-delivery-list footer{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--border);padding-top:16px}
+.prospect-delivery-list footer>button{margin-left:auto}
+.prospect-delivery-list .prospect-badge{margin:0}
+.prospect-delivery-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.prospect-delivery-details p{font-size:13px;line-height:1.8;overflow-wrap:anywhere}
+.prospect-delivery-details small{font-size:11px;line-height:1.8;color:var(--muted-foreground)}
+.prospect-delivery-details h3{font-size:15px;font-weight:650;line-height:1.6;margin-bottom:8px}
+.prospect-delivery-details a{color:var(--primary);overflow-wrap:anywhere}
+.prospect-delivery-details section{min-width:0}
+.prospect-delivery-original{border-top:1px solid var(--border);padding-top:18px}
+.prospect-delivery-original h4{font-weight:600;margin:12px 0 6px}
+@container(max-width:600px){.prospect-delivery-list article{grid-template-columns:minmax(0,1fr)}.prospect-delivery-list footer>button{width:100%;margin-left:0}.prospect-query-deliveries{margin-left:0;width:100%}.prospect-delivery-actions{width:100%}.prospect-delivery-actions>button{flex:1}}
+@media(max-width:600px){.prospect-delivery-detail-grid{grid-template-columns:minmax(0,1fr)}}

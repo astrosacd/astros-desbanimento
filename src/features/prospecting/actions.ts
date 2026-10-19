@@ -87,3 +87,7 @@ export const prospectCities = createServerFn({ method: "POST" })
 
 export const prospectDailyQuota = createServerFn({ method: "GET" })
  .handler(async()=>(await import("./server")).prospectCall("daily-quota"));
+
+export const prospectAdminDeliveries = createServerFn({ method: "POST" })
+ .inputValidator(z.object({email:z.string().trim().max(254).refine(v=>!v||z.string().email().safeParse(v).success,"Informe um e-mail válido."),company:z.string().trim().max(80),queryId:z.string().max(64),businessId:z.string().max(250),requestId:z.string().refine(v=>!v||z.string().uuid().safeParse(v).success,"Informe uma referência de busca válida."),page:z.number().int().min(0).max(10000)}).strict())
+ .handler(async({data})=>(await import("./server")).prospectCall("admin-deliveries",data,true));
