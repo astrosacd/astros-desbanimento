@@ -1,0 +1,36 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {PGlite}=require(process.env.ASTROS_PGLITE_MODULE||'@electric-sql/pglite');
+(async()=>{const db=new PGlite();let checks=0;const sql=f=>fs.readFileSync(path.join(__dirname,'../supabase/migrations/',f),'utf8');
+await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz,raw_app_meta_data jsonb default '{}');create table public.painel_de_desbanimento(id uuid primary key references auth.users(id),tipo_usuario text,recarga numeric default 0);create table public.astros_wallet_movements(id uuid primary key default gen_random_uuid(),user_id uuid,amount_cents bigint,kind text,reference text,created_at timestamptz default now(),unique(kind,reference));`);
+await db.exec(sql('20261018_prospecting.sql'));await db.exec(sql('20261019_prospecting_cnpj.sql'));await db.exec(sql('20261019_prospecting_cnpj.sql'));
+const A='00000000-0000-4000-8000-000000000001',B='00000000-0000-4000-8000-000000000002',ADMIN='00000000-0000-4000-8000-000000000003';
+for(const id of [A,B,ADMIN]){await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);await db.query('insert into painel_de_desbanimento values($1,$2,100)',[id,id===ADMIN?'admin':'cliente']);}
+const call=async(name,params)=>{const placeholders=params.map((_,i)=>'$'+(i+1)).join(',');return (await db.query('select '+name+'('+placeholders+') value',params)).rows[0].value;};
+const config={enabled:true,unitCents:50,enrichEnabled:true,enrichCents:25,dailyRequests:100,dailyCalls:100,minuteCalls:100,cacheDays:7};
+await assert.rejects(()=>call('astros_cnpj_save',[A,JSON.stringify(config),'secret']),/Conta indisponível|admin/i);checks++;
+await call('astros_cnpj_save',[ADMIN,JSON.stringify(config),'private-test-key']);await call('astros_cnpj_save',[ADMIN,JSON.stringify(config),'']);assert.equal((await db.query('select api_key from astros_cnpj_private')).rows[0].api_key,'private-test-key');checks++;
+assert.equal(JSON.stringify(await call('astros_cnpj_config',[A,false])).includes('private-test-key'),false);checks++;
+let serial=10;const id=()=>`00000000-0000-4000-8000-${String(serial++).padStart(12,'0')}`;
+const criteria=JSON.stringify({mode:'search',uf:'CE',city:'fortaleza'});const snapshot={cnpj:'11222333000181',source:'cnpj',name:'Empresa teste',enriched:false};
+const begin=(actor,ref,input=criteria,op='search',wanted=1,price=50)=>call('astros_cnpj_begin',[actor,ref,op,input,wanted,price]);
+const finish=(actor,ref,rows=[],next=false,failure='')=>call('astros_cnpj_finish',[actor,ref,JSON.stringify(rows),next,failure]);
+const r1=id();let r=await begin(A,r1);assert.equal(r.fetch,true);assert.equal((await begin(A,r1)).run,false);checks+=2;
+r=await finish(A,r1,[snapshot]);assert.equal(r.delivered,1);assert.equal(r.charged_cents,50);assert.equal((await finish(A,r1,[snapshot])).charged_cents,50);checks+=3;
+assert.equal(Number((await db.query('select recarga from painel_de_desbanimento where id=$1',[A])).rows[0].recarga),99.5);assert.equal(Number((await db.query('select count(*) n from astros_wallet_movements')).rows[0].n),1);checks+=2;
+await assert.rejects(()=>begin(B,r1),/Referência CNPJ divergente/);await assert.rejects(()=>call('astros_cnpj_status',[B,r1]),/não encontrada/);checks+=2;
+const r2=id();assert.equal((await begin(A,r2)).fetch,false);assert.equal((await finish(A,r2)).delivered,0);checks+=2;
+const r3=id();assert.equal((await begin(B,r3)).fetch,false);assert.equal((await finish(B,r3)).delivered,1);checks+=2;
+const failure=id();await begin(A,failure,JSON.stringify({mode:'search',uf:'SP',city:'santos'}));assert.equal((await finish(A,failure,[],false,'provider')).charged_cents,0);checks++;
+const expiry=id();await begin(A,expiry,JSON.stringify({mode:'search',uf:'SP',city:'campinas'}));await db.query("update astros_cnpj_requests set expires_at=now()-interval '1 second' where id=$1",[expiry]);assert.equal((await finish(A,expiry,[snapshot])).state,'failed');checks++;
+const lead=(await db.query('select * from astros_cnpj_deliveries where user_id=$1',[A])).rows[0];
+await assert.rejects(()=>call('astros_cnpj_stage',[B,lead.id,'won']),/não encontrado/);await call('astros_cnpj_stage',[A,lead.id,'won']);checks+=2;
+const enrich=id(),input=JSON.stringify({leadId:lead.id,cnpj:lead.cnpj});await begin(A,enrich,input,'enrich',1,25);r=await finish(A,enrich,[{...snapshot,enriched:true,phone:'8533334444'}]);assert.equal(r.charged_cents,25);checks++;
+const enriched=(await db.query('select * from astros_cnpj_deliveries where id=$1',[lead.id])).rows[0];assert.equal(enriched.snapshot.enriched,true);assert.equal(enriched.original_snapshot.enriched,false);checks+=2;
+const again=id();assert.equal((await begin(A,again,input,'enrich',1,25)).fetch,false);assert.equal((await finish(A,again)).charged_cents,0);checks+=2;
+const summary=await call('astros_prospect_crm_summary',[A]);assert.equal(summary.total,1);assert.equal(summary.won,1);checks+=2;
+const history=await call('astros_prospect_crm_history',[A,0,'11222','all','cnpj']);assert.equal(history.leads.length,1);assert.equal(history.leads[0].source,'cnpj');assert.equal((await call('astros_prospect_crm_history',[A,0,'','all','maps'])).leads.length,0);checks+=3;
+await db.query('update painel_de_desbanimento set recarga=0 where id=$1',[A]);await assert.rejects(()=>begin(A,id(),JSON.stringify({mode:'lookup',cnpj:'11444777000161'}),'lookup'),/Saldo insuficiente/);checks++;
+const direct=id();assert.equal((await begin(A,direct,JSON.stringify({mode:'lookup',cnpj:lead.cnpj}),'lookup')).fetch,false);assert.equal((await finish(A,direct)).charged_cents,0);checks+=2;
+for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(()=>call('astros_cnpj_config',[A,false]),/permission denied/);await assert.rejects(()=>db.query('select * from astros_cnpj_private'),/permission denied/);await db.exec('reset role');checks+=2;}
+assert.equal(Number((await db.query('select count(*) n from astros_prospect_requests')).rows[0].n),0);checks++;
+console.log(JSON.stringify({checks,sql:'passed',reapplied:true,ownerIsolation:true,idempotency:true,atomicBilling:true,mapsUnchanged:true}));await db.close();})();

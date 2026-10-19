@@ -1,3 +1,4 @@
+import {CnpjEnrichButton} from "./cnpj/ui";
 import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
 import { LeadOutreach } from "./outreach";
@@ -194,16 +195,18 @@ export function ProspectHistory({ userId }: { userId: string }) {
   const [view, setView] = useState<"cards" | "board">("cards");
   const [inspected, setInspected] = useState<Lead | null>(null);
   const saving = useRef(false);
+  const boardCnpj = useRef(new Set<string>());
   const [notice, setNotice] = useState("");
   const [page, setPage] = useState(0),
     [search, setSearch] = useState(""),
     [applied, setApplied] = useState(""),
     [status, setStatus] = useState("all"),
+    [source,setSource] = useState<"all"|"maps"|"cnpj">("all"),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
   const q = useQuery({
-    queryKey: ["prospect-leads", userId, page, applied, status],
-    queryFn: () => prospectHistory({ data: { page, search: applied, status: status as "all" } }),
+    queryKey: ["prospect-leads", userId, page, applied, status, source],
+    queryFn: () => prospectHistory({ data: { page, search: applied, status: status as "all", ...(source === "all" ? {} : {source}) } }),
     retry: false,
     enabled: view === "cards",
   });
@@ -220,7 +223,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
     setBusy(id);
     setError("");
     try {
-      await prospectLeadStatus({ data: { id, status: status as keyof typeof stageLabels } });
+      await prospectLeadStatus({ data: { id, status: status as keyof typeof stageLabels, ...((leads.find(l=>l.id===id)?.snapshot.source === "cnpj" || inspected?.id===id&&inspected.snapshot.source === "cnpj" || boardCnpj.current.has(id)) ? {source:"cnpj" as const} : {}) } });
       setInspected((current) =>
         current?.id === id ? { ...current, status: status as keyof typeof stageLabels } : current,
       );
@@ -234,6 +237,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
     }
   }
   function renderCard(lead: Lead, drag?: (lead: Lead | null) => void) {
+    if(lead.snapshot.source === "cnpj") boardCnpj.current.add(lead.id);
     return (
       <article className={`prospect-lead-compact prospect-stage-${lead.status}`} key={lead.id}>
         {drag && (
@@ -267,6 +271,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
         >
           <span className="prospect-stage-pill">{stageLabels[lead.status]}</span>
           <h3>{lead.snapshot.name}</h3>
+          <small className="prospect-source-label">{lead.snapshot.source === "cnpj" ? "CNPJ · " + lead.snapshot.cnpj : "Google Maps"}</small>
           <span className="prospect-lead-compact-address">
             <MapPin size={14} aria-hidden="true" />
             <span>{lead.snapshot.address || "Endereço não informado"}</span>
@@ -276,7 +281,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
             {lead.snapshot.phone || "Telefone não informado"}
           </span>
           <span className="prospect-lead-compact-footer">
-            <span>{siteLabels[lead.snapshot.websiteStatus]}</span>
+            <span>{lead.snapshot.source === "cnpj" ? "Dados cadastrais" : siteLabels[lead.snapshot.websiteStatus]}</span>
             <strong>
               Ver detalhes <ArrowUpRight size={14} aria-hidden="true" />
             </strong>
@@ -370,6 +375,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
             </select>
           </label>
         )}
+        <label>Origem<select className="field" value={source} onChange={e=>{setSource(e.target.value as typeof source);setPage(0);}}><option value="all">Todas as origens</option><option value="maps">Google Maps</option><option value="cnpj">CNPJ</option></select></label>
         <Button type="submit">Pesquisar</Button>
       </form>
       {error && (
@@ -394,6 +400,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
         <ProspectBoard
           userId={userId}
           search={applied}
+          source={source}
           busy={busy}
           change={change}
           renderCard={renderCard}
@@ -437,7 +444,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                   )}
                 </div>
                 <span className={`prospect-site prospect-site-${lead.snapshot.websiteStatus}`}>
-                  {siteLabels[lead.snapshot.websiteStatus]}
+                  {lead.snapshot.source === "cnpj" ? "Dados cadastrais" : siteLabels[lead.snapshot.websiteStatus]}
                 </span>
                 <p className="prospect-address">
                   <MapPin size={15} />
@@ -457,19 +464,20 @@ export function ProspectHistory({ userId }: { userId: string }) {
                       <ArrowUpRight size={13} />
                     </a>
                   )}
-                  <a href={lead.snapshot.mapsUrl} target="_blank" rel="noopener noreferrer">
+                  {lead.snapshot.mapsUrl && <a href={lead.snapshot.mapsUrl} target="_blank" rel="noopener noreferrer">
                     Ver no Google Maps
                     <ArrowUpRight size={14} />
-                  </a>
+                  </a>}
                 </div>
-                <details className="prospect-site-details">
+                {lead.snapshot.source !== "cnpj" && <details className="prospect-site-details">
                   <summary>Sobre a verificação do site</summary>
                   <p>{lead.snapshot.websiteReason}</p>
                   <p>
                     Verificado em {new Date(lead.snapshot.checkedAt).toLocaleString("pt-BR")}. A
                     situação pode mudar.
                   </p>
-                </details>
+                </details>}
+                {lead.snapshot.source === "cnpj" && <><dl className="prospect-cnpj-data">{[["CNPJ",lead.snapshot.cnpj],["Razão social",lead.snapshot.legalName],["Nome fantasia",lead.snapshot.tradeName],["Atividade",[lead.snapshot.activityCode,lead.snapshot.activity].filter(Boolean).join(" · ")],["Porte",lead.snapshot.size],["Situação cadastral",lead.snapshot.registrationStatus],["Abertura",lead.snapshot.openedAt],["Capital social informado",lead.snapshot.capitalSocial]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||"Não informado"}</dd></div>)}</dl><CnpjEnrichButton key={lead.id} lead={lead}/></>}
                 {lead.snapshot.siteSummary && (
                   <details className="prospect-site-details">
                     <summary>Conteúdo e contatos do site</summary>
@@ -491,7 +499,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
                   </details>
                 )}
                 <LeadContacts snapshot={lead.snapshot} />
-                <LeadOutreach lead={lead} />
+                {lead.snapshot.source !== "cnpj" && <LeadOutreach lead={lead} />}
                 <label className="prospect-lead-stage">
                   Etapa do contato
                   <select
@@ -582,12 +590,14 @@ function ProspectCheck({ id, onDone }: { id: string; onDone: () => unknown }) {
 }
 
 function ProspectBoard({
+  source,
   userId,
   search,
   busy,
   change,
   renderCard,
 }: {
+  source:"all"|"maps"|"cnpj";
   userId: string;
   search: string;
   busy: string;
@@ -642,8 +652,8 @@ function ProspectBoard({
       >
         {Object.entries(stageLabels).map(([stage, label]) => (
           <ProspectBoardColumn
-            key={userId + search + stage}
-            {...{ userId, search, busy, change, renderCard, dragged, setDragged }}
+            key={userId + search + source + stage}
+            {...{ userId, search, busy, change, renderCard, dragged, setDragged,source }}
             stage={stage as keyof typeof stageLabels}
             label={label}
           />
@@ -654,6 +664,7 @@ function ProspectBoard({
   );
 }
 function ProspectBoardColumn({
+  source,
   userId,
   search,
   busy,
@@ -664,6 +675,7 @@ function ProspectBoardColumn({
   stage,
   label,
 }: {
+  source:"all"|"maps"|"cnpj";
   userId: string;
   search: string;
   busy: string;
@@ -677,8 +689,8 @@ function ProspectBoardColumn({
   const [page, setPage] = useState(0);
   const [over, setOver] = useState(false);
   const q = useQuery({
-    queryKey: ["prospect-leads", userId, "board", search, stage, page],
-    queryFn: () => prospectHistory({ data: { page, search, status: stage } }),
+    queryKey: ["prospect-leads", userId, "board", search, stage, page, source],
+    queryFn: () => prospectHistory({ data: { page, search, status: stage, ...(source === "all" ? {} : {source}) } }),
     retry: false,
   });
   const leads: Lead[] = q.data?.leads ?? [];

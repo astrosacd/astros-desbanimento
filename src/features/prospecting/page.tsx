@@ -1,3 +1,4 @@
+import {CnpjPanel} from "./cnpj/ui";
 import {DailyQuotaNotice,type DailyQuota} from "./daily-quota";
 import { brazilStates } from "../../../supabase/functions/astros-prospecting/geography";
 import "./layout.css";
@@ -159,7 +160,7 @@ export function ProspectingPage() {
         <div>
           <span className="eyebrow">ASTROS MAIS / PROSPECÇÃO</span>
           <h1>Encontre sua próxima oportunidade.</h1>
-          <p>Busque empresas por nicho e região e organize seus contatos.</p>
+          <p>Escolha Google Maps ou CNPJ para pesquisar empresas e organizar seus contatos.</p>
         </div>
         <div className="prospect-wallet">
           <Wallet size={20} />
@@ -175,6 +176,7 @@ export function ProspectingPage() {
       <nav className="prospect-tabs" aria-label="Prospecção">
         {[
           ["search", "Buscar empresas"],
+          ["cnpj", "Empresas por CNPJ"],
           ["leads", "Meus leads"],
           ["history", "Histórico de buscas"],
         ].map(([id, label]) => (
@@ -183,6 +185,7 @@ export function ProspectingPage() {
           </button>
         ))}
       </nav>
+      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""}/>}
       {tab === "search" && (
         <div className="prospect-search-layout">
           <section className="prospect-card">

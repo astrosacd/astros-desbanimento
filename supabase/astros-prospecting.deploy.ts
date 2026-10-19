@@ -83,12 +83,408 @@ export function enrichWebsite<T extends {websiteStatus:string;websiteReason:stri
  return {...site,...reading,contacts:[...((site as T & {contacts?:SiteReading['contacts']}).contacts||[]),...reading.contacts].filter((c,i,a)=>a.findIndex(v=>v.url===c.url)===i).slice(0,20),websiteStatus:evidence.status,websiteReason:evidence.status==='online'?'A leitura complementar encontrou conteúdo na página nesta verificação.':evidence.reason};
 }
 
+// Fixed provider endpoints; no customer-supplied URL, key, actor or balance.
+type Db = (path: string, method?: string, body?: unknown) => Promise<any>;
+const cnpjText = (v: unknown, max = 200) =>
+  typeof v === "string"
+    ? v
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .trim()
+        .slice(0, max)
+    : "";
+export function validCnpj(value: unknown) {
+  const v = typeof value === "string" ? value.replace(/[.\/-]/g, "").trim() : "";
+  if (!/^\d{14}$/.test(v) || /^(\d)\1+$/.test(v)) return false;
+  for (const size of [12, 13]) {
+    let sum = 0,
+      weight = size - 7;
+    for (let i = 0; i < size; i++) {
+      sum += Number(v[i]) * weight;
+      weight = weight === 2 ? 9 : weight - 1;
+    }
+    const digit = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (digit !== Number(v[size])) return false;
+  }
+  return true;
+}
+export function cnpjCriteria(v: Obj) {
+  const mode = v.mode === "lookup" ? "lookup" : v.mode === "search" ? "search" : "";
+  if (mode === "lookup") {
+    const cnpj = cnpjText(v.cnpj, 30).replace(/[.\/-]/g, "");
+    if (!validCnpj(cnpj)) throw Error("Informe um CNPJ numérico válido.");
+    return { mode, cnpj };
+  }
+  const uf = cnpjText(v.uf, 2).toUpperCase(),
+    city = cnpjText(v.city, 80).normalize("NFC").toLowerCase().replace(/\s+/g, " "),
+    cnae = cnpjText(v.cnae, 20).replace(/[.\/-]/g, ""),
+    term = cnpjText(v.term, 80);
+  if (
+    !mode ||
+    ![
+      "AC",
+      "AL",
+      "AP",
+      "AM",
+      "BA",
+      "CE",
+      "DF",
+      "ES",
+      "GO",
+      "MA",
+      "MT",
+      "MS",
+      "MG",
+      "PA",
+      "PB",
+      "PR",
+      "PE",
+      "PI",
+      "RJ",
+      "RN",
+      "RS",
+      "RO",
+      "RR",
+      "SC",
+      "SP",
+      "SE",
+      "TO",
+    ].includes(uf) ||
+    city.length < 2 ||
+    (cnae && !/^\d{7}$/.test(cnae))
+  )
+    throw Error("Confira o estado, a cidade e o CNAE.");
+  const size = cnpjText(v.size, 2),
+    status = cnpjText(v.status, 12),
+    from = cnpjText(v.from, 10),
+    until = cnpjText(v.until, 10);
+  if (
+    (size && !["01", "03", "05"].includes(size)) ||
+    (status && !["ATIVA", "BAIXADA", "INAPTA", "SUSPENSA", "NULA"].includes(status)) ||
+    [from, until].some((d) => d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) ||
+    (from && until && from > until)
+  )
+    throw Error("Filtros CNPJ inválidos");
+  return { mode, uf, city, cnae, term, size, status, from, until };
+}
+export function casaBody(c: Obj, page: number) {
+  return {
+    uf: [c.uf],
+    municipio: [c.city],
+    ...(c.cnae ? { codigo_atividade_principal: [c.cnae] } : {}),
+    ...(c.term
+      ? {
+          busca_textual: [
+            { texto: [c.term], tipo_busca: "exata", razao_social: true, nome_fantasia: true },
+          ],
+        }
+      : {}),
+    ...(c.size ? { porte_empresa: { codigos: [c.size] } } : {}),
+    ...(c.status ? { situacao_cadastral: [c.status] } : {}),
+    ...(c.from || c.until
+      ? {
+          data_abertura: {
+            ...(c.from ? { inicio: c.from } : {}),
+            ...(c.until ? { fim: c.until } : {}),
+          },
+        }
+      : {}),
+    limite: 20,
+    pagina: page,
+  };
+}
+export function companySnapshot(r: Obj, receita = false) {
+  const cnpj = cnpjText(r.cnpj, 30).replace(/\D/g, "");
+  if (!validCnpj(cnpj)) return null;
+  const address = receita ? r : r.endereco || {},
+    legalName = cnpjText(receita ? r.nome : r.razao_social),
+    tradeName = cnpjText(receita ? r.fantasia : r.nome_fantasia),
+    name = tradeName || legalName;
+  if (!name) return null;
+  const now = new Date().toISOString(),
+    phones = (
+      Array.isArray(r.telefones) ? r.telefones : typeof r.telefone === "string" ? [r.telefone] : []
+    )
+      .flatMap((v: unknown) => {
+        const raw =
+          typeof v === "string"
+            ? v
+            : v && typeof v === "object"
+              ? String((v as Obj).ddd || "") +
+                String((v as Obj).numero || (v as Obj).telefone || "")
+              : "";
+        return raw
+          .split(/[\/;,]/)
+          .map((p) => p.replace(/\D/g, ""))
+          .filter((p) => /^\d{10,13}$/.test(p));
+      })
+      .slice(0, 4);
+  const emails = (Array.isArray(r.emails) ? r.emails : typeof r.email === "string" ? [r.email] : [])
+    .map((v: unknown) =>
+      cnpjText(
+        typeof v === "string" ? v : v && typeof v === "object" ? (v as Obj).email : "",
+        254,
+      ).toLowerCase(),
+    )
+    .filter((v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+    .slice(0, 5);
+  const contacts = [
+    ...phones.map((phone: string) => ({
+      kind: "phone",
+      label: "Telefone cadastrado",
+      value: phone,
+      url: "tel:" + phone,
+      source: "cnpj",
+    })),
+    ...emails.map((email: string) => ({
+      kind: "email",
+      label: "E-mail cadastrado",
+      value: email,
+      url: "mailto:" + email,
+      source: "cnpj",
+    })),
+  ];
+  const activity = receita ? r.atividade_principal?.[0] : r.atividade_principal || r.cnae_principal;
+  return {
+    id: "cnpj:" + cnpj,
+    source: "cnpj",
+    cnpj,
+    name,
+    legalName,
+    tradeName,
+    address: [
+      address.tipo_logradouro,
+      address.logradouro,
+      address.numero,
+      address.complemento,
+      address.bairro,
+      address.municipio,
+      address.uf,
+      address.cep,
+    ]
+      .map((v) => cnpjText(v, 100))
+      .filter(Boolean)
+      .join(", ")
+      .slice(0, 500),
+    city: cnpjText(address.municipio, 80),
+    region: cnpjText(address.uf, 2),
+    phone: phones[0] || "",
+    contacts,
+    website: "",
+    websiteStatus: "unknown",
+    websiteReason: "O site não é verificado na pesquisa por CNPJ.",
+    checkedAt: now,
+    collectedAt: now,
+    rating: null,
+    reviews: null,
+    mapsUrl: "",
+    activity: cnpjText(
+      typeof activity === "string"
+        ? activity
+        : activity?.descricao || activity?.text || r.descricao_atividade_principal,
+    ),
+    activityCode: cnpjText(activity?.codigo || activity?.code || r.codigo_atividade_principal, 20),
+    size: cnpjText(receita ? r.porte : r.porte_empresa?.descricao),
+    registrationStatus: cnpjText(receita ? r.situacao : r.situacao_cadastral?.situacao_cadastral),
+    openedAt: cnpjText(receita ? r.abertura : r.data_abertura, 20),
+    capitalSocial:
+      typeof r.capital_social === "number" && Number.isFinite(r.capital_social)
+        ? String(r.capital_social)
+        : cnpjText(r.capital_social, 40),
+    enriched: receita,
+  };
+}
+async function provider(url: string, options: RequestInit) {
+  const r = await fetch(url, { ...options, redirect: "error", signal: AbortSignal.timeout(20000) });
+  if (!r.ok) throw Error("CNPJ_PROVIDER");
+  const reader = r.body?.getReader();
+  if (!reader) throw Error("CNPJ_PROVIDER");
+  let size = 0,
+    result = "";
+  const decoder = new TextDecoder();
+  for (;;) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    size += chunk.value.length;
+    if (size > 2 * 1024 * 1024) {
+      await reader.cancel();
+      throw Error("CNPJ_PROVIDER");
+    }
+    result += decoder.decode(chunk.value, { stream: true });
+  }
+  result += decoder.decode();
+  const v = JSON.parse(result);
+  if (!v || typeof v !== "object" || v.error || v.status === "ERROR") throw Error("CNPJ_PROVIDER");
+  return v as Obj;
+}
+const integer = (v: unknown, max = 10000) => {
+  if (typeof v !== "number" || !Number.isSafeInteger(v) || v < 0 || v > max)
+    throw Error("Configuração CNPJ inválida");
+  return v;
+};
+export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) {
+  if (action === "cnpj-config" || action === "admin-cnpj-config")
+    return db("rpc/astros_cnpj_config", "POST", {
+      actor: actor.id,
+      administrator: action.startsWith("admin-"),
+    });
+  if (action === "admin-cnpj-save") {
+    const settings = {
+      enabled: data.enabled === true,
+      unitCents: integer(data.unitCents),
+      enrichEnabled: data.enrichEnabled === true,
+      enrichCents: integer(data.enrichCents),
+      dailyRequests: integer(data.dailyRequests, 100),
+      dailyCalls: integer(data.dailyCalls),
+      minuteCalls: integer(data.minuteCalls, 100),
+      cacheDays: integer(data.cacheDays, 30),
+    };
+    if (
+      Object.entries(settings).some(
+        ([k, v]) =>
+          ["dailyRequests", "dailyCalls", "minuteCalls", "cacheDays"].includes(k) && Number(v) < 1,
+      ) ||
+      typeof data.apiKey !== "string" ||
+      data.apiKey.length > 500 ||
+      /[\u0000-\u001f\u007f]/.test(data.apiKey)
+    )
+      throw Error("Configuração CNPJ inválida");
+    await db("rpc/astros_cnpj_save", "POST", {
+      actor: actor.id,
+      settings,
+      new_key: data.apiKey.trim(),
+    });
+    return { saved: true };
+  }
+  if (action === "cnpj-history" || action === "admin-cnpj-history") {
+    const p = new URLSearchParams({
+      select: action.startsWith("admin-")
+        ? "id,operation,criteria,state,quantity,delivered,charged_cents,created_at,user_id,diagnostic,painel_de_desbanimento(nome,email)"
+        : "id,operation,criteria,state,quantity,delivered,charged_cents,created_at",
+      order: "created_at.desc,id.desc",
+      limit: "21",
+      offset: String(integer(data.page ?? 0) * 20),
+    });
+    if (!action.startsWith("admin-")) p.set("user_id", "eq." + actor.id);
+    const rows = await db("astros_cnpj_requests?" + p);
+    return { requests: rows.slice(0, 20), hasMore: rows.length > 20 };
+  }
+  if (!["cnpj-search", "cnpj-enrich", "cnpj-status"].includes(action))
+    throw Error("Operação CNPJ indisponível");
+  if (
+    typeof data.requestId !== "string" ||
+    !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(data.requestId)
+  )
+    throw Error("Referência CNPJ inválida");
+  if (action === "cnpj-status")
+    return db("rpc/astros_cnpj_status", "POST", { actor: actor.id, request_id: data.requestId });
+  let input: Obj, op: string, wanted: number, original: Obj | undefined;
+  if (action === "cnpj-enrich") {
+    if (
+      typeof data.leadId !== "string" ||
+      !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(data.leadId)
+    )
+      throw Error("Lead CNPJ não encontrado");
+    const row = (
+      await db(
+        "astros_cnpj_deliveries?id=eq." +
+          encodeURIComponent(data.leadId) +
+          "&user_id=eq." +
+          actor.id +
+          "&select=cnpj,snapshot&limit=1",
+      )
+    )[0];
+    if (!row) throw Error("Lead CNPJ não encontrado");
+    input = { leadId: data.leadId, cnpj: row.cnpj };
+    original = row.snapshot;
+    op = "enrich";
+    wanted = 1;
+  } else {
+    input = cnpjCriteria(data);
+    op = input.mode;
+    wanted = op === "lookup" ? 1 : integer(data.quantity, 20);
+    if (!wanted) throw Error("Informe de 1 a 20 empresas.");
+  }
+  const job = await db("rpc/astros_cnpj_begin", "POST", {
+    actor: actor.id,
+    request_id: data.requestId,
+    op,
+    input,
+    wanted,
+    expected_unit: integer(data.expectedUnitCents),
+  });
+  if (!job.run) return job.request;
+  let rows: Obj[] = [],
+    hasNext = false;
+  if (job.fetch) {
+    try {
+      if (op === "enrich") {
+        const v = await provider("https://www.receitaws.com.br/v1/cnpj/" + input.cnpj, {
+          headers: { Accept: "application/json" },
+        });
+        const enriched = companySnapshot(v, true);
+        if (!enriched || enriched.cnpj !== input.cnpj) throw Error("CNPJ_PROVIDER");
+        rows = [
+          {
+            ...original,
+            ...enriched,
+            phone: enriched.phone || original?.phone || "",
+            contacts: [...(enriched.contacts || []), ...(original?.contacts || [])]
+              .filter((c, i, a) => a.findIndex((v) => v.url === c.url) === i)
+              .slice(0, 20),
+          },
+        ];
+      } else {
+        const key = (await db("astros_cnpj_private?id=eq.true&select=api_key"))[0]?.api_key;
+        if (!key) throw Error("CNPJ_PROVIDER");
+        const v = await provider(
+          "https://api.casadosdados.com.br/" +
+            (op === "lookup" ? "v4/cnpj/" + input.cnpj : "v5/cnpj/pesquisa"),
+          {
+            method: op === "lookup" ? "GET" : "POST",
+            headers: {
+              "api-key": key,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            ...(op === "search" ? { body: JSON.stringify(casaBody(input, job.page)) } : {}),
+          },
+        );
+        const found = op === "lookup" ? [v] : v.cnpjs;
+        if (!Array.isArray(found)) throw Error("CNPJ_PROVIDER");
+        if (found.length > 20) throw Error("CNPJ_PROVIDER");
+        rows = found.map((r) => companySnapshot(r)).filter(Boolean) as Obj[];
+        if (rows.length !== found.length) throw Error("CNPJ_PROVIDER");
+        rows = rows.filter((r, i, a) => a.findIndex((v) => v.cnpj === r.cnpj) === i);
+        if (op === "lookup" && (!rows[0] || rows[0].cnpj !== input.cnpj))
+          throw Error("CNPJ_PROVIDER");
+        hasNext =
+          op === "search" &&
+          (typeof v.total === "number" ? job.page * 20 < v.total : found.length === 20);
+      }
+    } catch {
+      return db("rpc/astros_cnpj_finish", "POST", {
+        actor: actor.id,
+        request_id: data.requestId,
+        failure: "provider",
+      });
+    }
+  }
+  return db("rpc/astros_cnpj_finish", "POST", {
+    actor: actor.id,
+    request_id: data.requestId,
+    rows_input: rows,
+    has_next: hasNext,
+  });
+}
+
 declare const Deno:{env:{get:(name:string)=>string|undefined};serve:(handler:(req:Request)=>Promise<Response>)=>void};
 type Obj=Record<string,any>;
 function env(n:string){const v=Deno.env.get(n);if(!v)throw Error('Prospecção ainda não configurada.');return v;}
 const json=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
-const safeMessages=['Conta indisponível','Configuração inválida','Configure a chave antes de ativar','Referência inválida','Referência divergente','Prospecção temporariamente indisponível','Consulte o preço novamente','Busca inválida','Saldo insuficiente. Faça uma recarga','Confira a busca anterior antes de iniciar outra','Limite diário de buscas atingido','Busca não encontrada','Ative o processamento automático de Prospecção'];
+const safeMessages=['Configuração CNPJ inválida', 'Configure a chave CNPJ antes de ativar', 'Referência CNPJ divergente', 'Busca CNPJ temporariamente indisponível', 'Consulte o preço CNPJ novamente', 'Filtros CNPJ inválidos', 'Consulta complementar indisponível', 'Lead CNPJ não encontrado', 'Confira a consulta CNPJ em andamento', 'Limite diário de consultas CNPJ atingido', 'Esta pesquisa CNPJ já está em andamento', 'Limite de consultas CNPJ ao fornecedor atingido', 'Consulta CNPJ não encontrada', 'Resposta CNPJ inválida'].concat(['Conta indisponível','Configuração inválida','Configure a chave antes de ativar','Referência inválida','Referência divergente','Prospecção temporariamente indisponível','Consulte o preço novamente','Busca inválida','Saldo insuficiente. Faça uma recarga','Confira a busca anterior antes de iniciar outra','Limite diário de buscas atingido','Busca não encontrada','Ative o processamento automático de Prospecção']);
 async function db(path:string,method='GET',body?:unknown):Promise<any>{const r=await fetch(env('SUPABASE_URL')+'/rest/v1/'+path,{method,headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:'Bearer '+env('SUPABASE_SERVICE_ROLE_KEY'),'Content-Type':'application/json',Prefer:'return=representation'},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(12000)});const v=await r['json']().catch(()=>null);if(!r['ok'])throw Error(safeMessages.includes(v?.message)?v['message']:'Não foi possível confirmar os dados de prospecção. Confira a ativação do módulo.');return v;}
+// Optional read bridge allows the Maps-only installation to keep working before CNPJ SQL activation.
+async function optionalRpc(name:string,body:unknown){const r=await fetch(env('SUPABASE_URL')+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:'Bearer '+env('SUPABASE_SERVICE_ROLE_KEY'),'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(12000)});const v=await r.json().catch(()=>null);if(!r.ok&&['PGRST202','42883'].includes(v?.code))return null;if(!r.ok||!v)throw Error('Não foi possível confirmar os dados de prospecção.');return v;}
 export function clean(v:unknown,max=200){return typeof v==='string'?v['replace'](/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,max):'';}
 export function canonical(v:unknown){return clean(v,80).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');}
 export function uuid(v:unknown){if(typeof v!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v))throw Error('Referência inválida');return v;}
@@ -106,7 +502,9 @@ async function worker(req:Request){const key=(await db('astros_prospect_private?
 const statuses=['new','contacted','negotiating','won','discarded'];
 export async function handler(req:Request){try{
  if(req.method!=='POST')return json({error:'Método indisponível.'},405);if(Number(req.headers.get('content-length')||0)>32768)return json({error:'Pedido muito grande.'},413);const raw=await req.text();if(raw.length>32768)return json({error:'Pedido muito grande.'},413);const body=JSON.parse(raw),action=String(body.action),data=body.data??{};if(action==='worker')return await worker(req);const actor=await user(req);const admin=action.startsWith('admin-');if(admin&&actor['tipo_usuario']!=='admin')throw Error('Acesso administrativo necessário.');
- if(action==='lead-summary')return json(await db('rpc/astros_prospect_lead_summary','POST',{actor:actor['id']}));
+ if(action==='cnpj-config')return json(await optionalRpc('astros_cnpj_config',{actor:actor['id']})||{installed:false,enabled:false,unitCents:0,enrichEnabled:false,enrichCents:0});
+ if(action.startsWith('cnpj-')||action.startsWith('admin-cnpj-'))return json(await handleCnpj(action,data,actor,db));
+ if(action==='lead-summary')return json(await optionalRpc('astros_prospect_crm_summary',{actor:actor['id']})||await db('rpc/astros_prospect_lead_summary','POST',{actor:actor['id']}));
  if(action==='daily-quota')return json(await db('rpc/astros_prospect_daily_quota','POST',{actor:actor['id']}));
  if(action==='cities')return json({cities:await brazilCities(clean(data.state,2).toUpperCase())});
  if(action==='config'||action==='admin-config'){const s=(await db('astros_prospect_settings?id=eq.true'))[0];if(!s)throw Error('Ative o SQL de prospecção.');return json({enabled:s.enabled,unitCents:s.unit_cents,maxQuantity:20,...(admin?{cacheDays:s.cache_days,dailyRequests:s.daily_requests,dailyCalls:s.daily_calls,hasKey:!!(await db('astros_prospect_private?id=eq.true&select=api_key'))[0]?.api_key}:{})});}
@@ -116,8 +514,8 @@ export async function handler(req:Request){try{
  if(action==='admin-account'){const v=await syncCapacity(data.force===true);if(!v)throw Error('Ative o controle de capacidade.');return json({plan:v.plan,remaining:v.remaining,used:v.used,monthly:v.monthly,hourLimit:v.hour_limit,hourUsed:v.hour_used,renewal:v.renewal,syncedAt:v.synced_at,workerSeenAt:v.worker_seen_at});}
  if(action==='search'){await syncCapacity().catch(()=>{});const c=criteria(data),id=uuid(data.requestId),quantity=count(data.quantity,20);if(!quantity)throw Error('Informe a quantidade.');const begin=await db('rpc/astros_prospect_begin','POST',{actor:actor['id'],request_id:id,criteria_input:c,wanted:quantity,expected_unit:count(data.expectedUnitCents,10000)});if(begin.request?.state!=='queued')return json(begin.request);const job=await db('rpc/astros_prospect_claim','POST',{request_id:id});if(job)await dispatchJob(job);return json(await db('rpc/astros_prospect_status','POST',{actor:actor['id'],request_id:id}));}
  if(action==='request-status')return json(await db('rpc/astros_prospect_status','POST',{actor:actor['id'],request_id:uuid(data.requestId)}));
- if(action==='history'){const page=count(data.page??0,10000),search=clean(data.search,80);if(!/^[\p{L}\p{N} @._+\-]*$/u.test(search))throw Error('Use letras ou números na pesquisa.');const p=new URLSearchParams({user_id:'eq.'+actor['id'],select:'id,snapshot,status,created_at,request_id',order:'created_at.desc,id.desc',limit:'21',offset:String(page*20)});if(search)p.set('snapshot->>name','ilike.*'+search+'*');if(data.status&&data.status!=='all'){if(!statuses.includes(data.status))throw Error('Filtro inválido.');p.set('status','eq.'+data.status);}const rows=await db('astros_prospect_deliveries?'+p);return json({leads:rows.slice(0,20),hasMore:rows.length>20});}
- if(action==='lead-status'){if(!statuses.includes(data.status))throw Error('Situação inválida.');const rows=await db(`astros_prospect_deliveries?id=eq.${uuid(data.id)}&user_id=eq.${actor['id']}`,'PATCH',{status:data.status});if(rows.length!==1)throw Error('Lead não encontrado na sua conta.');return json({saved:true});}
+ if(action==='history'){const combined=await optionalRpc('astros_prospect_crm_history',{actor:actor['id'],page_number:count(data.page??0,10000),search_text:clean(data.search,80),stage:data.status||'all',source_filter:data.source||'all'});if(combined)return json(combined);if(data.source==='cnpj')return json({leads:[],hasMore:false});const page=count(data.page??0,10000),search=clean(data.search,80);if(!/^[\p{L}\p{N} @._+\-]*$/u.test(search))throw Error('Use letras ou números na pesquisa.');const p=new URLSearchParams({user_id:'eq.'+actor['id'],select:'id,snapshot,status,created_at,request_id',order:'created_at.desc,id.desc',limit:'21',offset:String(page*20)});if(search)p.set('snapshot->>name','ilike.*'+search+'*');if(data.status&&data.status!=='all'){if(!statuses.includes(data.status))throw Error('Filtro inválido.');p.set('status','eq.'+data.status);}const rows=await db('astros_prospect_deliveries?'+p);return json({leads:rows.slice(0,20),hasMore:rows.length>20});}
+ if(action==='lead-status'){if(data.source==='cnpj'){await db('rpc/astros_cnpj_stage','POST',{actor:actor['id'],lead_id:uuid(data.id),stage:data.status});return json({saved:true});}if(!statuses.includes(data.status))throw Error('Situação inválida.');const rows=await db(`astros_prospect_deliveries?id=eq.${uuid(data.id)}&user_id=eq.${actor['id']}`,'PATCH',{status:data.status});if(rows.length!==1)throw Error('Lead não encontrado na sua conta.');return json({saved:true});}
  if(action==='requests'||action==='admin-requests'){const p=new URLSearchParams({select:admin?'id,quantity,unit_cents,state,delivered,charged_cents,created_at,completed_at,criteria,queue_reason,next_attempt_at,diagnostic,painel_de_desbanimento(nome,email)':'id,quantity,unit_cents,state,delivered,charged_cents,created_at,completed_at,criteria,queue_reason,next_attempt_at,diagnostic',order:'created_at.desc,id.desc',limit:'21',offset:String(count(data.page??0,10000)*20)});if(!admin)p.set('user_id','eq.'+actor['id']);const rows=await db('astros_prospect_requests?'+p);return json({requests:rows.slice(0,20).map((row:Obj)=>admin?row:{...row,diagnostic:undefined,failureReason:row['state']==='failed'?({'quota':'capacity','balance':'balance','expired':'expired','paused':'paused'} as Record<string,string>)[row['diagnostic']]||'unavailable':null}),hasMore:rows.length>20});}
  return json({error:'Operação indisponível.'},400);
  }catch(e){return json({error:e instanceof SyntaxError?'Resposta não confirmada. Tente consultar a mesma tentativa.':e instanceof Error?e.message:'Não foi possível concluir a operação.'},400);}}

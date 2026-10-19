@@ -1,3 +1,4 @@
+import {CnpjAdmin} from "./cnpj/ui";
 import { ProspectBaseAdmin } from "./base-admin";
 import "./layout.css";
 import { useEffect, useState, type FormEvent } from "react";
@@ -97,17 +98,19 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           ["capacity", "Cotas e processamento"],
           ["requests", "Buscas dos clientes"],
           ["base", "Base de empresas"],
+          ["cnpj", "Empresas por CNPJ"],
         ].map(([id, label]) => (
           <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             {label}
           </button>
         ))}
       </nav>
+      {tab === "cnpj" && <CnpjAdmin adminId={adminId}/>}
       <div hidden={tab !== "settings"}>
         <section className="prospect-card">
           <header className="prospect-section-heading">
             <div>
-              <h2>Configuração da prospecção</h2>
+              <h2>Configuração Google Maps</h2>
               <p>A chave fica privada. Os clientes não têm acesso à API do fornecedor.</p>
             </div>
             <KeyRound size={22} />

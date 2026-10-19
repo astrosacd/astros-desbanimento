@@ -29,13 +29,15 @@ export type Lead = {
   request_id: string;
   snapshot: {
     id: string;
+    source?: "cnpj" | "maps";
+    cnpj?: string; legalName?:string; tradeName?:string; activity?:string; activityCode?:string; size?:string; registrationStatus?:string; openedAt?:string; capitalSocial?:string; enriched?:boolean;
     name: string;
     address: string;
     phone: string;
     website: string;
     websiteStatus: keyof typeof siteLabels;
     websiteReason: string;
-    contacts?: {kind:string;label:string;value:string;url:string;source:"site"|"maps"}[];
+    contacts?: {kind:string;label:string;value:string;url:string;source:"site"|"maps"|"cnpj"}[];
     siteTitle?: string;
     siteSummary?: string;
     siteEmails?: string[];
@@ -71,6 +73,8 @@ export function exportLeads(leads: Lead[]) {
   };
   const rows = [
     [
+      "Origem",
+      "CNPJ",
       "Nome",
       "Telefone",
       "Endereço",
@@ -84,6 +88,8 @@ export function exportLeads(leads: Lead[]) {
       "Outros contatos publicados",
     ],
     ...leads.map((l) => [
+      l.snapshot.source === "cnpj" ? "CNPJ" : "Google Maps",
+      l.snapshot.cnpj || "",
       l.snapshot.name,
       l.snapshot.phone,
       l.snapshot.address,
@@ -94,7 +100,7 @@ export function exportLeads(leads: Lead[]) {
       stageLabels[l.status],
       (l.snapshot.siteEmails ?? []).join("; "),
       l.snapshot.siteSummary ?? "",
-      (l.snapshot.contacts ?? []).map(c=>`${c.label}: ${c.value} (${c.source === "site" ? "site da empresa" : "Google Maps"})`).join("; "),
+      (l.snapshot.contacts ?? []).map(c=>`${c.label}: ${c.value} (${c.source === "cnpj" ? "cadastro CNPJ" : c.source === "site" ? "site da empresa" : "Google Maps"})`).join("; "),
     ]),
   ];
   const url = URL.createObjectURL(

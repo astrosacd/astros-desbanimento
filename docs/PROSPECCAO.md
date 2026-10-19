@@ -133,3 +133,7 @@ Ativação: execute `supabase/migrations/20261019_prospecting_admin_deliveries.s
 O resumo de Meus leads usa a consulta somente de leitura `astros_prospect_lead_summary`, limitada à conta autenticada. Total e cinco etapas incluem todas as páginas e não mudam com os filtros da lista. Mover um lead invalida o resumo e as colunas. Falhas exibem indisponibilidade, sem substituir contagens por zero.
 
 Ativação: executar `supabase/migrations/20261019_prospecting_lead_summary.sql` e atualizar a função `astros-prospecting` com `supabase/astros-prospecting.deploy.ts`. Não altera carteira, entregas, snapshots ou a base compartilhada. Validação isolada: `scripts/check-prospecting-lead-summary-sql.cjs`.
+
+## Empresas por CNPJ
+
+Modalidade adicional, independente das cotas e da fila Maps, com carteira e CRM compartilhados. Consulte [PROSPECCAO-CNPJ.md](PROSPECCAO-CNPJ.md) para ativação, configuração, cobrança e limites.

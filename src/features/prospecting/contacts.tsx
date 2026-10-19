@@ -14,7 +14,7 @@ export function LeadContacts({ snapshot }: { snapshot: Lead["snapshot"] }) {
   return <section className="prospect-contacts" aria-label="Outros contatos publicados">
     <h4>Outros contatos publicados</h4>
     <div>{safe.map(c => <a key={c.url} href={c.url} target={c.url.startsWith("https:")?"_blank":undefined} rel="noopener noreferrer">
-      <span><strong>{c.label}</strong><span>{c.value}</span><small>Origem: {c.source === "maps" ? "Google Maps" : "site da empresa"}</small></span><ExternalLink size={14}/>
+      <span><strong>{c.label}</strong><span>{c.value}</span><small>Origem: {c.source === "cnpj" ? "cadastro CNPJ" : c.source === "maps" ? "Google Maps" : "site da empresa"}</small></span><ExternalLink size={14}/>
     </a>)}</div>
     <p>Links publicados na fonte consultada. O vínculo, a disponibilidade e o atendimento não foram confirmados.</p>
   </section>;
