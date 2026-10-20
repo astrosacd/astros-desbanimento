@@ -1,3 +1,4 @@
+import {PwaInstallButton} from "@/features/pwa/provider";
 import {clearNavigationSession} from '@/features/panel/navigation-session';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
@@ -51,5 +52,5 @@ export function Entrance({ mode, passwordUpdated = false }: { mode: Mode; passwo
  {mode === 'login' && <Link className="entrance-forgot" to="/recuperar-senha">Esqueci minha senha</Link>}
  {error && <p role="alert" className="error-text">{error}</p>}{message && <p role="status" className="notice entrance-notice">{message}</p>}
  <Button type="submit" className="w-full mt-6 min-h-11" disabled={busy || (mode === 'reset' && !token)}>{busy ? 'Aguarde…' : mode === 'login' ? 'Entrar no painel' : mode === 'cadastro' ? 'Criar minha conta' : mode === 'recuperacao' ? 'Enviar link de recuperação' : 'Salvar nova senha'}{!busy && <ArrowRight size={17}/>}</Button></form>
- <div className="entrance-links">{mode === 'login' ? <>Ainda não tem conta? <Link to="/cadastro">Cadastre-se</Link></> : <Link to="/login">Voltar para o login</Link>}{mode === 'recuperacao' && <Link to="/cadastro">Criar uma conta</Link>}</div><div className="entrance-bottom"><ShieldCheck size={14}/><span>Sua conta, seu acesso.</span><span className="entrance-footer-dot" aria-hidden="true">·</span><Link to="/termos">Termos de uso</Link></div></section></main>;
+ <div className="entrance-links">{mode === 'login' ? <>Ainda não tem conta? <Link to="/cadastro">Cadastre-se</Link></> : <Link to="/login">Voltar para o login</Link>}{mode === 'recuperacao' && <Link to="/cadastro">Criar uma conta</Link>}</div>{mode === 'login' && <PwaInstallButton entry/>}<div className="entrance-bottom"><ShieldCheck size={14}/><span>Sua conta, seu acesso.</span><span className="entrance-footer-dot" aria-hidden="true">·</span><Link to="/termos">Termos de uso</Link></div></section></main>;
 }

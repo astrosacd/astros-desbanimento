@@ -1,3 +1,4 @@
+import {PwaProvider} from "@/features/pwa/provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -93,6 +94,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Astros Mais • Serviços e carteira" },
       { name: "description", content: "Acesse seus serviços, acompanhe solicitações e gerencie sua carteira na Astros Mais." },
+      { name: "theme-color", content: "#171c27" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Astros Mais" },
       { name: "author", content: "Astros Comunicação Digital" },
       { property: "og:title", content: "Astros Mais • Serviços e carteira" },
       { property: "og:description", content: "Acesse seus serviços, acompanhe solicitações e gerencie sua carteira na Astros Mais." },
@@ -105,6 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "apple-touch-icon", href: "/pwa/apple-touch-icon.png" },
       { rel: "icon", href: "/brand/astros-symbol.png", type: "image/png" },
       { rel: "preload", href: "/fonts/manrope.woff", as: "font", type: "font/woff", crossOrigin: "anonymous" },
     ],
@@ -136,7 +141,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <ClientRouteFrame identity={client}/>
+      <PwaProvider><ClientRouteFrame identity={client}/></PwaProvider>
     </QueryClientProvider>
   );
 }

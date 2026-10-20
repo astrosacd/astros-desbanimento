@@ -6,8 +6,30 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// The wrapper forwards these options to Nitro; keep public PWA controls revalidated.
+const pwaNitroOptions = {
+  ...(process.env["ASTROS_DEPLOY_TARGET"] === "vps" ? { preset: "node-server" } : {}),
+  routeRules: {
+    "/astros-sw.js": {
+      headers: {
+        "cache-control": "no-store, max-age=0",
+        "service-worker-allowed": "/",
+        "content-type": "application/javascript; charset=utf-8",
+      },
+    },
+    "/pwa/config.json": { headers: { "cache-control": "no-store, max-age=0" } },
+    "/manifest.webmanifest": {
+      headers: {
+        "cache-control": "no-cache, max-age=0",
+        "content-type": "application/manifest+json; charset=utf-8",
+      },
+    },
+    "/pwa/offline.html": { headers: { "cache-control": "no-cache, max-age=0" } },
+  },
+};
+
 export default defineConfig({
-  ...(process.env['ASTROS_DEPLOY_TARGET'] === "vps" ? { nitro: { preset: "node-server" } } : {}),
+  nitro: pwaNitroOptions,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

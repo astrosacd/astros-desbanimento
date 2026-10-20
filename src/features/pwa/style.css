@@ -1,0 +1,130 @@
+.pwa-install-entry {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.pwa-install-entry span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pwa-public-install {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  font-size: 13px;
+  color: inherit;
+  min-height: 44px;
+  cursor: pointer;
+  white-space: normal;
+}
+.pwa-install-dialog {
+  --background: #fff;
+  --foreground: #172330;
+  --border: #dfe5ed;
+  --input: #dfe5ed;
+  --primary: #087b89;
+  --primary-foreground: #fff;
+  --muted-foreground: #526174;
+  --accent: #f3f7fa;
+  --accent-foreground: #172330;
+  --ring: #087b89;
+  background: #fff;
+  color: #172330;
+  border-color: #dfe5ed;
+}
+.pwa-install-dialog [data-slot="dialog-description"],
+.pwa-install-dialog p {
+  color: #526174;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.pwa-app-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.pwa-app-mark img {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+.pwa-install-details {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  background: #f3f7fa;
+  border: 1px solid #e2e9ef;
+  border-radius: 12px;
+  min-width: 0;
+}
+.pwa-install-details svg {
+  flex-shrink: 0;
+  color: #087b89;
+  margin-top: 3px;
+}
+.pwa-install-help {
+  padding: 16px;
+  background: #f3f7fa;
+  border: 1px solid #e2e9ef;
+  border-radius: 12px;
+  line-height: 1.8;
+  font-size: 13px;
+}
+.pwa-install-help ol {
+  padding-left: 20px;
+  list-style: decimal;
+  margin-block: 10px;
+}
+.pwa-install-help small {
+  display: block;
+  color: #526174;
+  font-size: 12px;
+  margin-top: 10px;
+}
+.pwa-install-action {
+  white-space: normal;
+  min-height: 44px;
+  height: auto;
+}
+.pwa-install-dialog > button {
+  white-space: normal;
+  min-height: 44px;
+  height: auto;
+}
+.pwa-install-feedback {
+  padding: 12px;
+  border: 1px solid #b4dce0;
+  background: #f0fafb;
+  border-radius: 10px;
+}
+.pwa-connection-notice {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #fff5df;
+  color: #754e10;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.pwa-connection-notice svg {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .pwa-install-dialog {
+    padding: 22px;
+  }
+  .pwa-install-details,
+  .pwa-install-help {
+    padding: 13px;
+  }
+}
