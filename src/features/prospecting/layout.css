@@ -434,3 +434,8 @@
 
 .cnpj-audit-dialog { --background:#f5f7fb; --foreground:#13213a; --card:#fff; --card-foreground:#13213a; --secondary:#eef2f8; --muted-foreground:#526678; --border:#dbe3ed; --input:#dbe3ed; --primary:#087e8b; --primary-foreground:#fff; background:var(--background); color:var(--foreground); }
 .cnpj-audit-dialog .field { background:var(--card); color:var(--foreground); border-color:var(--border); }
+
+.cnpj-result-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:16px; }
+.cnpj-result-actions span { flex:1 1 200px; color:var(--muted-foreground); font-size:13px; line-height:1.7; }
+.prospect-lead-destination { min-width:0; scroll-margin-top:90px; }
+@media(max-width:480px) { .cnpj-result-actions { align-items:stretch; } .cnpj-result-actions button { width:100%; min-height:44px; } }

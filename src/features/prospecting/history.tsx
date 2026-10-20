@@ -193,9 +193,9 @@ export function ProspectRequests({
     </section>
   );
 }
-export function ProspectHistory({ userId }: { userId: string }) {
+export function ProspectHistory({ userId, initialView = "cards", initialSource = "all" }: { userId: string; initialView?: "cards"|"board"; initialSource?: "all"|"maps"|"cnpj" }) {
   const cache = useQueryClient();
-  const [view, setView] = useState<"cards" | "board">("cards");
+  const [view, setView] = useState<"cards" | "board">(initialView);
   const [inspected, setInspected] = useState<Lead | null>(null);
   const saving = useRef(false);
   const boardCnpj = useRef(new Set<string>());
@@ -204,7 +204,7 @@ export function ProspectHistory({ userId }: { userId: string }) {
     [search, setSearch] = useState(""),
     [applied, setApplied] = useState(""),
     [status, setStatus] = useState("all"),
-    [source,setSource] = useState<"all"|"maps"|"cnpj">("all"),
+    [source,setSource] = useState<"all"|"maps"|"cnpj">(initialSource),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
   const q = useQuery({

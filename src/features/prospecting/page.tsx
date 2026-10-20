@@ -28,6 +28,8 @@ const countries = getCountries()
   .map((code) => ({ id: code, name: names.of(code) || code, iso: code }))
   .sort((a, b) => (a.id === "BR" ? -1 : b.id === "BR" ? 1 : a.name.localeCompare(b.name, "pt-BR")));
 export function ProspectingPage() {
+  const [cnpjLeadEntry,setCnpjLeadEntry]=useState(false);
+  const leadSection=useRef<HTMLElement>(null);
   const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
   const { client } = useRouteContext({ from: "__root__" });
   const cache = useQueryClient();
@@ -73,6 +75,12 @@ export function ProspectingPage() {
   useEffect(() => {
     if (pending) progress.current?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
   }, [pending]);
+  useEffect(() => {
+    if (tab === "leads") {
+      leadSection.current?.scrollIntoView?.({ block: "start", behavior: "auto" });
+      leadSection.current?.focus({ preventScroll: true });
+    }
+  }, [tab]);
   const lock = useRef(false);
   const c = config.data as ProspectConfig | undefined;
   const cityOptions = useQuery({queryKey:["prospect-cities",client?.id,stateCode],queryFn:()=>prospectCities({data:{state:stateCode}}),enabled:country==="BR"&&!!stateCode,staleTime:86400000,retry:false});
@@ -183,13 +191,13 @@ export function ProspectingPage() {
           ["leads", "Meus leads"],
           ["history", "Histórico de buscas"],
         ].map(([id, label]) => (
-          <button key={id} type="button" aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
+          <button key={id} type="button" aria-label={label} aria-pressed={tab === id} onClick={() => {if(id === "leads")setCnpjLeadEntry(false);setTab(id!);}}>
             <span>{label}</span>
             <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Google Maps e CNPJ · consultas"}[id!]}</small>
           </button>
         ))}
       </nav>
-      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
+      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""} onLeads={()=>{setCnpjLeadEntry(true);setTab("leads");}} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
       {tab === "search" && (
         <div className="prospect-search-layout">
           <section className="prospect-card">
@@ -348,7 +356,7 @@ export function ProspectingPage() {
                   )}
                   <Button
                     variant="outline"
-                    onClick={() => setTab(result.delivered ? "leads" : "history")}
+                    onClick={() => {setCnpjLeadEntry(false);setTab(result.delivered ? "leads" : "history");}}
                   >
                     {result.delivered ? "Ver meus leads" : "Ver histórico"}
                   </Button>
@@ -390,7 +398,7 @@ export function ProspectingPage() {
           </aside>
         </div>
       )}
-      {tab === "leads" && <ProspectHistory userId={client?.id || ""} />}{" "}
+      {tab === "leads" && <section ref={leadSection} tabIndex={-1} aria-label="Seus leads" className="prospect-lead-destination"><ProspectHistory userId={client?.id || ""} initialView={cnpjLeadEntry?"board":"cards"} initialSource={cnpjLeadEntry?"cnpj":"all"} /></section>}{" "}
       {tab === "history" && <ProspectActivityHistory userId={client?.id} initialSource={historySource}/>}
       <Dialog
         open={confirm}

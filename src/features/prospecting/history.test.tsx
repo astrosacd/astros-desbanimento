@@ -101,3 +101,9 @@ it('uses side arrows to navigate the board and disables each arrow at its bounda
  board.scrollLeft=1100;fireEvent.scroll(board);
  expect(next).toBeDisabled();expect(screen.getByRole('button',{name:'Mover quadro para a esquerda'})).not.toBeDisabled();
 });
+it('opens the CNPJ destination directly in the stage board',async()=>{
+ api.history.mockResolvedValue({leads:[],hasMore:false});
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><ProspectHistory userId="owner" initialView="board" initialSource="cnpj"/></QueryClientProvider>);
+ expect(screen.getByRole('button',{name:'Quadro de etapas'})).toHaveAttribute('aria-pressed','true');
+ await waitFor(()=>expect(api.history).toHaveBeenCalledWith({data:expect.objectContaining({source:'cnpj'})}));
+});

@@ -113,3 +113,6 @@ Empresas da pesquisa representam a base atual vinculada aos seus critérios; atu
 A ação exige `requireAdmin` no servidor, tipo admin verificado na Edge e `astros_prospect_actor(actor,true)` no SQL. A RPC e a função de projeção são exclusivas do service role; clientes não acessam a base ou entregas alheias. A resposta projeta apenas campos empresariais conhecidos, nunca chaves, respostas brutas ou documentos pessoais de sócios.
 
 Validação: `npx tsc --noEmit`, testes de Prospecção (incluindo navegação/filtro/paginação e ausência de refresh no admin), e `ASTROS_PGLITE_MODULE=/caminho/pglite node scripts/check-prospecting-cnpj-sql.cjs` para reaplicação, cache legado/esgotado, campos na entrega, débito idempotente e isolamento administrativo.
+
+### Ir para os leads após a consulta
+Ao concluir uma pesquisa ou consulta direta CNPJ, o botão **Ver meus leads** abre a aba Meus leads no **Quadro de etapas**, com origem CNPJ. A tela rola até o quadro e recebe foco, inclusive no celular. A consulta não é repetida; é apenas navegação para os registros da própria conta. As opções Cartões e demais filtros permanecem disponíveis. Sem alterações de SQL, função ou cobrança.

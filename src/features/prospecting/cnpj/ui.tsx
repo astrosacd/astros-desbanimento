@@ -82,7 +82,7 @@ function useRefresh() {
       ),
     );
 }
-export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>void }) {
+export function CnpjPanel({ userId,onHistory,onLeads }: { userId: string;onHistory?:()=>void;onLeads?:()=>void }) {
   const {query:config,blocked:dailyBlocked} = useCnpjQuota(userId);
   const c = config.data as Config | undefined;
   const history = useQuery({
@@ -441,6 +441,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
                 ? "Seu saldo ficou insuficiente para concluir a entrega. Nenhum valor foi descontado. Faça uma recarga para uma nova consulta."
                 : "Nenhum valor foi descontado da sua carteira. Tente novamente mais tarde."}
           </p>
+          {result.state === "completed" && onLeads && <div className="cnpj-result-actions"><Button type="button" onClick={onLeads}>Ver meus leads</Button><span>Abra os contatos no quadro de etapas para organizar sua abordagem.</span></div>}
         </div>
       )}
       {result?.state === "failed" && result.failureReason === "balance" && (

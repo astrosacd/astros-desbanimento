@@ -65,3 +65,9 @@ it('shows server quota and blocks both search modes before dispatch',async()=>{
  expect(screen.getByRole('button',{name:'Conferir consulta CNPJ'})).toBeDisabled();
  expect(api.search).not.toHaveBeenCalled();
 });
+it('offers a direct action to the leads after successful CNPJ delivery without a second query',async()=>{
+ const onLeads=vi.fn();api.search.mockResolvedValue({id:'ref',state:'completed',delivered:1,charged_cents:50});
+ mount(<CnpjPanel userId="owner" onLeads={onLeads}/>);await submitLookup();
+ fireEvent.click(await screen.findByRole('button',{name:'Ver meus leads'}));
+ expect(onLeads).toHaveBeenCalledOnce();expect(api.search).toHaveBeenCalledOnce();
+});
