@@ -1,3 +1,4 @@
+import { SearchActivity } from "./search-activity";
 import {CnpjPanel} from "./cnpj/ui";
 import {DailyQuotaNotice,type DailyQuota} from "./daily-quota";
 import { brazilStates } from "../../../supabase/functions/astros-prospecting/geography";
@@ -313,6 +314,7 @@ export function ProspectingPage() {
                     <span>{result?.state === "queued" ? "Sua solicitação aguarda processamento." : "Estamos preparando seus resultados. Isso pode levar alguns instantes."}</span>
                   </div>
                 </div>
+                {!error && result?.state !== "queued" && <SearchActivity requestId={pending} />}
                 <p>
                   {result?.state === "queued" ? queueLabels[result.queue_reason || "capacity"] || queueLabels["capacity"] : "A busca pode levar alguns instantes. Não é necessário enviar novamente."}
                   {" "}Atualizamos esta tela automaticamente. Uma busca já registrada continua no servidor mesmo se você sair; acompanhe em Histórico de buscas ao voltar. Não envie novamente.
