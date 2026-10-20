@@ -545,7 +545,7 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
         if (!key) throw Error("CNPJ_invalid");
         const v = await provider(
           "https://api.casadosdados.com.br/" +
-            (op === "lookup" ? "v4/cnpj/" + input.cnpj : "v5/cnpj/pesquisa"),
+            (op === "lookup" ? "v4/cnpj/" + input.cnpj : "v5/cnpj/pesquisa?tipo_resultado=completo"),
           {
             method: op === "lookup" ? "GET" : "POST",
             headers: {

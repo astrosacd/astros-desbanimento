@@ -27,7 +27,7 @@ it('prepares CNPJ outreach with the company name without claiming a Google sourc
  render(<LeadOutreach lead={cnpj}/>);fireEvent.click(screen.getByText('Preparar abordagem'));
  expect(screen.getByRole('link',{name:'Conversar no WhatsApp'})).toHaveAttribute('href',whatsappLink(cnpj.snapshot.phone,leadMessage(cnpj.snapshot)));
 });
-it('allows copying CNPJ text without inventing a WhatsApp link for a missing phone',()=>{
+it('hides outreach when the CNPJ has no phone',()=>{
  render(<LeadOutreach lead={{...lead,snapshot:{...lead.snapshot,source:'cnpj',phone:''}}}/>);
- fireEvent.click(screen.getByText('Preparar abordagem'));expect(screen.queryByRole('link',{name:'Conversar no WhatsApp'})).toBeNull();expect(screen.getByRole('button',{name:'Copiar mensagem'})).not.toBeDisabled();
+ expect(screen.queryByText('Preparar abordagem')).toBeNull();expect(screen.queryByRole('button',{name:'Copiar mensagem'})).toBeNull();
 });

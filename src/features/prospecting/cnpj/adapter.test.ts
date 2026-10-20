@@ -79,7 +79,7 @@ it("uses a fixed endpoint, refuses redirects and fails without charge on malform
   const r = await handleCnpj("cnpj-search", input, { id: "owner" }, db);
   expect(r.charged_cents).toBe(0);
   expect(r.failure).toBe("invalid");
-  expect(fetch.mock.calls[0][0]).toBe("https://api.casadosdados.com.br/v5/cnpj/pesquisa");
+  expect(fetch.mock.calls[0][0]).toBe("https://api.casadosdados.com.br/v5/cnpj/pesquisa?tipo_resultado=completo");
   expect(fetch.mock.calls[0][1].redirect).toBe("error");
 });
 it("derives enrichment CNPJ from the owned record rather than caller supplied CNPJ", async () => {
@@ -131,4 +131,18 @@ it('rejects client balance reads before retrieving provider credentials',async()
 it('reads bounded business contact arrays, pairs DDD once and excludes partner contacts',()=>{
  const r=companySnapshot({cnpj:'11222333000181',razao_social:'Empresa',contatos:[{telefones:[{ddd:85,numero_telefone:933334444},{ddd:85,numero:'85933334444'}],emails:[{endereco:'EMPRESA@example.test'}]}],situacao_cadastral:{situacao_cadastral:{descricao:'ATIVA'}},quadro_societario:[{telefone:'11999999999',email:'partner@example.test'}]})!;
  expect(r.phone).toBe('85933334444');expect(r.contacts.map(c=>c.value)).toEqual(['85933334444','empresa@example.test']);expect(r.registrationStatus).toBe('ATIVA');expect(JSON.stringify(r)).not.toMatch(/partner|11999999999/);
+});
+it("delivers available phone on the initial complete search with one provider request", async () => {
+ const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({total:1,cnpjs:[{cnpj:'11222333000181',razao_social:'Empresa exemplo',contato:{telefone:[{ddd:'85',numero:'933334444'}]}}]})));
+ vi.stubGlobal('fetch',fetch);
+ const db = vi.fn(async (path:string,_method?:string,body?:any) => {
+  if(path.includes('begin')) return {run:true,fetch:true,page:1};
+  if(path.startsWith('astros_cnpj_private')) return [{api_key:'private'}];
+  if(path.includes('finish')) {expect(body.rows_input[0].phone).toBe('85933334444');return {state:'completed',delivered:1};}
+  throw Error(path);
+ });
+ const result=await handleCnpj('cnpj-search',input,{id:'owner'},db);
+ expect(result.state).toBe('completed');
+ expect(fetch).toHaveBeenCalledTimes(1);
+ expect(fetch.mock.calls[0][0]).toBe('https://api.casadosdados.com.br/v5/cnpj/pesquisa?tipo_resultado=completo');
 });

@@ -81,3 +81,7 @@ Para instalação existente, executar somente `supabase/migrations/20261019_pros
 ## Preparar abordagem
 
 O cartão CNPJ usa o mesmo componente de abordagem do Google Maps, com o nome da empresa na sugestão. A sugestão CNPJ não afirma que a empresa foi encontrada no Google. A mensagem editada é usada tanto na cópia quanto no link `wa.me`. Telefone inválido ou ausente não gera link; não inventamos número nem confirmamos WhatsApp/titularidade. Preparar, copiar e abrir não mudam a etapa do CRM, não consomem cota e não fazem consultas ao fornecedor. Layout responsivo existente compartilhado.
+
+
+### Contatos na pesquisa inicial
+A pesquisa v5 solicita `tipo_resultado=completo` na mesma requisição. O padrão do fornecedor é `simples`; a resposta completa permite projetar os contatos disponíveis sem um lookup adicional por empresa. Não há garantia de telefone em todo cadastro. Snapshots antigos não são enriquecidos automaticamente; uma atualização explícita continua sujeita à cota. A preparação de abordagem só é exibida quando o lead possui telefone.

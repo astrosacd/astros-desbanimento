@@ -27,6 +27,7 @@ export function LeadOutreach({ lead }: { lead: Lead }) {
       setFeedback("Não foi possível copiar. Selecione o texto acima e copie manualmente.");
     }
   }
+  if (!lead.snapshot.phone?.trim()) return null;
   return (
     <details className="prospect-outreach">
       <summary><MessageCircle size={16} /> Preparar abordagem</summary>
