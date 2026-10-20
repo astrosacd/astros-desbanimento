@@ -1,3 +1,5 @@
+import { SearchActivity } from "../search-activity";
+import { LoaderCircle } from "lucide-react";
 import {useCnpjQuota,CnpjQuotaNotice} from "./quota";
 import {cnpjRejection, cnpjMissingRequest} from "./errors";
 import {displayCnpj} from "./details";
@@ -404,8 +406,15 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
         </Button>
       )}
       {pending && (
-        <div className="prospect-search-progress">
-          <strong>Confirmando consulta CNPJ…</strong>
+        <div className="prospect-search-progress" aria-busy="true">
+          <div className="prospect-search-progress-heading" role="status">
+            <span className="prospect-search-progress-icon" aria-hidden="true"><LoaderCircle size={25} /></span>
+            <div>
+              <strong>Confirmando consulta CNPJ…</strong>
+              <span>Estamos preparando seus resultados. A tela atualiza automaticamente.</span>
+            </div>
+          </div>
+          {!error && <SearchActivity requestId={pending} source="cnpj" />}
           <p>
             Acompanhamos esta mesma tentativa automaticamente. Não envie novamente. A cobrança
             acontece junto com a entrega; sem entrega, não há débito.
