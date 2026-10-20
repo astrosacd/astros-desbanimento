@@ -110,3 +110,10 @@ export const cnpjAdminHistory = createServerFn({method:"POST"}).inputValidator(z
 export const cnpjRefresh = createServerFn({method:"POST"}).inputValidator(z.object({requestId:z.string().uuid(),leadId:z.string().uuid()}).strict()).handler(async({data})=>(await import("./server")).prospectCall("cnpj-refresh",data));
 
 export const cnpjAdminBalance = createServerFn({method:"GET"}).handler(async()=>(await import("./server")).prospectCall("admin-cnpj-balance",{},true));
+
+export const cnpjAdminAudit = createServerFn({method:"POST"}).inputValidator(z.object({
+ view:z.enum(["businesses","deliveries"]),search:z.string().trim().max(80),
+ email:z.string().trim().max(254).refine(v=>!v||z.string().email().safeParse(v).success,"Informe um e-mail válido."),
+ queryId:z.string().max(64),requestId:z.string().refine(v=>!v||z.string().uuid().safeParse(v).success,"Referência inválida."),
+ page:z.number().int().min(0).max(10000)
+}).strict()).handler(async({data})=>(await import("./server")).prospectCall(data.view==="businesses"?"admin-cnpj-base":"admin-cnpj-deliveries",data,true));

@@ -1,3 +1,4 @@
+import {CnpjAudit} from "./cnpj/audit";
 import {CnpjCapacity} from "./cnpj/capacity";
 import {CnpjAdmin} from "./cnpj/ui";
 import { ProspectBaseAdmin } from "./base-admin";
@@ -12,6 +13,7 @@ import type { ProspectConfig } from "./types";
 import { accountCount } from "./account-display";
 export function ProspectingAdmin({ adminId }: { adminId: string }) {
   const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
+  const [baseSource,setBaseSource]=useState<"maps"|"cnpj">("maps");
   const [capacitySource,setCapacitySource]=useState<"maps"|"cnpj">("maps");
   const cache = useQueryClient();
   const query = useQuery({
@@ -304,7 +306,7 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
           </a>
         </section>
       </div>
-      {tab === "base" && <ProspectBaseAdmin adminId={adminId} />}
+      {tab === "base" && <div><div className="cnpj-audit-actions" role="group" aria-label="Origem da base de empresas"><Button variant={baseSource==="maps"?"default":"outline"} onClick={()=>setBaseSource("maps")}>Google Maps</Button><Button variant={baseSource==="cnpj"?"default":"outline"} onClick={()=>setBaseSource("cnpj")}>CNPJ</Button></div>{baseSource==="maps"?<ProspectBaseAdmin adminId={adminId}/>:<CnpjAudit adminId={adminId}/>}</div>}
       {tab === "requests" && <ProspectActivityHistory adminId={adminId} initialSource={historySource}/>}{" "}
       {error && (
         <p role="alert" className="error-text">

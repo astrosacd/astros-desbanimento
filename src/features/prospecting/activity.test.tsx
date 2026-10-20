@@ -1,10 +1,19 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {render,screen,fireEvent,cleanup} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
-const api=vi.hoisted(()=>({maps:vi.fn(),adminMaps:vi.fn(),cnpj:vi.fn(),adminCnpj:vi.fn()}));
-vi.mock('./actions',()=>({prospectRequests:api.maps,prospectAdminRequests:api.adminMaps,cnpjHistory:api.cnpj,cnpjAdminHistory:api.adminCnpj}));
+const api=vi.hoisted(()=>({maps:vi.fn(),adminMaps:vi.fn(),cnpj:vi.fn(),adminCnpj:vi.fn(),audit:vi.fn()}));
+vi.mock('./actions',()=>({prospectRequests:api.maps,prospectAdminRequests:api.adminMaps,cnpjHistory:api.cnpj,cnpjAdminHistory:api.adminCnpj,cnpjAdminAudit:api.audit}));
 import {ProspectActivityHistory} from './activity';
 function mount(admin=false,source:'all'|'cnpj'='all'){render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><ProspectActivityHistory {...(admin?{adminId:'admin'}:{userId:'owner'})} initialSource={source}/></QueryClientProvider>);}
 beforeEach(()=>{api.maps.mockResolvedValue({requests:[],hasMore:false});api.adminMaps.mockResolvedValue({requests:[],hasMore:false});api.cnpj.mockResolvedValue({requests:[{id:'test-reference',operation:'lookup',criteria:{cnpj:'11222333000181'},state:'completed',delivered:1,charged_cents:50,created_at:'2026-10-19T12:00:00Z'}],hasMore:false});api.adminCnpj.mockResolvedValue({requests:[],hasMore:false});});afterEach(()=>{cleanup();vi.resetAllMocks();});
 it('shows Maps and CNPJ in the common customer history and filters by modality',async()=>{mount();expect(await screen.findByRole('heading',{name:'Buscas Google Maps'})).toBeTruthy();expect(await screen.findByText('11.222.333/0001-81')).toBeTruthy();expect(screen.getByRole('heading',{name:'Histórico de consultas CNPJ'})).toBeTruthy();expect(api.adminMaps).not.toHaveBeenCalled();expect(api.adminCnpj).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'CNPJ',exact:true}));expect(screen.queryByRole('heading',{name:'Buscas Google Maps'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Google Maps',exact:true}));expect(screen.queryByRole('heading',{name:'Histórico de consultas CNPJ'})).toBeNull();expect(screen.getByRole('heading',{name:'Buscas Google Maps'})).toBeTruthy();});
 it('opens the CNPJ shortcut directly and uses administrative reads only in the admin view',async()=>{mount(true,'cnpj');expect(await screen.findByText('Nenhuma consulta CNPJ registrada.')).toBeTruthy();expect(screen.getByRole('button',{name:'CNPJ',exact:true})).toHaveAttribute('aria-pressed','true');expect(api.adminCnpj).toHaveBeenCalledWith({data:{page:0}});expect(api.cnpj).not.toHaveBeenCalled();expect(api.adminMaps).not.toHaveBeenCalled();});
+
+it('opens the selected CNPJ research companies from admin history',async()=>{
+ api.adminCnpj.mockResolvedValue({requests:[{id:'00000000-0000-4000-8000-000000000010',operation:'search',criteria:{city:'Fortaleza',uf:'CE'},state:'completed',delivered:1,charged_cents:50,created_at:'2026-10-20T12:00:00Z'}],hasMore:false});
+ api.audit.mockResolvedValue({items:[],total:0,hasMore:false});mount(true,'cnpj');
+ fireEvent.click(await screen.findByRole('button',{name:'Ver empresas desta pesquisa'}));
+ await screen.findByText('Nenhum registro encontrado para estes filtros.');
+ expect(api.audit).toHaveBeenCalledWith({data:expect.objectContaining({requestId:'00000000-0000-4000-8000-000000000010',view:'businesses'})});
+ expect(api.cnpj).not.toHaveBeenCalled();
+});

@@ -207,6 +207,12 @@ const cnpjBoolean = (v: any) =>
       ? /^(sim|true)$/i.test(v)
       : null;
 export function companySnapshot(r: Obj, receita = false) {
+  // Some full responses wrap the business fields. Only merge an object for the same CNPJ.
+  if (!receita && r.completo && typeof r.completo === "object" && !Array.isArray(r.completo)) {
+    const full = r.completo;
+    if (full.cnpj && String(full.cnpj).replace(/\D/g, "") !== String(r.cnpj).replace(/\D/g, "")) return null;
+    r = { ...r, ...full, cnpj: r.cnpj };
+  }
   const cnpj = cnpjText(r.cnpj, 30).replace(/\D/g, "");
   if (!validCnpj(cnpj)) return null;
   const address = receita ? r : r.endereco || r,
@@ -259,7 +265,7 @@ export function companySnapshot(r: Obj, receita = false) {
       readPhone(root["telefone_" + n], root["ddd_" + n] ?? root.ddd);
       readPhone(root["telefone" + n], root["ddd" + n] ?? root.ddd);
     }
-    for (const key of ["email", "emails", "correio_eletronico"]) readEmail(root[key]);
+    for (const key of ["email", "emails", "correio_eletronico", "contato_email"]) readEmail(root[key]);
   }
   const phones = [...new Set(phoneValues)].slice(0, 5);
   const emails = [...new Set(emailValues)].slice(0, 5);
@@ -356,7 +362,7 @@ export function companySnapshot(r: Obj, receita = false) {
     meiSince: cnpjText(mei?.data_opcao || mei?.data_inicio, 40),
     simplesSince: cnpjText(simples?.data_opcao || simples?.data_inicio, 40),
     providerUpdatedAt: cnpjText(r.atualizado_em || r.ultima_atualizacao || r.atualizado, 40),
-    dataVersion: 3,
+    dataVersion: 4,
     openedAt: cnpjText(receita ? r.abertura : r.data_abertura, 20),
     capitalSocial:
       typeof r.capital_social === "number" && Number.isFinite(r.capital_social)
@@ -480,6 +486,17 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
       );
     }
   }
+  if (action === "admin-cnpj-base" || action === "admin-cnpj-deliveries") {
+    if (actor.tipo_usuario !== "admin") throw Error("Acesso administrativo necessário.");
+    const search = cnpjText(data.search, 80), email = cnpjText(data.email, 254).toLowerCase();
+    const query = cnpjText(data.queryId, 64), request = cnpjText(data.requestId, 36);
+    if (request && !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(request)) throw Error("Referência CNPJ inválida");
+    return db("rpc/astros_cnpj_admin_audit", "POST", {
+      actor: actor.id, view_mode: action === "admin-cnpj-base" ? "businesses" : "deliveries",
+      search_text: search, account_email: email, query_key: query,
+      request_key: request || null, page_number: integer(data.page ?? 0),
+    });
+  }
   if (action === "admin-cnpj-save") {
     const settings = {
       enabled: data.enabled === true,
@@ -511,7 +528,7 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
   if (action === "cnpj-history" || action === "admin-cnpj-history") {
     const p = new URLSearchParams({
       select: action.startsWith("admin-")
-        ? "id,operation,criteria,state,quantity,delivered,charged_cents,created_at,user_id,diagnostic,painel_de_desbanimento(nome,email)"
+        ? "id,query_id,operation,criteria,state,quantity,delivered,charged_cents,created_at,user_id,diagnostic,painel_de_desbanimento(nome,email)"
         : "id,operation,criteria,state,quantity,delivered,charged_cents,created_at,diagnostic",
       order: "created_at.desc,id.desc",
       limit: "21",
@@ -643,6 +660,10 @@ export async function handleCnpj(action: string, data: Obj, actor: Obj, db: Db) 
         const found = op === "lookup" ? [v] : v.cnpjs;
         if (!Array.isArray(found)) throw Error("CNPJ_invalid");
         if (found.length > 20) throw Error("CNPJ_invalid");
+        if (op === "search" && found.some((r: Obj) => {
+          const full = r?.completo && typeof r.completo === "object" ? r.completo : r;
+          return !full || !["endereco", "data_abertura", "capital_social", "contato", "contato_telefonico", "telefone"].some(k => Object.prototype.hasOwnProperty.call(full, k));
+        })) throw Error("CNPJ_invalid");
         rows = found.map((r) => companySnapshot(r)).filter(Boolean) as Obj[];
         if (rows.length !== found.length) throw Error("CNPJ_invalid");
         rows = rows.filter((r, i, a) => a.findIndex((v) => v.cnpj === r.cnpj) === i);

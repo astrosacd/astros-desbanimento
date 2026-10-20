@@ -1,3 +1,4 @@
+import { CnpjAudit } from "./audit";
 import { SearchActivity } from "../search-activity";
 import { LoaderCircle } from "lucide-react";
 import {useCnpjQuota,CnpjQuotaNotice} from "./quota";
@@ -483,6 +484,7 @@ export function CnpjPanel({ userId,onHistory }: { userId: string;onHistory?:()=>
   );
 }
 export function CnpjOperations({ userId, admin = false }: { userId: string; admin?: boolean }) {
+  const [audit, setAudit] = useState<{id:string;view:"businesses"|"deliveries"}|null>(null);
   const [page, setPage] = useState(0);
   const q = useQuery({
     queryKey: [admin ? "cnpj-admin-history" : "cnpj-history", userId, page],
@@ -552,6 +554,10 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
                   <small>Motivo: {cnpjDiagnosticLabel(r.diagnostic)}</small>
                 )}
               </div>
+              {admin && !r.criteria["refreshLeadId"] && r.operation !== "enrich" && <div className="cnpj-audit-actions">
+                <Button variant="outline" onClick={()=>setAudit({id:r.id,view:"businesses"})}>Ver empresas desta pesquisa</Button>
+                <Button variant="outline" onClick={()=>setAudit({id:r.id,view:"deliveries"})}>Ver entregas desta pesquisa</Button>
+              </div>}
               <details>
                 <summary>Referência</summary>
                 <code>{r.id}</code>
@@ -560,6 +566,7 @@ export function CnpjOperations({ userId, admin = false }: { userId: string; admi
           ))}
         </div>
       )}
+      {admin && <Dialog open={!!audit} onOpenChange={open=>{if(!open)setAudit(null);}}><DialogContent className="cnpj-audit-dialog"><DialogHeader><DialogTitle>Empresas e entregas CNPJ</DialogTitle><DialogDescription>Consulta da pesquisa selecionada, sem consumir créditos do fornecedor.</DialogDescription></DialogHeader>{audit&&<CnpjAudit key={audit.id+audit.view} adminId={userId} requestId={audit.id} initialView={audit.view}/>}</DialogContent></Dialog>}
       {(rows.length > 0 || page > 0) && <div className="list-pagination">
         <Button
           variant="outline"

@@ -32,3 +32,4 @@ it('scopes unified CRM reads to the verified account and selected source',async(
  const r=await handler(req('history',{actor:'other',user_id:'other',page:0,search:'empresa',status:'all',source:'cnpj'}));expect(r.status).toBe(200);
 });
 it('blocks a customer from requesting the Casa dos Dados account balance',async()=>{const r=await handler(req('admin-cnpj-balance'));expect(r.status).toBe(400);expect(fetcher.mock.calls.some(c=>String(c[0]).includes('astros_cnpj_private')||String(c[0]).includes('casadosdados'))).toBe(false);});
+it.each(['admin-cnpj-base','admin-cnpj-deliveries'])('blocks customer audit %s',async action=>{const r=await handler(req(action));expect(r.status).toBe(400);expect(fetcher.mock.calls.some(c=>String(c[0]).includes('astros_cnpj_admin_audit'))).toBe(false);});

@@ -44,8 +44,10 @@ export function CnpjDetails({
   lead,
   userId,
   onUpdated,
+  readOnly = false,
 }: {
   userId: string;
+  readOnly?: boolean;
   lead: Lead;
   onUpdated?: (snapshot: Lead["snapshot"]) => void;
 }) {
@@ -101,7 +103,7 @@ export function CnpjDetails({
           : ""}
         {s.collectedAt || s.checkedAt ? `Dados recebidos em ${displayCnpjDate(s.collectedAt || s.checkedAt)}.` : "Data de coleta não informada."}
       </p>
-      <CnpjRefreshButton key={lead.id} userId={userId} lead={lead} onUpdated={onUpdated} />
+      {!readOnly && <CnpjRefreshButton key={lead.id} userId={userId} lead={lead} onUpdated={onUpdated} />}
     </section>
   );
 }

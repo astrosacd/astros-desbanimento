@@ -1,17 +1,18 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {PGlite}=require(process.env.ASTROS_PGLITE_MODULE||'@electric-sql/pglite');
 (async()=>{const db=new PGlite();let checks=0;const sql=f=>fs.readFileSync(path.join(__dirname,'../supabase/migrations/',f),'utf8');
-await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz,raw_app_meta_data jsonb default '{}');create table public.painel_de_desbanimento(id uuid primary key references auth.users(id),tipo_usuario text,recarga numeric default 0);create table public.astros_wallet_movements(id uuid primary key default gen_random_uuid(),user_id uuid,amount_cents bigint,kind text,reference text,created_at timestamptz default now(),unique(kind,reference));`);
+await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz,raw_app_meta_data jsonb default '{}');create table public.painel_de_desbanimento(id uuid primary key references auth.users(id),tipo_usuario text,recarga numeric default 0,nome text,email text);create table public.astros_wallet_movements(id uuid primary key default gen_random_uuid(),user_id uuid,amount_cents bigint,kind text,reference text,created_at timestamptz default now(),unique(kind,reference));`);
 await db.exec(sql('20261018_prospecting.sql'));await db.exec(sql('20261019_prospecting_cnpj.sql'));await db.exec(sql('20261019_prospecting_cnpj_diagnostics.sql'));await db.exec(sql('20261019_prospecting_cnpj_diagnostics.sql'));await db.exec(sql('20261019_prospecting_cnpj_refresh.sql'));await db.exec(sql('20261019_prospecting_cnpj_refresh.sql'));await db.exec(sql('20261019_prospecting_cnpj_daily_quota.sql'));await db.exec(sql('20261019_prospecting_cnpj_daily_quota.sql'));
+await db.exec(sql('20261020_cnpj_complete_profiles.sql'));await db.exec(sql('20261020_cnpj_complete_profiles.sql'));await db.exec(sql('20261020_cnpj_admin_audit.sql'));await db.exec(sql('20261020_cnpj_admin_audit.sql'));
 const A='00000000-0000-4000-8000-000000000001',B='00000000-0000-4000-8000-000000000002',ADMIN='00000000-0000-4000-8000-000000000003';
-for(const id of [A,B,ADMIN]){await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);await db.query('insert into painel_de_desbanimento values($1,$2,100)',[id,id===ADMIN?'admin':'cliente']);}
+for(const id of [A,B,ADMIN]){await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);await db.query('insert into painel_de_desbanimento(id,tipo_usuario,recarga) values($1,$2,100)',[id,id===ADMIN?'admin':'cliente']);}
 const call=async(name,params)=>{const placeholders=params.map((_,i)=>'$'+(i+1)).join(',');return (await db.query('select '+name+'('+placeholders+') value',params)).rows[0].value;};
 const config={enabled:true,unitCents:50,enrichEnabled:true,enrichCents:25,dailyRequests:100,dailyCalls:100,minuteCalls:100,cacheDays:7};
 await assert.rejects(()=>call('astros_cnpj_save',[A,JSON.stringify(config),'secret']),/Conta indisponível|admin/i);checks++;
 await call('astros_cnpj_save',[ADMIN,JSON.stringify(config),'private-test-key']);await call('astros_cnpj_save',[ADMIN,JSON.stringify(config),'']);assert.equal((await db.query('select api_key from astros_cnpj_private')).rows[0].api_key,'private-test-key');checks++;
 assert.equal(JSON.stringify(await call('astros_cnpj_config',[A,false])).includes('private-test-key'),false);checks++;
 let serial=10;const id=()=>`00000000-0000-4000-8000-${String(serial++).padStart(12,'0')}`;
-const criteria=JSON.stringify({mode:'search',uf:'CE',city:'fortaleza'});const snapshot={cnpj:'11222333000181',source:'cnpj',name:'Empresa teste',enriched:false};
+const criteria=JSON.stringify({mode:'search',uf:'CE',city:'fortaleza'});const snapshot={cnpj:'11222333000181',source:'cnpj',name:'Empresa teste',dataVersion:4,enriched:false};
 const begin=(actor,ref,input=criteria,op='search',wanted=1,price=50)=>call('astros_cnpj_begin',[actor,ref,op,input,wanted,price]);
 const finish=(actor,ref,rows=[],next=false,failure='')=>call('astros_cnpj_finish',[actor,ref,JSON.stringify(rows),next,failure]);
 const r1=id();let r=await begin(A,r1);assert.equal(r.fetch,true);assert.equal((await begin(A,r1)).run,false);checks+=2;
@@ -40,4 +41,25 @@ assert.equal((await call('astros_cnpj_config',[ADMIN,false])).dailyQuota.used,0)
 await db.query("update astros_cnpj_requests set created_at=(date_trunc('day',now() at time zone 'America/Fortaleza') at time zone 'America/Fortaleza')-interval '1 second' where user_id=$1",[A]);assert.equal((await call('astros_cnpj_config',[A,false])).dailyQuota.remaining,1);checks++;
 for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(()=>call('astros_cnpj_config',[A,false]),/permission denied/);await assert.rejects(()=>db.query('select * from astros_cnpj_private'),/permission denied/);await db.exec('reset role');checks+=2;}
 assert.equal(Number((await db.query('select count(*) n from astros_prospect_requests')).rows[0].n),0);checks++;
+await db.query("update painel_de_desbanimento set nome='Cliente exemplo',email='cliente@example.test' where id=$1",[A]);
+const audit=(actor,view='businesses',search='',email='',query='',request=null,page=0)=>call('astros_cnpj_admin_audit',[actor,view,search,email,query,request,page]);
+await assert.rejects(()=>audit(A),/admin|indisponível/i);checks++;
+const base=await audit(ADMIN);assert.equal(base.total,1);assert.equal(base.items[0].snapshot.name,'Empresa teste');checks+=2;
+const deliveries=await audit(ADMIN,'deliveries','','cliente@example.test');assert.equal(deliveries.total,1);assert.equal(deliveries.items[0].client.email,'cliente@example.test');assert.equal(deliveries.items[0].requestId,r1);checks+=3;
+assert.equal((await audit(ADMIN,'deliveries','','','',r3)).total,1);assert.equal((await audit(ADMIN,'deliveries','','','',id())).total,0);checks+=2;
+for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(()=>audit(ADMIN),/permission denied/);await db.exec('reset role');checks++;}
+// A legacy exhausted query must restart once; legacy simple cache is not delivered.
+await db.query('update astros_cnpj_settings set daily_requests=100');await db.query('update painel_de_desbanimento set recarga=100 where id=$1',[ADMIN]);
+await db.query('update astros_cnpj_queries set profile_version=0,exhausted=true,page=9');await db.query("update astros_cnpj_businesses set snapshot=snapshot||'{\"dataVersion\":3}'::jsonb");
+await db.query("update astros_cnpj_queries set lease_until=now()+interval '1 minute',lease_id=$1",[id()]);
+await assert.rejects(()=>begin(ADMIN,id()),/já está em andamento/);checks++;
+await db.query('update astros_cnpj_queries set lease_until=null,lease_id=null');
+const upgrade=id();const upgradeJob=await begin(ADMIN,upgrade);assert.equal(upgradeJob.fetch,true);assert.equal(upgradeJob.page,1);checks+=2;
+await finish(ADMIN,upgrade,[{...snapshot,phone:'85933334444',address:'Rua exemplo',secondaryActivities:['Atividade secundária']}]);
+const fresh=(await db.query('select * from astros_cnpj_deliveries where user_id=$1',[ADMIN])).rows[0];assert.equal(fresh.snapshot.phone,'85933334444');assert.equal(fresh.snapshot.address,'Rua exemplo');assert.equal(fresh.snapshot.dataVersion,4);checks+=3;
+assert.equal((await begin(ADMIN,upgrade)).run,false);checks++;
+await db.query("update astros_cnpj_businesses set snapshot=snapshot||$1::jsonb where cnpj=$2",[JSON.stringify({api_key:'forbidden-secret',quadro_societario:[{documento:'private-document'}]}),snapshot.cnpj]);
+assert.equal(JSON.stringify(await audit(ADMIN)).includes('forbidden-secret'),false);assert.equal(JSON.stringify(await audit(ADMIN)).includes('private-document'),false);checks+=2;
+for(let i=0;i<22;i++)await db.query('insert into astros_cnpj_businesses(cnpj,snapshot) values($1,$2)',[String(10000000000000+i),JSON.stringify({...snapshot,cnpj:String(10000000000000+i),name:'Empresa extra '+i})]);
+const firstPage=await audit(ADMIN,'businesses','Empresa');const secondPage=await audit(ADMIN,'businesses','Empresa','','',null,1);assert.equal(firstPage.items.length,20);assert.equal(firstPage.hasMore,true);assert.equal(secondPage.items.length,3);assert.equal(secondPage.hasMore,false);assert.equal(new Set([...firstPage.items,...secondPage.items].map(r=>r.id)).size,23);checks+=5;
 console.log(JSON.stringify({checks,sql:'passed',reapplied:true,ownerIsolation:true,idempotency:true,atomicBilling:true,mapsUnchanged:true}));await db.close();})();

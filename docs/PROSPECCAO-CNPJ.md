@@ -85,3 +85,31 @@ O cartão CNPJ usa o mesmo componente de abordagem do Google Maps, com o nome da
 
 ### Contatos na pesquisa inicial
 A pesquisa v5 solicita `tipo_resultado=completo` na mesma requisição. O padrão do fornecedor é `simples`; a resposta completa permite projetar os contatos disponíveis sem um lookup adicional por empresa. Não há garantia de telefone em todo cadastro. Snapshots antigos não são enriquecidos automaticamente; uma atualização explícita continua sujeita à cota. A preparação de abordagem só é exibida quando o lead possui telefone.
+
+
+## Correção de cache simplificado e auditoria CNPJ — 20/10/2026
+
+A chamada completa por si só não invalidava os registros antigos: `astros_cnpj_candidates` ainda selecionava snapshots v3; o cursor `page` e a marca `exhausted` também eram preservados. Por isso uma nova tentativa podia entregar outra empresa do mesmo lote antigo sem chamar o fornecedor.
+
+O parser passa a salvar `dataVersion: 4`. A pesquisa exige campos estruturais da resposta completa, mas nunca exige telefone: campos podem estar ausentes na fonte. Uma resposta que só contenha a identificação simplificada encerra sem débito e sem consulta individual oculta. São lidos também `contato_email` e contêiner completo do mesmo CNPJ, preservando os limites de projeção empresarial. A versão do perfil não comprova a exatidão dos dados nem confirma WhatsApp.
+
+O SQL reinicia **uma única vez**, na próxima busca, cada cursor anterior ao perfil 4, sem excluir a pesquisa ou suas entregas. O cache elegível exige o novo perfil; deduplicação por conta, validade, bloqueios, UUID e cobrança atômica permanecem. A mudança não consulta todas as empresas individualmente, não faz recarga nem aumenta cotas. Uma pesquisa nova pode consumir a chamada normal do fornecedor; não é promessa de dados completos grátis. Respostas incertas não são reenviadas.
+
+O histórico existente e o `original_snapshot` permanecem intactos. Contatos já entregues no formato antigo não são retroativamente preenchidos nem cobrados de novo. A atualização cadastral explícita continua sem débito de carteira, mas pode consumir cota e crédito do fornecedor. O problema corrigido é a seleção inicial de novos leads após a ativação.
+
+### Atualizar instalação existente
+
+1. Substituir todo o código da função existente `astros-prospecting` pelo bundle atual `supabase/astros-prospecting.deploy.ts` e publicar.
+2. Executar **somente** `supabase/astros-cnpj-complete.update.sql` no SQL Editor. O patch reúne `20261020_cnpj_complete_profiles.sql` e `20261020_cnpj_admin_audit.sql`, é reaplicável, preserva histórico/carteira e não altera o Maps. Se houver uma busca anterior em andamento, aguardar a conclusão antes da implantação do SQL para não misturar formatos durante a troca.
+3. Publicar a interface no Lovable. Não atualiza automaticamente a imagem da VPS.
+4. Conferir uma busca nova: verificar contato/endereço/atividades quando a fonte os fornecer. Os testes sintéticos e SQL não provam o conteúdo de uma resposta real da conta.
+
+### Admin: empresas e entregas
+
+**Base de empresas → CNPJ** oferece empresas salvas e entregas, com busca por nome/CNPJ, e-mail do destinatário, total e paginação. **Histórico de consultas → CNPJ** oferece **Ver empresas desta pesquisa** e **Ver entregas desta pesquisa** para pesquisas/consultas diretas. Atualizações cadastrais e consultas complementares não criam novas entregas.
+
+Empresas da pesquisa representam a base atual vinculada aos seus critérios; atualizações e chamadas posteriores podem ampliar essa base. Entregas da pesquisa filtram exatamente `request_id` e mostram o snapshot atual da entrega, destinatário, data e etapa. Nenhuma dessas telas chama o fornecedor, consome cota, altera etapa ou cobra. Dados cadastrais no modal admin são somente leitura.
+
+A ação exige `requireAdmin` no servidor, tipo admin verificado na Edge e `astros_prospect_actor(actor,true)` no SQL. A RPC e a função de projeção são exclusivas do service role; clientes não acessam a base ou entregas alheias. A resposta projeta apenas campos empresariais conhecidos, nunca chaves, respostas brutas ou documentos pessoais de sócios.
+
+Validação: `npx tsc --noEmit`, testes de Prospecção (incluindo navegação/filtro/paginação e ausência de refresh no admin), e `ASTROS_PGLITE_MODULE=/caminho/pglite node scripts/check-prospecting-cnpj-sql.cjs` para reaplicação, cache legado/esgotado, campos na entrega, débito idempotente e isolamento administrativo.

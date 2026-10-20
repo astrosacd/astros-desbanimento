@@ -133,7 +133,7 @@ it('reads bounded business contact arrays, pairs DDD once and excludes partner c
  expect(r.phone).toBe('85933334444');expect(r.contacts.map(c=>c.value)).toEqual(['85933334444','empresa@example.test']);expect(r.registrationStatus).toBe('ATIVA');expect(JSON.stringify(r)).not.toMatch(/partner|11999999999/);
 });
 it("delivers available phone on the initial complete search with one provider request", async () => {
- const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({total:1,cnpjs:[{cnpj:'11222333000181',razao_social:'Empresa exemplo',contato:{telefone:[{ddd:'85',numero:'933334444'}]}}]})));
+ const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({total:1,cnpjs:[{cnpj:'11222333000181',razao_social:'Empresa exemplo',endereco:{municipio:'Fortaleza'},contato:{telefone:[{ddd:'85',numero:'933334444'}]}}]})));
  vi.stubGlobal('fetch',fetch);
  const db = vi.fn(async (path:string,_method?:string,body?:any) => {
   if(path.includes('begin')) return {run:true,fetch:true,page:1};
@@ -145,4 +145,24 @@ it("delivers available phone on the initial complete search with one provider re
  expect(result.state).toBe('completed');
  expect(fetch).toHaveBeenCalledTimes(1);
  expect(fetch.mock.calls[0][0]).toBe('https://api.casadosdados.com.br/v5/cnpj/pesquisa?tipo_resultado=completo');
+});
+
+it('passes safe fields from a full initial response, even without a phone, with no N+1 lookup',async()=>{
+ const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({total:1,cnpjs:[{cnpj:'11222333000181',razao_social:'Empresa',endereco:{logradouro:'Rua Exemplo',numero:'10',municipio:'Fortaleza',uf:'CE'},contato_email:'empresa@example.test',atividades_secundarias:[{codigo:'1234567',descricao:'Atividade secundária'}]}]})));
+ vi.stubGlobal('fetch',fetch);
+ const db=vi.fn(async(path:string,_method?:string,body?:any)=>{
+  if(path.includes('begin'))return {run:true,fetch:true,page:1};
+  if(path.startsWith('astros_cnpj_private'))return [{api_key:'private'}];
+  if(path.includes('finish')){expect(body.rows_input[0]).toMatchObject({dataVersion:4,phone:'',address:'Rua Exemplo, 10, Fortaleza, CE',secondaryActivities:['1234567 · Atividade secundária']});expect(body.rows_input[0].contacts[0].value).toBe('empresa@example.test');return {state:'completed'};}
+  throw Error(path);
+ });
+ expect((await handleCnpj('cnpj-search',input,{id:'owner'},db)).state).toBe('completed');expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('refuses a simple response under the full contract without charging or a hidden lookup',async()=>{
+ const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({total:1,cnpjs:[{cnpj:'11222333000181',razao_social:'Empresa'}]})));vi.stubGlobal('fetch',fetch);
+ const db=vi.fn(async(path:string,_method?:string,body?:any)=>{if(path.includes('begin'))return {run:true,fetch:true,page:1};if(path.startsWith('astros_cnpj_private'))return [{api_key:'private'}];if(path.includes('finish')){expect(body.failure).toBe('invalid');expect(body.rows_input).toBeUndefined();return {state:'failed',charged_cents:0};}throw Error(path);});
+ expect((await handleCnpj('cnpj-search',input,{id:'owner'},db)).charged_cents).toBe(0);expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('blocks both administrative audit reads for clients before touching the database',async()=>{
+ const db=vi.fn();for(const action of ['admin-cnpj-base','admin-cnpj-deliveries'])await expect(handleCnpj(action,{page:0},{id:'owner',tipo_usuario:'cliente'},db)).rejects.toThrow('administrativo');expect(db).not.toHaveBeenCalled();
 });
