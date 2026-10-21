@@ -29,3 +29,9 @@ it('keeps an uncertain enrichment UUID and only checks status; completed results
  await waitFor(()=>expect(api.status).toHaveBeenCalledWith({data:{requestId:api.enrich.mock.calls[0][0].data.requestId}}));
  await waitFor(()=>expect(screen.queryByRole('button',{name:'Enriquecer dados'})).toBeNull());expect(api.enrich).toHaveBeenCalledTimes(1);expect(api.refresh).not.toHaveBeenCalled();
 });
+
+it('keeps the supplier name out of customer details while preserving supplementary data',()=>{
+ const lead={id:'lead',snapshot:{source:'cnpj',name:'Empresa',enriched:true,enrichment:{source:'receitaws',queriedAt:'2026-10-20',providerUpdatedAt:'',addedFields:[],differences:[{field:'phone',value:'8533334444'}],hasNewData:true}}} as Lead;
+ render(<QueryClientProvider client={new QueryClient()}><CnpjDetails userId="owner" lead={lead}/></QueryClientProvider>);
+ expect(screen.getByRole('region',{name:'Dados complementares'})).toHaveTextContent('8533334444');expect(screen.queryByText(/ReceitaWS/i)).toBeNull();
+});

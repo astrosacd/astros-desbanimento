@@ -95,9 +95,9 @@ export function CnpjDetails({
       {s.enrichment && (
         <section
           className="prospect-cnpj-complement"
-          aria-label="Dados complementares da ReceitaWS"
+          aria-label={readOnly ? "Dados complementares da ReceitaWS" : "Dados complementares"}
         >
-          <h4>Dados complementares · ReceitaWS</h4>
+          <h4>Dados complementares{readOnly ? " · ReceitaWS" : ""}</h4>
           <p className="prospect-help">
             Consultados em {displayCnpjDate(s.enrichment.queriedAt)}.{" "}
             {s.enrichment.providerUpdatedAt &&

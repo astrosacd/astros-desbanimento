@@ -127,7 +127,7 @@ export function CnpjEnrichButton({
             </DialogDescription>
           </DialogHeader>
           <p className="prospect-help">
-            A consulta complementar respeita o limite de 3 consultas por minuto da ReceitaWS para a
+            A consulta complementar respeita o limite de 3 consultas por minuto do serviço para a
             aplicação.
           </p>
           <DialogFooter>
