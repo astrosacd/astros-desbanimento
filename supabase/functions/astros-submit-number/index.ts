@@ -155,7 +155,7 @@ async function handleRequest(req:Request){
   await requireAutomation();const marker=await markerField();const intent={email:user.email,country:input.country,number:input.number,targetStatus:plan.targetStatus,markerField:marker};
   stage='balance-reservation';
   const {data:reservation,error:reserveError}=await db.rpc('astros_start_service_v2',{request_id:requestId,client_id:user.id,phone:input.number,service_kind:plan.kind,expected_cents:plan.costCents,target:plan.targetStatus,intent});
-  if(reserveError)return json({success:false,message:String(reserveError.message||'').includes('Saldo insuficiente')?'Saldo insuficiente. Adicione saldo para continuar.':'Não foi possível confirmar a reserva. Confira o histórico antes de tentar com a mesma referência.'});
+  if(reserveError)return json({success:false,message:['Este módulo está em manutenção. Novas operações estão temporariamente indisponíveis.','Este módulo não está liberado para sua conta. Fale com o suporte.'].includes(reserveError.message)?reserveError.message:String(reserveError.message||'').includes('Saldo insuficiente')?'Saldo insuficiente. Adicione saldo para continuar.':'Não foi possível confirmar a reserva. Confira o histórico antes de tentar com a mesma referência.'});
   if(!reservation?.execute)return json(reservation||{success:false,message:'Não foi possível confirmar a reserva.'});
   job={id:requestId,user_id:user.id,number:input.number,kind:plan.kind,amount_cents:plan.costCents,target_status:plan.targetStatus,state:'processing',protocol_version:2,remote_phase:'prepared',remote_intent:intent,lease_key:reservation.leaseKey,check_attempts:0};
   stage='baserow-recheck';const fresh=classify(await allRows(),input.number,user.email,Number(config.service_price_cents),input.country);
