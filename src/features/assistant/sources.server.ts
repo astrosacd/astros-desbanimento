@@ -5,7 +5,7 @@ export async function supplierBalance(token: string, module: "social" | "sms") {
   try {
     const r = await request(`/functions/v1/astros-${module}`, token, {
       method: "POST",
-      body: JSON.stringify({ action: "admin-balance", data: {} }),
+      body: JSON.stringify({ action: "admin-balance", data: module === "sms" ? {supplier:"smspool"} : {} }),
       signal: AbortSignal.timeout(18000),
     });
     if (!r.ok) throw Error("unavailable");

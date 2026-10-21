@@ -113,7 +113,7 @@ export function historyQuery(data:Obj,owner:string,adminView=false){
  const state=String(data.state??'all');if(!['all','dispatching','pending','received','refunded','review'].includes(state))throw Error('Situação inválida.');
  const date=(v:unknown)=>{const text=String(v??''),parsed=new Date(text+'T00:00:00Z');if(text&&(!/^\d{4}-\d{2}-\d{2}$/.test(text)||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==text))throw Error('Data inválida.');return text;};
  const from=date(data.from),until=date(data.until);if(from&&until&&from>until)throw Error('A data inicial deve ser anterior à final.');
- const fields='id,user_id,service_name,country_name,price_cents,state,phone,code,expires_at,created_at'+(adminView?',provider_id,painel_de_desbanimento!inner(nome,email)':'');
+ const fields='id,user_id,supplier,service_name,country_name,price_cents,state,phone,code,expires_at,created_at'+(adminView?',provider_id,painel_de_desbanimento!inner(nome,email)':'');
  const params=new URLSearchParams({select:fields,order:'created_at.desc,id.desc',limit:'21',offset:String(page*20)});
  if(!adminView)params.set('user_id','eq.'+owner);if(state!=='all')params.set('state','eq.'+state);
  if(search)params.set('or',`(phone.ilike.*${search}*,service_name.ilike.*${search}*,country_name.ilike.*${search}*)`);
@@ -132,15 +132,111 @@ async function identity(req:Request){
 function admin(user:Obj){if(user['tipo_usuario']!=='admin')throw Error('Acesso administrativo não autorizado.');}
 function uuid(v:unknown){if(typeof v!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v))throw Error('Referência inválida.');return v;}
 function id(v:unknown){const n=Number(v);if(!Number.isSafeInteger(n)||n<=0||n>1000000)throw Error('Selecione uma opção válida.');return n;}
-function view(o:Obj){return {id:o['id'],service:o['service_name'],country:o['country_name'],priceCents:Number(o['price_cents']),state:o['state'],phone:o['phone']??null,code:o['code']??null,expiresAt:o['expires_at']??null,createdAt:o['created_at'],userId:o['user_id']};}
+function view(o:Obj){return {id:o['id'],supplier:o['supplier']??'smspool',service:o['service_name'],country:o['country_name'],priceCents:Number(o['price_cents']),state:o['state'],phone:o['phone']??null,code:o['code']??null,expiresAt:o['expires_at']??null,createdAt:o['created_at'],userId:o['user_id']};}
 async function settle(o:Obj,target:string,data:Obj={}){await db('rpc/astros_sms_settle','POST',{order_id:o['id'],target,...data});}
 async function check(o:Obj,key:string){
  if(!o['provider_id']||['received','refunded'].includes(o['state']))return;
+ if(o['supplier']==='five_sim'){await fiveCheck(o);return;}
  const v=await provider('sms/check',{orderid:o['provider_id']},key);const target=stateFromCheck(v);
  await settle(o,target,target==='received'?{code_value:v.sms}:{});
 }
 async function orderById(value:unknown,user:Obj){const rows=await db(`astros_sms_orders?id=eq.${uuid(value)}&user_id=eq.${encodeURIComponent(user['id'])}&limit=1`);if(!rows[0])throw Error('Ativação não encontrada.');return rows[0] as Obj;}
 function open(s:Obj,p:Obj){if(!s['enabled']||!p['api_key']||!s['usd_brl_units']||!s['worker_at']||Date.now()-Date.parse(s['worker_at'])>180000)throw Error('As ativações SMS estão indisponíveis no momento.');}
+// 5SIM native units are configured independently; never apply the SMSPool USD rate.
+function fiveSlug(v:unknown){const s=String(v??'');if(!/^[a-z0-9]{1,80}$/.test(s)||s==='any')throw Error('Atualize o catálogo e selecione uma opção válida.');return s;}
+export function fiveRejection(text:string,status:number){return [200,400].includes(status)&&['no free phones','not enough user balance','not enough rating','select country','select operator','bad country','bad operator','no product'].includes(text.trim().toLowerCase());}
+export function fiveOffer(value:Obj,country:string,product:string){
+ const rows=value?.[country]?.[product];if(!rows||typeof rows!=='object'||Array.isArray(rows))throw Error('Estoque não confirmado. Consulte novamente.');
+ const offers:Array<{native:number;stock:number}>=[];
+ for(const v of Object.values(rows) as Obj[]){try{const native=units(v.cost),stock=Number(v.count);if(native>0&&Number.isSafeInteger(stock)&&stock>0)offers.push({native,stock});}catch{/* Never guess malformed costs. */}}
+ offers.sort((a,b)=>a.native-b.native);if(!offers.length)throw Error('Sem números disponíveis para esse serviço e país.');
+ const native=offers[0].native,stock=offers.filter(v=>v.native===native).reduce((n,v)=>n+v.stock,0);if(!Number.isSafeInteger(stock))throw Error('Estoque não confirmado.');return {native,stock};
+}
+export function fiveOrder(value:Obj,expected:{product:string;country:string;id?:string;phone?:string}){
+ if(!Number.isSafeInteger(value?.id)||value.id<1||expected.id&&String(value.id)!==expected.id||value.product!==expected.product||value.country!==expected.country||typeof value.phone!=='string'||!/^\+?[1-9][0-9]{5,17}$/.test(value.phone)||expected.phone&&value.phone.replace(/^\+/,'')!==expected.phone.replace(/^\+/,''))throw Error('Confirmação da ativação pendente.');
+ const expiry=Date.parse(value.expires);if(!Number.isFinite(expiry))throw Error('Confirmação da ativação pendente.');const cost=units(value.price);if(cost<=0)throw Error('Confirmação da ativação pendente.');
+ const sms=value.sms;if(sms!==null&&!Array.isArray(sms))throw Error('Confirmação da ativação pendente.');
+ const code=Array.isArray(sms)?sms.find(v=>typeof v?.code==='string'&&v.code.trim().length>0&&v.code.length<=200)?.code:null;
+ let state:'pending'|'received'|'refunded'|'review'='review';
+ if(code&&['PENDING','RECEIVED','FINISHED'].includes(value.status))state='received';
+ else if((sms===null||Array.isArray(sms)&&sms.length===0)&&value.status==='CANCELED')state='refunded';
+ else if((sms===null||Array.isArray(sms)&&sms.length===0)&&['PENDING','RECEIVED'].includes(value.status))state='pending';
+ // TIMEOUT/BANNED/FINISHED without code and contradictory SMS/cancel are not refund proof.
+ return {provider:String(value.id),phone:value.phone.replace(/^\+/,''),expiry:new Date(expiry).toISOString(),cost,state,code:code??null};
+}
+async function fiveRaw(path:string,key?:string){
+ // Fixed host, no redirects/retries: even buy/cancel use GET but have side effects.
+ const r=await fetch('https://5sim.net/v1/'+path,{headers:{Accept:'application/json',...(key?{Authorization:`Bearer ${key}`}:{})},redirect:'error',signal:AbortSignal.timeout(15000)});
+ const text=await r.text();if(text.length>4000000)throw Error('Resposta não confirmada.');let value:any=null;try{value=JSON.parse(text);}catch{/* Documented purchase rejections are plain text. */}return {r,text,value};
+}
+async function fiveGet(path:string,key?:string):Promise<Obj>{try{const {r,value}=await fiveRaw(path,key);if(!r.ok||!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw Error('Não foi possível consultar o fornecedor de SMS. Tente novamente.');}}
+async function fiveSettings(){return (await db('astros_sms_five_settings?id=eq.true'))[0] as Obj;}
+async function fiveBalance(key:string){if(!key)throw Error('Configure a chave da 5SIM.');const v=await fiveGet('user/profile',key);if(!Number.isSafeInteger(v.id)||v.id<1)throw Error('Saldo não confirmado.');return units(v.balance);}
+async function fiveCatalog(){
+ const [products,countries]=await Promise.all([fiveGet('guest/products/any/any'),fiveGet('guest/countries')]);
+ const services=Object.entries(products).filter(([id,v])=>/^[a-z0-9]{1,80}$/.test(id)&&id!=='any'&&v?.Category==='activation').map(([id])=>({id,name:({whatsapp:'WhatsApp',telegram:'Telegram',instagram:'Instagram',google:'Google / YouTube',openai:'OpenAI / ChatGPT'} as Obj)[id]??id.charAt(0).toUpperCase()+id.slice(1)}));
+ const regions=Object.entries(countries).filter(([id,v])=>/^[a-z0-9]{1,80}$/.test(id)&&id!=='any'&&typeof v?.text_en==='string').map(([id,v])=>({id,name:String(v.text_en).slice(0,100),iso:Object.keys(v.iso??{})[0]?.toUpperCase()??''}));
+ if(!services.length||!regions.length)throw Error('Catálogo temporariamente indisponível.');return {services,countries:regions};
+}
+function fiveOpen(s:Obj,p:Obj,f:Obj){if(!s.enabled||!p.five_sim_key||!f.native_brl_units||!s.worker_at||Date.now()-Date.parse(s.worker_at)>180000)throw Error('As ativações SMS estão indisponíveis no momento.');}
+async function fiveRead(o:Obj,key:string,cancel=false){
+ if(!key)throw Error('Acompanhamento temporariamente indisponível.');
+ const expected={id:String(o.provider_id),product:o.supplier_product,country:o.supplier_country,phone:o.phone};
+ let a=fiveOrder(await fiveGet('user/check/'+encodeURIComponent(o.provider_id),key),expected);
+ if(cancel&&a.state==='pending'&&await db('rpc/astros_sms_claim_five_cancel','POST',{request_id:o.id})){
+  // The durable claim also prevents a client cancellation racing administrative review.
+  a=fiveOrder(await fiveGet('user/cancel/'+encodeURIComponent(o.provider_id),key),expected);
+ }
+ return a;
+}
+async function fiveCheck(o:Obj,cancel=false){
+ if(!o.provider_id||['received','refunded'].includes(o.state))return;
+ const p=await privateSettings(),a=await fiveRead(o,p.five_sim_key,cancel);
+ await settle(o,a.state,a.state==='received'?{code_value:a.code}:{});
+}
+async function fiveNew(action:string,data:Obj,user:Obj,s:Obj){
+ const p=await privateSettings(),f=await fiveSettings(),isAdmin=action.startsWith('admin-');if(isAdmin)admin(user);
+ if(action==='catalog'||action==='admin-catalog'){
+  if(!isAdmin&&!s.enabled)return json({available:false,services:[],countries:[]});
+  if(isAdmin){if(!p.five_sim_key||!f.native_brl_units)throw Error('Configure a 5SIM antes de consultar.');}else fiveOpen(s,p,f);
+  return json({available:true,supplier:'five_sim',...(await fiveCatalog())});
+ }
+ if(action==='area-options'){fiveOpen(s,p,f);return json({areas:[]});}
+ if(action==='quote'||action==='admin-price'){
+  if(isAdmin){if(!p.five_sim_key||!f.native_brl_units)throw Error('Configure a 5SIM antes de consultar.');}else fiveOpen(s,p,f);
+  const product=fiveSlug(data.serviceId),country=fiveSlug(data.countryId);if(selectedArea(data.areaCode))throw Error('A seleção de DDD não está disponível nesta oferta.');
+  const [catalog,prices]=await Promise.all([fiveCatalog(),fiveGet('guest/prices?'+new URLSearchParams({country,product}))]);
+  const serviceRow=catalog.services.find(v=>v.id===product),countryRow=catalog.countries.find(v=>v.id===country);if(!serviceRow||!countryRow)throw Error('Atualize o catálogo e selecione serviço e país.');
+  const offer=fiveOffer(prices,country,product),stockCheckedAt=new Date().toISOString(),price=saleCents(offer.native,Number(f.native_brl_units),Number(f.margin_bps),Number(f.fee_cents)),costCents=saleCents(offer.native,Number(f.native_brl_units),0,0);
+  if(isAdmin)return json({service:serviceRow.name,country:countryRow.name,costNative:offer.native/1000000,currency:'5SIM',costCents,priceCents:price,differenceCents:price-costCents,stock:offer.stock,stockCheckedAt});
+  const q=(await db('astros_sms_quotes','POST',{supplier:'five_sim',supplier_product:product,supplier_country:country,native_units:offer.native,native_brl_units:Number(f.native_brl_units),user_id:user.id,service_id:0,country_id:0,pool_id:0,service_name:serviceRow.name,country_name:countryRow.name,usd_units:0,price_cents:price,settings_version:s.updated_at}))[0];
+  return json({quoteId:q.id,priceCents:price,expiresAt:q.expires_at,service:serviceRow.name,country:countryRow.name,stock:offer.stock,stockCheckedAt});
+ }
+ throw Error('Operação não disponível.');
+}
+async function fiveBuy(q:Obj,requestId:string,user:Obj,s:Obj){
+ const p=await privateSettings(),f=await fiveSettings();fiveOpen(s,p,f);
+ if(q.supplier!=='five_sim'||s.active_supplier!=='five_sim'||q.settings_version!==s.updated_at||Date.parse(q.expires_at)<=Date.now())throw Error('Atualize o preço antes de comprar.');
+ const product=fiveSlug(q.supplier_product),country=fiveSlug(q.supplier_country),offer=fiveOffer(await fiveGet('guest/prices?'+new URLSearchParams({country,product})),country,product);
+ if(offer.native!==Number(q.native_units))throw Error('O preço mudou. Consulte novamente antes de comprar.');
+ let funded=false;try{funded=await fiveBalance(p.five_sim_key)>=Number(q.native_units);}catch{/* Fail closed before debit. */}
+ if(!funded){const previous=await db(`astros_sms_orders?id=eq.${requestId}&limit=1`);if(previous.length){if(previous[0].user_id!==user.id||previous[0].quote_id!==q.id)throw Error('Referência divergente.');return json({order:view(previous[0])});}throw Error('Ativações SMS temporariamente indisponíveis. Nenhum valor foi descontado nesta tentativa.');}
+ const reserved=await db('rpc/astros_sms_reserve','POST',{actor:user.id,request_id:requestId,quote:q.id});if(!reserved.dispatch)return json({order:view(await orderById(requestId,user))});
+ const o=await orderById(requestId,user);
+ try{
+  const response=await fiveRaw(`user/buy/activation/${country}/any/${product}?maxPrice=${(Number(q.native_units)/1000000).toFixed(6)}`,p.five_sim_key);
+  if(fiveRejection(response.text,response.r.status)){await recordPurchaseDiagnostic(requestId,{category:'PROVIDER_REJECTED',httpStatus:response.r.status,detail:''});await settle(o,'refunded');}
+  else{
+   if(!response.r.ok)throw Error();const a=fiveOrder(response.value,{product,country});
+   // Persist a validated delivered identity even if price/status is unexpected. Never guess another order.
+   await settle(o,'pending',{provider:a.provider,number_value:a.phone,expiry:a.expiry});
+   if(a.cost>Number(q.native_units)||a.state==='review'){await recordPurchaseDiagnostic(requestId,{category:'RESPONSE_UNCONFIRMED',httpStatus:response.r.status,detail:'Ativação identificada; preço ou situação requer conferência.'});await settle(o,'review');}
+   else if(a.state!=='pending')await settle(o,a.state,a.state==='received'?{code_value:a.code}:{});
+  }
+ }catch{await recordPurchaseDiagnostic(requestId,{category:'RESPONSE_UNCONFIRMED',httpStatus:null,detail:''});await settle(o,'review').catch(()=>undefined);}
+ return json({order:view(await orderById(requestId,user))});
+}
+
 export async function handler(req:Request):Promise<Response>{
  if(req.method!=='POST')return json({error:'Método não permitido.'},405);
  try{
@@ -149,16 +245,35 @@ export async function handler(req:Request):Promise<Response>{
   if(action==='worker'){
    const p=await privateSettings();if(!p['worker_secret']||req.headers.get('X-Astros-Sms-Worker')!==p['worker_secret'])return json({error:'Acesso não autorizado.'},401);
    await db('astros_sms_settings?id=eq.true','PATCH',{worker_at:new Date().toISOString()});
-   try{await ensureFx(await settings());}catch{/* FX outage never prevents reconciliation of existing orders. */}
+   try{const s=await settings();if(s.active_supplier!=='five_sim')await ensureFx(s);}catch{/* FX outage never prevents reconciliation of existing orders. */}
    const rows:Obj[]=await db('astros_sms_orders?state=in.(dispatching,pending,review)&order=checked_at.asc.nullsfirst&limit=10');let checked=0;
-   for(let start=0;start<rows.length;start+=5){await Promise.all(rows.slice(start,start+5).map(async(o)=>{try{if(o['provider_id']&&p['api_key']){await check(o,p['api_key']);checked++;}else if(Date.now()-Date.parse(o['created_at'])>90000){await settle(o,'review');}}catch{/* Leave durable state for next run. Never replay purchase. */}}));}
+   for(let start=0;start<rows.length;start+=5){await Promise.all(rows.slice(start,start+5).map(async(o)=>{try{if(o['provider_id']&&(o['supplier']==='five_sim'||p['api_key'])){await check(o,p['api_key']);checked++;}else if(Date.now()-Date.parse(o['created_at'])>90000){await settle(o,'review');}}catch{/* Leave durable state for next run. Never replay purchase. */}}));}
    return json({success:true,checked});
   }
   const user=await identity(req);
   if(!await db('rpc/astros_sms_gate','POST',{actor:user['id']}))return json({error:'Muitas consultas em sequência. Aguarde um minuto e tente novamente.'},429);
   if(action==='admin-catalog'||action==='admin-price')admin(user);
+  if(action==='admin-providers'){
+   admin(user);const s=await settings(),p=await privateSettings(),f=await fiveSettings();
+   return json({supplier:s.active_supplier??'smspool',enabled:s.enabled,hasFiveKey:Boolean(p.five_sim_key),fiveFx:Number(f.native_brl_units),fiveMargin:Number(f.margin_bps),fiveFee:Number(f.fee_cents),workerReady:Boolean(s.worker_at&&Date.now()-Date.parse(s.worker_at)<180000)});
+  }
+  if(action==='save-five'){
+   admin(user);const fx=Number(data.nativeBrlUnits),margin=Number(data.marginBps),fee=Number(data.feeCents),key=String(data.apiKey??'').trim();
+   if(!Number.isSafeInteger(fx)||fx<1||fx>10000000||!Number.isSafeInteger(margin)||margin<0||margin>100000||!Number.isSafeInteger(fee)||fee<0||fee>100000||key&&!/^[A-Za-z0-9._-]{20,2000}$/.test(key))throw Error('Confira a chave e os valores da 5SIM.');
+   const p=await privateSettings();if(key&&key!==p.five_sim_key){const running=await db('astros_sms_orders?supplier=eq.five_sim&state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos da 5SIM antes de trocar a chave.');await fiveBalance(key);}
+   await db('rpc/astros_sms_configure_five','POST',{actor:user.id,fx,margin,fee,new_key:key});return json({success:true});
+  }
+  if(action==='select-supplier'){
+   admin(user);if(!['smspool','five_sim'].includes(data.supplier)||typeof data.enabled!=='boolean')throw Error('Selecione o fornecedor.');
+   await db('rpc/astros_sms_select_supplier','POST',{actor:user.id,chosen:data.supplier,active:data.enabled});return json({success:true});
+  }
+  if(['catalog','admin-catalog','quote','admin-price','area-options'].includes(action)){
+   const s=await settings();if(s.active_supplier==='five_sim')return await fiveNew(action,data,user,s);
+  }
   if(action==='admin-balance'){
-   admin(user);const p=await privateSettings();if(!p['api_key'])throw Error('Configure a chave do SMSPool para consultar o saldo.');
+   admin(user);const p=await privateSettings(),s=await settings();
+   if((data.supplier??s.active_supplier)==='five_sim'){const balanceUnits=await fiveBalance(p.five_sim_key);return json({supplier:'five_sim',balanceUnits,currency:'5SIM',lowBalance:false,lowThresholdUnits:0,checkedAt:new Date().toISOString()});}
+   if(!p['api_key'])throw Error('Configure a chave do SMSPool para consultar o saldo.');
    try{const balanceUnits=await supplierBalance(p['api_key']);return json({balanceUnits,currency:'USD',lowBalance:balanceUnits<5000000,lowThresholdUnits:5000000,checkedAt:new Date().toISOString()});}catch{throw Error('Não foi possível consultar o saldo do fornecedor. Tente atualizar.');}
   }
   if(action==='admin-dashboard'){
@@ -170,19 +285,19 @@ export async function handler(req:Request):Promise<Response>{
   if(action==='admin-pause'){admin(user);return json(await db('rpc/astros_sms_pause','POST',{actor:user['id']}));}
   if(action==='support-order'){const o=await orderById(data.orderId,user);return json({id:o['id'],service:o['service_name'],country:o['country_name'],state:o['state'],priceCents:Number(o['price_cents']),createdAt:o['created_at']});}
   if(action==='admin-settings'){
-   admin(user);const s=await settings(),p=await privateSettings();return json({enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),fxMode:s['fx_mode']??'manual',depositBps:s['deposit_bps']??325,conversionBps:s['conversion_bps']??400,extraBps:s['extra_bps']??0,fixedUsdUnits:Number(s['fixed_usd_units']??250000),depositUsdUnits:Number(s['deposit_usd_units']??10000000),marketUnits:s['market_units']??null,fxDate:s['fx_date']??null,fxCheckedAt:s['fx_checked_at']??null,hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
+   admin(user);const s=await settings(),p=await privateSettings();return json({activeSupplier:s.active_supplier??'smspool',enabled:s['enabled'],usdBrlUnits:Number(s['usd_brl_units']),marginBps:s['margin_bps'],feeCents:Number(s['fee_cents']),fxMode:s['fx_mode']??'manual',depositBps:s['deposit_bps']??325,conversionBps:s['conversion_bps']??400,extraBps:s['extra_bps']??0,fixedUsdUnits:Number(s['fixed_usd_units']??250000),depositUsdUnits:Number(s['deposit_usd_units']??10000000),marketUnits:s['market_units']??null,fxDate:s['fx_date']??null,fxCheckedAt:s['fx_checked_at']??null,hasKey:Boolean(p['api_key']),workerReady:Boolean(s['worker_at']&&Date.now()-Date.parse(s['worker_at'])<180000)});
   }
   if(action==='save-settings'){
    admin(user);const p=await privateSettings();const fx=Number(data.usdBrlUnits),margin=Number(data.marginBps),fee=Number(data.feeCents);
    if(typeof data.enabled!=='boolean'||!Number.isSafeInteger(fx)||fx<=0||fx>10000000||!Number.isSafeInteger(margin)||margin<0||margin>100000||!Number.isSafeInteger(fee)||fee<0||fee>100000)throw Error('Confira a cotação e a margem.');
    const key=typeof data.apiKey==='string'?data.apiKey.trim():'';if(key&&!/^[a-zA-Z0-9_-]{20,200}$/.test(key))throw Error('Confira a chave de integração.');
-   if(key&&key!==p['api_key']){const running=await db('astros_sms_orders?state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos em andamento antes de trocar a chave.');const test=await provider('request/balance',{},key);units(test.balance);}
+   if(key&&key!==p['api_key']){const running=await db('astros_sms_orders?supplier=eq.smspool&state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos em andamento antes de trocar a chave.');const test=await provider('request/balance',{},key);units(test.balance);}
    if(data.enabled&&!key&&!p['api_key'])throw Error('Configure a chave antes de ativar.');const s=await settings();
    if(data.enabled&&(!s['worker_at']||Date.now()-Date.parse(s['worker_at'])>180000))throw Error('Ative primeiro a rotina automática de acompanhamento.');
    const mode=data.fxMode??s['fx_mode']??'manual',deposit=Number(data.depositUsdUnits??s['deposit_usd_units']??10000000),fixed_fee=Number(data.fixedUsdUnits??s['fixed_usd_units']??250000),deposit_percent=Number(data.depositBps??s['deposit_bps']??325),conversion=Number(data.conversionBps??s['conversion_bps']??400),extra=Number(data.extraBps??s['extra_bps']??0);
    if(!['auto','manual'].includes(mode))throw Error('Selecione o modo de cotação.');effectiveFx(50000,deposit,fixed_fee,deposit_percent,conversion,extra);
    const market=mode==='auto'?await fetchMarket():{market:null,source_date:null};
-   await db('rpc/astros_sms_configure_fx','POST',{actor:user['id'],active:data.enabled,manual_fx:fx,margin,fee,new_key:key,mode,deposit,fixed_fee,deposit_percent,conversion,extra,...market});return json({success:true});
+   await db('rpc/astros_sms_configure_fx','POST',{actor:user['id'],active:s.active_supplier==='five_sim'?s.enabled:data.enabled,manual_fx:fx,margin,fee,new_key:key,mode,deposit,fixed_fee,deposit_percent,conversion,extra,...market});return json({success:true});
   }
   if(action==='refresh-fx'){admin(user);const s=await ensureFx(await settings(),true);return json({usdBrlUnits:Number(s['usd_brl_units']),fxDate:s['fx_date']??null});}
   if(action==='admin-orders'||action==='history'){
@@ -207,7 +322,13 @@ export async function handler(req:Request):Promise<Response>{
    const finish=(target:string,outcome:string,code_value:string|null=null)=>db('rpc/astros_sms_review_finish','POST',{actor:user['id'],action_id:actionId,target,expected_provider:o['provider_id']??null,code_value,outcome});
    if(mode==='note'){await finish('note','noted');return json({success:true,operationState:'completed'});}
    try{
-    const p=await privateSettings();if(!p['api_key'])throw Error();
+    const p=await privateSettings();
+    if(o.supplier==='five_sim'){
+     const a=await fiveRead(o,p.five_sim_key,mode==='cancel');
+     await finish(a.state,mode==='cancel'?(a.state==='refunded'?'cancel_confirmed':'cancel_not_confirmed'):'checked',a.state==='received'?a.code:null);
+     return json({success:true,operationState:'completed'});
+    }
+    if(!p['api_key'])throw Error();
     let v=await provider('sms/check',{orderid:o['provider_id']},p['api_key']),target=stateFromCheck(v),outcome='checked';
     if(mode==='cancel'&&target==='pending'){
      const cancelled=await provider('sms/cancel',{orderid:o['provider_id']},p['api_key']);
@@ -221,7 +342,9 @@ export async function handler(req:Request):Promise<Response>{
    }
   }
   if(action==='check'||action==='cancel'){
-   const o=await orderById(data.orderId,user);const p=await privateSettings();if(!p['api_key'])throw Error('Acompanhamento temporariamente indisponível.');
+   const o=await orderById(data.orderId,user);
+   if(o.supplier==='five_sim'){await fiveCheck(o,action==='cancel');return json({order:view(await orderById(o.id,user))});}
+   const p=await privateSettings();if(!p['api_key'])throw Error('Acompanhamento temporariamente indisponível.');
    if(action==='cancel'&&o['provider_id']&&!['received','refunded'].includes(o['state'])){
     const v=await provider('sms/cancel',{orderid:o['provider_id']},p['api_key']);
     if(v.success===1)await settle(o,'refunded');else await check(o,p['api_key']);
@@ -237,8 +360,11 @@ export async function handler(req:Request):Promise<Response>{
    // An earlier call may already have dispatched; do not require a fresh price to retrieve it.
    const previous=await db(`astros_sms_orders?id=eq.${requestId}&limit=1`);
    if(previous.length){if(previous[0].user_id!==user['id']||previous[0].quote_id!==quoteId)throw Error('Referência divergente.');return json({order:view(previous[0])});}
-   const s=await ensureFx(await settings()),p=await privateSettings();open(s,p);
+   const current=await settings();
    const q=(await db(`astros_sms_quotes?id=eq.${quoteId}&user_id=eq.${user['id']}&limit=1`))[0];if(!q)throw Error('Atualize o preço antes de comprar.');
+   if(q.supplier==='five_sim')return await fiveBuy(q,requestId,user,current);
+   if(current.active_supplier&&current.active_supplier!=='smspool')throw Error('Atualize o preço antes de comprar.');
+   const s=await ensureFx(current),p=await privateSettings();open(s,p);
    const live=await provider('request/price',{service:q['service_id'],country:q['country_id'],pool:q['pool_id']},p['api_key']);
    if(units(live.price)!==Number(q['usd_units'])||(live.pool!==undefined&&id(live.pool)!==q['pool_id']))throw Error('O preço mudou. Consulte novamente antes de comprar.');
    // Fresh supplier balance is a preflight, never a substitute for atomic wallet reservation.
@@ -267,7 +393,7 @@ export async function handler(req:Request):Promise<Response>{
    const s=await settings(),p=await privateSettings();if(action==='admin-catalog'){admin(user);if(!p['api_key'])throw Error('Salve a chave do fornecedor antes de consultar.');}else{if(!s['enabled'])return json({available:false,services:[],countries:[]});open(s,p);}
    const [services,countries]=await Promise.all([provider('service/retrieve_all'),provider('country/retrieve_all')]);
    if(!Array.isArray(services)||!Array.isArray(countries))throw Error('Catálogo temporariamente indisponível.');
-   return json({available:true,services:services.map(v=>({id:id(v.ID),name:String(v.name).slice(0,160)})),countries:countries.map(v=>({id:id(v.ID),name:String(v.name).slice(0,100),iso:String(v.short_name).slice(0,2)}))});
+   return json({available:true,supplier:'smspool',services:services.map(v=>({id:id(v.ID),name:String(v.name).slice(0,160)})),countries:countries.map(v=>({id:id(v.ID),name:String(v.name).slice(0,100),iso:String(v.short_name).slice(0,2)}))});
   }
   if(action==='area-options'){
    const s=await settings(),p=await privateSettings();open(s,p);const service=id(data.serviceId),country=id(data.countryId);
