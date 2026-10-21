@@ -185,6 +185,17 @@ async function fiveRaw(path:string,key?:string){
 }
 async function fiveGet(path:string,key?:string):Promise<Obj>{try{const {r,value}=await fiveRaw(path,key);if(!r.ok||!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw Error('Não foi possível consultar o fornecedor de SMS. Tente novamente.');}}
 async function fiveSettings(){return (await db('astros_sms_five_settings?id=eq.true'))[0] as Obj;}
+
+export function fiveEffectiveFx(market:number,deposit:number,fixed:number,percent:number,spread:number){
+ if(![market,deposit,fixed,percent,spread].every(Number.isSafeInteger)||market<1||market>10000000||deposit<1000000||deposit>10000000000||fixed<0||fixed>100000000||percent<0||percent>5000||spread<0||spread>5000)throw Error('Confira as taxas e a recarga de referência.');
+ const n=BigInt(market)*(BigInt(deposit)*BigInt(10000+percent)+BigInt(fixed)*10000n)*BigInt(10000+spread),d=BigInt(deposit)*100000000n;
+ const result=Number((n+d-1n)/d);if(result<1||result>10000000)throw Error('Cotação fora do limite.');return result;
+}
+async function ensureFiveFx(f:Obj,force=false):Promise<Obj>{
+ if(f.fx_mode!=='auto')return f;
+ if(!force&&f.fx_checked_at&&Date.now()-Date.parse(f.fx_checked_at)<3600000&&f.fx_date&&Date.now()-Date.parse(f.fx_date+'T00:00:00Z')<7*86400000)return f;
+ const value=await fetchMarket();await db('rpc/astros_sms_refresh_five_fx','POST',value);return fiveSettings();
+}
 async function fiveBalance(key:string){if(!key)throw Error('Configure a chave da 5SIM.');const v=await fiveGet('user/profile',key);if(!Number.isSafeInteger(v.id)||v.id<1)throw Error('Saldo não confirmado.');return units(v.balance);}
 async function fiveCatalog(){
  const [products,countries]=await Promise.all([fiveGet('guest/products/any/any'),fiveGet('guest/countries')]);
@@ -209,7 +220,7 @@ async function fiveCheck(o:Obj,cancel=false){
  await settle(o,a.state,a.state==='received'?{code_value:a.code}:{});
 }
 async function fiveNew(action:string,data:Obj,user:Obj,s:Obj){
- const p=await privateSettings(),f=await fiveSettings(),isAdmin=action.startsWith('admin-');if(isAdmin)admin(user);
+ const p=await privateSettings(),isAdmin=action.startsWith('admin-');if(isAdmin)admin(user);const f=await ensureFiveFx(await fiveSettings());s=await settings();
  if(action==='catalog'||action==='admin-catalog'){
   if(!isAdmin&&!s.enabled)return json({available:false,services:[],countries:[]});
   if(isAdmin){if(!p.five_sim_key||!f.native_brl_units)throw Error('Configure a 5SIM antes de consultar.');}else fiveOpen(s,p,f);
@@ -222,14 +233,14 @@ async function fiveNew(action:string,data:Obj,user:Obj,s:Obj){
   const [catalog,prices]=await Promise.all([fiveCatalog(),fiveGet('guest/prices?'+new URLSearchParams({country,product}))]);
   const serviceRow=catalog.services.find(v=>v.id===product),countryRow=catalog.countries.find(v=>v.id===country);if(!serviceRow||!countryRow)throw Error('Atualize o catálogo e selecione serviço e país.');
   const offer=fiveOffer(prices,country,product),stockCheckedAt=new Date().toISOString(),price=saleCents(offer.native,Number(f.native_brl_units),Number(f.margin_bps),Number(f.fee_cents)),costCents=saleCents(offer.native,Number(f.native_brl_units),0,0);
-  if(isAdmin)return json({service:serviceRow.name,country:countryRow.name,costNative:offer.native/1000000,currency:'5SIM',costCents,priceCents:price,differenceCents:price-costCents,stock:offer.stock,stockCheckedAt});
+  if(isAdmin)return json({service:serviceRow.name,country:countryRow.name,costNative:offer.native/1000000,currency:'USD',costCents,priceCents:price,differenceCents:price-costCents,stock:offer.stock,stockCheckedAt});
   const q=(await db('astros_sms_quotes','POST',{supplier:'five_sim',supplier_product:product,supplier_country:country,native_units:offer.native,native_brl_units:Number(f.native_brl_units),user_id:user.id,service_id:0,country_id:0,pool_id:0,service_name:serviceRow.name,country_name:countryRow.name,usd_units:0,price_cents:price,settings_version:s.updated_at}))[0];
   return json({quoteId:q.id,priceCents:price,expiresAt:q.expires_at,service:serviceRow.name,country:countryRow.name,stock:offer.stock,stockCheckedAt});
  }
  throw Error('Operação não disponível.');
 }
 async function fiveBuy(q:Obj,requestId:string,user:Obj,s:Obj){
- const p=await privateSettings(),f=await fiveSettings();fiveOpen(s,p,f);
+ const p=await privateSettings(),f=await ensureFiveFx(await fiveSettings());s=await settings();fiveOpen(s,p,f);
  if(q.supplier!=='five_sim'||s.active_supplier!=='five_sim'||q.settings_version!==s.updated_at||Date.parse(q.expires_at)<=Date.now())throw Error('Atualize o preço antes de comprar.');
  const product=fiveSlug(q.supplier_product),country=fiveSlug(q.supplier_country),offer=fiveOffer(await fiveGet('guest/prices?'+new URLSearchParams({country,product})),country,product);
  if(offer.native!==Number(q.native_units))throw Error('O preço mudou. Consulte novamente antes de comprar.');
@@ -259,7 +270,7 @@ export async function handler(req:Request):Promise<Response>{
   if(action==='worker'){
    const p=await privateSettings();if(!p['worker_secret']||req.headers.get('X-Astros-Sms-Worker')!==p['worker_secret'])return json({error:'Acesso não autorizado.'},401);
    await db('astros_sms_settings?id=eq.true','PATCH',{worker_at:new Date().toISOString()});
-   try{const s=await settings();if(s.active_supplier!=='five_sim')await ensureFx(s);}catch{/* FX outage never prevents reconciliation of existing orders. */}
+   try{const s=await settings();if(s.active_supplier==='five_sim')await ensureFiveFx(await fiveSettings());else await ensureFx(s);}catch{/* FX outage never prevents reconciliation of existing orders. */}
    const rows:Obj[]=await db('astros_sms_orders?state=in.(dispatching,pending,review)&order=checked_at.asc.nullsfirst&limit=10');let checked=0;
    for(let start=0;start<rows.length;start+=5){await Promise.all(rows.slice(start,start+5).map(async(o)=>{try{if(o['provider_id']&&(o['supplier']==='five_sim'||p['api_key'])){await check(o,p['api_key']);checked++;}else if(Date.now()-Date.parse(o['created_at'])>90000){await settle(o,'review');}}catch{/* Leave durable state for next run. Never replay purchase. */}}));}
    return json({success:true,checked});
@@ -273,12 +284,12 @@ export async function handler(req:Request):Promise<Response>{
    const [catalog,prices]=await Promise.all([fiveCatalog(),fiveGet('guest/prices?'+new URLSearchParams({country,product}))]);
    const serviceRow=catalog.services.find(v=>v.id===product),countryRow=catalog.countries.find(v=>v.id===country);
    if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo 5SIM.');
-   return json({service:serviceRow.name,country:countryRow.name,offers:fiveAdminOffers(prices,country,product),checkedAt:new Date().toISOString(),currencyConfirmed:false,selection:'lowest_stock_price'});
+   return json({service:serviceRow.name,country:countryRow.name,offers:fiveAdminOffers(prices,country,product),checkedAt:new Date().toISOString(),currencyConfirmed:true,selection:'lowest_stock_price'});
   }
 
   if(action==='admin-providers'){
-   admin(user);const s=await settings(),p=await privateSettings(),f=await fiveSettings();
-   return json({supplier:s.active_supplier??'smspool',enabled:s.enabled,hasFiveKey:Boolean(p.five_sim_key),fiveFx:Number(f.native_brl_units),fiveMargin:Number(f.margin_bps),fiveFee:Number(f.fee_cents),workerReady:Boolean(s.worker_at&&Date.now()-Date.parse(s.worker_at)<180000)});
+   admin(user);const s=await settings(),p=await privateSettings();let f=await fiveSettings(),fiveFxError='';try{f=await ensureFiveFx(f);}catch{fiveFxError='Não foi possível atualizar o dólar da 5SIM. O custo salvo pode estar desatualizado.';}
+   return json({fiveFxError,supplier:s.active_supplier??'smspool',enabled:s.enabled,hasFiveKey:Boolean(p.five_sim_key),fiveFx:Number(f.native_brl_units),fiveMargin:Number(f.margin_bps),fiveFee:Number(f.fee_cents),fiveFxMode:f.fx_mode??'manual',fiveDeposit:Number(f.deposit_usd_units??10000000),fiveFixed:Number(f.fixed_usd_units??350000),fiveDepositBps:Number(f.deposit_bps??375),fiveSpread:Number(f.conversion_bps??0),fiveMarket:f.market_units??null,fiveFxDate:f.fx_date??null,fiveFxCheckedAt:f.fx_checked_at??null,workerReady:Boolean(s.worker_at&&Date.now()-Date.parse(s.worker_at)<180000)});
   }
   if(action==='save-five'){
    admin(user);const fx=Number(data.nativeBrlUnits),margin=Number(data.marginBps),fee=Number(data.feeCents),key=String(data.apiKey??'').trim();
@@ -286,6 +297,15 @@ export async function handler(req:Request):Promise<Response>{
    const p=await privateSettings();if(key&&key!==p.five_sim_key){const running=await db('astros_sms_orders?supplier=eq.five_sim&state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos da 5SIM antes de trocar a chave.');await fiveBalance(key);}
    await db('rpc/astros_sms_configure_five','POST',{actor:user.id,fx,margin,fee,new_key:key});return json({success:true});
   }
+  if(action==='save-five-fx'){
+   admin(user);const key=String(data.apiKey??'').trim(),fx=Number(data.nativeBrlUnits),margin=Number(data.marginBps),fee=Number(data.feeCents),mode=data.fxMode,deposit=Number(data.depositUsdUnits),fixed=Number(data.fixedUsdUnits),percent=Number(data.depositBps),spread=Number(data.conversionBps);
+   if(!['manual','auto'].includes(mode)||!Number.isSafeInteger(fx)||fx<1||fx>10000000||!Number.isSafeInteger(margin)||margin<0||margin>100000||!Number.isSafeInteger(fee)||fee<0||fee>100000||key&&!/^[A-Za-z0-9._-]{20,2000}$/.test(key))throw Error('Confira a chave e os valores da 5SIM.');
+   fiveEffectiveFx(50000,deposit,fixed,percent,spread);
+   const p=await privateSettings();if(key&&key!==p.five_sim_key){const running=await db('astros_sms_orders?supplier=eq.five_sim&state=in.(dispatching,pending,review)&select=id&limit=1');if(running.length)throw Error('Conclua os pedidos da 5SIM antes de trocar a chave.');await fiveBalance(key);}
+   const market=mode==='auto'?await fetchMarket():{};
+   await db('rpc/astros_sms_configure_five_fx','POST',{actor:user.id,fx,margin,fee,new_key:key,mode,deposit,fixed_fee:fixed,deposit_percent:percent,conversion:spread,...market});return json({success:true});
+  }
+  if(action==='refresh-five-fx'){admin(user);const f=await ensureFiveFx(await fiveSettings(),true);return json({nativeBrlUnits:Number(f.native_brl_units),fxDate:f.fx_date??null});}
   if(action==='select-supplier'){
    admin(user);if(!['smspool','five_sim'].includes(data.supplier)||typeof data.enabled!=='boolean')throw Error('Selecione o fornecedor.');
    await db('rpc/astros_sms_select_supplier','POST',{actor:user.id,chosen:data.supplier,active:data.enabled});return json({success:true});
@@ -295,7 +315,7 @@ export async function handler(req:Request):Promise<Response>{
   }
   if(action==='admin-balance'){
    admin(user);const p=await privateSettings(),s=await settings();
-   if((data.supplier??s.active_supplier)==='five_sim'){const balanceUnits=await fiveBalance(p.five_sim_key);return json({supplier:'five_sim',balanceUnits,currency:'5SIM',lowBalance:false,lowThresholdUnits:0,checkedAt:new Date().toISOString()});}
+   if((data.supplier??s.active_supplier)==='five_sim'){const balanceUnits=await fiveBalance(p.five_sim_key);return json({supplier:'five_sim',balanceUnits,currency:'USD',lowBalance:false,lowThresholdUnits:0,checkedAt:new Date().toISOString()});}
    if(!p['api_key'])throw Error('Configure a chave do SMSPool para consultar o saldo.');
    try{const balanceUnits=await supplierBalance(p['api_key']);return json({balanceUnits,currency:'USD',lowBalance:balanceUnits<5000000,lowThresholdUnits:5000000,checkedAt:new Date().toISOString()});}catch{throw Error('Não foi possível consultar o saldo do fornecedor. Tente atualizar.');}
   }
