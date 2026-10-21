@@ -9,7 +9,13 @@ export const smsBuy=createServerFn({method:'POST'}).inputValidator(z.object({quo
 export const smsCheck=createServerFn({method:'POST'}).inputValidator(z.object({orderId:z.string().uuid(),cancel:z.boolean().default(false)})).handler(async({data})=>(await import('./server')).smsCall(data.cancel?'cancel':'check',{orderId:data.orderId}));
 export const smsHistory=createServerFn({method:'GET'}).inputValidator(page).handler(async({data})=>(await import('./server')).smsCall('history',data));
 export const smsAdminSettings=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-settings',{},true));
-export const smsSaveSettings=createServerFn({method:'POST'}).inputValidator(z.object({enabled:z.boolean(),apiKey:z.string().max(200),usdBrlUnits:z.number().int().min(1).max(10000000),marginBps:z.number().int().min(0).max(100000),feeCents:z.number().int().min(0).max(100000),fxMode:z.enum(['manual','auto']),depositBps:z.number().int().min(0).max(5000),conversionBps:z.number().int().min(0).max(5000),extraBps:z.number().int().min(0).max(5000),fixedUsdUnits:z.number().int().min(0).max(100000000),depositUsdUnits:z.number().int().min(1000000).max(10000000000)})).handler(async({data})=>(await import('./server')).smsCall('save-settings',data,true));
+export const smsSaveSettings=createServerFn({method:'POST'}).inputValidator(z.object({apiKey:z.string().max(200),usdBrlUnits:z.number().int().min(1).max(10000000),marginBps:z.number().int().min(0).max(100000),feeCents:z.number().int().min(0).max(100000),fxMode:z.enum(['manual','auto']),depositBps:z.number().int().min(0).max(5000),conversionBps:z.number().int().min(0).max(5000),extraBps:z.number().int().min(0).max(5000),fixedUsdUnits:z.number().int().min(0).max(100000000),depositUsdUnits:z.number().int().min(1000000).max(10000000000)})).handler(async({data})=>{
+ // Pricing forms have no availability switch. Preserve the current saved availability,
+ // rather than sending the stale value from a form opened before a pause/provider switch.
+ const {smsCall}=await import('./server');const current=await smsCall('admin-settings',{},true);
+ if(typeof current?.enabled!=='boolean')throw Error('Atualize a situação do serviço antes de salvar.');
+ return smsCall('save-settings',{...data,enabled:current.enabled},true);
+});
 export const smsAdminOrders=createServerFn({method:'GET'}).inputValidator(page).handler(async({data})=>(await import('./server')).smsCall('admin-orders',data,true));
 export const smsAdminCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-catalog',{},true));
 export const smsAdminPrice=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:optionId,countryId:optionId})).handler(async({data})=>(await import('./server')).smsCall('admin-price',data,true));
@@ -33,3 +39,5 @@ export const smsSaveFive=createServerFn({method:'POST'}).inputValidator(z.object
 export const smsSelectSupplier=createServerFn({method:'POST'}).inputValidator(z.object({supplier:z.enum(['smspool','five_sim']),enabled:z.boolean()}).strict()).handler(async({data})=>(await import('./server')).smsCall('select-supplier',data,true));
 
 export const smsFiveBalance=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-balance',{supplier:'five_sim'},true));
+
+export const smsProviderBalance=createServerFn({method:'GET'}).inputValidator(z.object({supplier:z.enum(['smspool','five_sim'])}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-balance',data,true));

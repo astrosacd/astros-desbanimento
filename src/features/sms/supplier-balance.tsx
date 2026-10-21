@@ -1,10 +1,24 @@
 import {useQuery} from '@tanstack/react-query';
-import {Wallet,RefreshCw,TriangleAlert,ExternalLink} from 'lucide-react';
+import {Wallet,RefreshCw,ExternalLink} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {smsAdminBalance} from './actions';
-const usd=(units:number)=>(units/1000000).toLocaleString('pt-BR',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:6});
-export function SmsSupplierBalance({adminId}:{adminId:string}){
- const q=useQuery({queryKey:['sms-supplier-balance',adminId],queryFn:()=>smsAdminBalance(),retry:false,refetchInterval:60000,refetchIntervalInBackground:false});
- const five=q.data?.currency==='5SIM',label=five?'5SIM':'SMSPool',format=(units:number)=>five?(units/1000000).toLocaleString('pt-BR',{maximumFractionDigits:6})+' unidades':usd(units);
- return <section className="sms-supplier-balance" aria-label="Saldo no fornecedor"><div className="sms-supplier-title"><span className="sms-supplier-icon"><Wallet size={23}/></span><div><span className="eyebrow">EXCLUSIVO DA ADMINISTRAÇÃO</span><h2>Seu saldo no {label}</h2><p>{five?'Saldo em unidades da API 5SIM.':'Saldo em dólares.'} É separado da carteira dos clientes.</p></div></div><div className="sms-supplier-data"><div aria-live="polite"><span className="sms-label">{q.isError?'Saldo não confirmado':'Disponível no fornecedor'}</span><strong>{q.isPending?'Consultando…':q.isError?'Indisponível':format(q.data!.balanceUnits)}</strong>{q.data&&!q.isError&&<p className="sms-help">Consultado em {new Date(q.data.checkedAt).toLocaleString('pt-BR',{timeZone:'America/Fortaleza'})} · Fortaleza</p>}</div><div className="sms-actions"><Button variant={q.data?.lowBalance&&!q.isError?'default':'outline'} asChild><a href={five?'https://5sim.net/':'https://www.smspool.net/balance/deposit'} target="_blank" rel="noopener noreferrer">Recarregar {label}<ExternalLink size={16}/><span className="sr-only"> (abre em nova aba)</span></a></Button><Button variant="outline" disabled={q.isFetching} onClick={()=>q.refetch()}><RefreshCw size={16} className={q.isFetching?'animate-spin motion-reduce:animate-none':''}/>{q.isFetching?'Consultando…':'Atualizar saldo'}</Button></div></div>{q.isError?<p className="sms-supplier-warning" role="alert">{q.error.message} O saldo anterior não é apresentado como confirmado.</p>:q.data?.lowBalance&&<p className="sms-supplier-warning" role="status"><TriangleAlert size={17}/><span><strong>Saldo baixo.</strong> Seu saldo está abaixo de {format(q.data.lowThresholdUnits)}. Reponha diretamente no {label} para manter as compras disponíveis. Esse limite é apenas um aviso.</span></p>}<p className="sms-help">Atualiza a cada minuto enquanto esta tela está aberta. Cada compra faz uma nova consulta no servidor; se o saldo for insuficiente ou não puder ser confirmado, a tentativa é bloqueada antes de reservar saldo do cliente. Não realiza depósitos automáticos.</p></section>;
+import {smsProviderBalance} from './actions';
+import {SmsFieldHelp} from './field-help';
+export type SmsSupplier='smspool'|'five_sim';
+export function SmsSupplierBalance({adminId,supplier}:{adminId:string;supplier?:SmsSupplier}){
+ if(supplier)return <SupplierBalanceCard adminId={adminId} supplier={supplier}/>;
+ return <div className="sms-supplier-grid" aria-label="Saldos independentes dos fornecedores"><SupplierBalanceCard adminId={adminId} supplier="smspool"/><SupplierBalanceCard adminId={adminId} supplier="five_sim"/></div>;
+}
+function SupplierBalanceCard({adminId,supplier}:{adminId:string;supplier:SmsSupplier}){
+ const five=supplier==='five_sim',name=five?'5SIM':'SMSPool';
+ const q=useQuery({queryKey:['sms-supplier-balance',adminId,supplier],queryFn:()=>smsProviderBalance({data:{supplier}}),retry:false,refetchInterval:60000,refetchIntervalInBackground:false});
+ const valid=q.data&&q.data.currency===(five?'5SIM':'USD')&&Number.isSafeInteger(q.data.balanceUnits)&&q.data.balanceUnits>=0;
+ const unavailable=q.isError||!q.isPending&&!valid;
+ const format=(units:number)=>five?(units/1000000).toLocaleString('pt-BR',{maximumFractionDigits:6})+' unidades':(units/1000000).toLocaleString('pt-BR',{style:'currency',currency:'USD',maximumFractionDigits:6});
+ return <section className="sms-supplier-balance sms-independent-balance" aria-label={`Saldo ${name}`}>
+  <div className="sms-supplier-title"><span className="sms-supplier-icon"><Wallet size={22}/></span><div><span className="eyebrow">CONTA DO FORNECEDOR</span><div className="sms-field-title"><h2>Saldo {name}</h2><SmsFieldHelp label={`Saldo ${name}`} help={`Saldo disponível na sua conta do ${name}. Serve para comprar números nesse fornecedor e é separado da carteira dos clientes e do outro fornecedor. Recarregar um não abastece o outro.`}/></div><p>{five?'Unidades de saldo retornadas pela API 5SIM.':'Dólares disponíveis na API SMSPool.'}</p></div></div>
+  <div className="sms-supplier-data"><div aria-live="polite"><span className="sms-label">{unavailable?'Saldo não confirmado':'Disponível nesta conta'}</span><strong>{q.isPending?'Consultando…':unavailable?'Indisponível':format(q.data!.balanceUnits)}</strong>{valid&&!unavailable&&<p className="sms-help">Atualizado em {new Date(q.data!.checkedAt).toLocaleString('pt-BR',{timeZone:'America/Fortaleza'})}</p>}</div></div>
+  <div className="sms-actions"><Button type="button" variant="outline" disabled={q.isFetching} onClick={()=>q.refetch()}><RefreshCw size={16} className={q.isFetching?'animate-spin motion-reduce:animate-none':''}/>{q.isFetching?'Consultando…':'Atualizar saldo'}</Button><Button type="button" variant="outline" asChild><a href={five?'https://5sim.net/':'https://www.smspool.net/balance/deposit'} target="_blank" rel="noopener noreferrer">Recarregar {name}<ExternalLink size={15}/><span className="sr-only"> (abre em nova aba)</span></a></Button></div>
+  {unavailable?<p className="sms-supplier-warning" role="alert">{q.isError?q.error.message:'Não foi possível validar o saldo retornado.'} Confira se a chave deste fornecedor foi salva.</p>:valid&&q.data?.lowBalance&&<p className="sms-supplier-warning" role="status">Saldo baixo: abaixo de {format(q.data.lowThresholdUnits)}. O aviso se refere somente ao {name}.</p>}
+  <p className="sms-help">Consulta automática a cada minuto. Depósitos são feitos diretamente no {name}.</p>
+ </section>;
 }
