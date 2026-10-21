@@ -152,6 +152,20 @@ export function fiveOffer(value:Obj,country:string,product:string){
  offers.sort((a,b)=>a.native-b.native);if(!offers.length)throw Error('Sem números disponíveis para esse serviço e país.');
  const native=offers[0].native,stock=offers.filter(v=>v.native===native).reduce((n,v)=>n+v.stock,0);if(!Number.isSafeInteger(stock))throw Error('Estoque não confirmado.');return {native,stock};
 }
+// Administrative projection only. The customer keeps service/country/final price.
+export function fiveAdminOffers(value:Obj,country:string,product:string){
+ const rows=value?.[country]?.[product];if(!rows||typeof rows!=='object'||Array.isArray(rows))throw Error('Estoque não confirmado. Consulte novamente.');
+ const result:Array<{operator:string;costNative:number;stock:number;deliveryRate:number|null}>=[];
+ for(const [operator,v] of Object.entries(rows) as Array<[string,Obj]>){
+  if(!/^[a-z0-9]{1,80}$/.test(operator)||!v||typeof v!=='object')continue;
+  try{const cost=units(v.cost),stock=Number(v.count);if(cost<=0||!['number','string'].includes(typeof v.count)||!/^\d+$/.test(String(v.count))||!Number.isSafeInteger(stock)||stock<0)continue;
+   const rate=typeof v.rate==='number'&&Number.isFinite(v.rate)&&v.rate>=0&&v.rate<=100?v.rate:null;
+   result.push({operator,costNative:cost/1000000,stock,deliveryRate:rate});
+  }catch{/* Do not project malformed offers or invent missing statistics. */}
+ }
+ if(result.length>500)throw Error('Ofertas não confirmadas. Tente novamente.');
+ return result.sort((a,b)=>a.costNative-b.costNative||a.operator.localeCompare(b.operator));
+}
 export function fiveOrder(value:Obj,expected:{product:string;country:string;id?:string;phone?:string}){
  if(!Number.isSafeInteger(value?.id)||value.id<1||expected.id&&String(value.id)!==expected.id||value.product!==expected.product||value.country!==expected.country||typeof value.phone!=='string'||!/^\+?[1-9][0-9]{5,17}$/.test(value.phone)||expected.phone&&value.phone.replace(/^\+/,'')!==expected.phone.replace(/^\+/,''))throw Error('Confirmação da ativação pendente.');
  const expiry=Date.parse(value.expires);if(!Number.isFinite(expiry))throw Error('Confirmação da ativação pendente.');const cost=units(value.price);if(cost<=0)throw Error('Confirmação da ativação pendente.');
@@ -253,6 +267,15 @@ export async function handler(req:Request):Promise<Response>{
   const user=await identity(req);
   if(!await db('rpc/astros_sms_gate','POST',{actor:user['id']}))return json({error:'Muitas consultas em sequência. Aguarde um minuto e tente novamente.'},429);
   if(action==='admin-catalog'||action==='admin-price')admin(user);
+  if(action==='admin-five-catalog'){admin(user);return json(await fiveCatalog());}
+  if(action==='admin-five-offers'){
+   admin(user);const product=fiveSlug(data.serviceId),country=fiveSlug(data.countryId);
+   const [catalog,prices]=await Promise.all([fiveCatalog(),fiveGet('guest/prices?'+new URLSearchParams({country,product}))]);
+   const serviceRow=catalog.services.find(v=>v.id===product),countryRow=catalog.countries.find(v=>v.id===country);
+   if(!serviceRow||!countryRow)throw Error('Selecione serviço e país do catálogo 5SIM.');
+   return json({service:serviceRow.name,country:countryRow.name,offers:fiveAdminOffers(prices,country,product),checkedAt:new Date().toISOString(),currencyConfirmed:false,selection:'lowest_stock_price'});
+  }
+
   if(action==='admin-providers'){
    admin(user);const s=await settings(),p=await privateSettings(),f=await fiveSettings();
    return json({supplier:s.active_supplier??'smspool',enabled:s.enabled,hasFiveKey:Boolean(p.five_sim_key),fiveFx:Number(f.native_brl_units),fiveMargin:Number(f.margin_bps),fiveFee:Number(f.fee_cents),workerReady:Boolean(s.worker_at&&Date.now()-Date.parse(s.worker_at)<180000)});

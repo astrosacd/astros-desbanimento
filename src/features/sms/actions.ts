@@ -41,3 +41,6 @@ export const smsSelectSupplier=createServerFn({method:'POST'}).inputValidator(z.
 export const smsFiveBalance=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-balance',{supplier:'five_sim'},true));
 
 export const smsProviderBalance=createServerFn({method:'GET'}).inputValidator(z.object({supplier:z.enum(['smspool','five_sim'])}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-balance',data,true));
+
+export const smsFiveCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-five-catalog',{},true));
+export const smsFiveOffers=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.string().regex(/^[a-z0-9]{1,80}$/),countryId:z.string().regex(/^[a-z0-9]{1,80}$/)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-five-offers',data,true));
