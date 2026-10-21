@@ -24,10 +24,9 @@ import {
   cnpjAdminConfig,
   cnpjAdminSave,
   cnpjAdminHistory,
-  cnpjEnrich,
 } from "../actions";
 import { brazilStates } from "../../../../supabase/functions/astros-prospecting/geography";
-import { money, type Lead } from "../types";
+import { money } from "../types";
 type Config = {
   installed?: boolean;
   enabled: boolean;
@@ -710,10 +709,10 @@ export function CnpjAdmin({ adminId,onHistory }: { adminId: string;onHistory?:()
               checked={form.enrichEnabled}
               onChange={(e) => setForm({ ...form, enrichEnabled: e.target.checked })}
             />
-            Permitir consulta complementar pela ReceitaWS pública
+            Permitir enriquecimento pela ReceitaWS pública
           </label>
           <p className="prospect-help prospect-full">
-            A ReceitaWS é opcional e consulta dados cadastrais em cache. Nesta integração pública, o
+            Confirme com o fornecedor a autorização para oferecer este recurso pago. A ReceitaWS consulta dados cadastrais em cache. Nesta integração pública, o
             limite local é de 3 consultas por minuto para toda a aplicação. Não confirma telefone do
             proprietário e não altera a busca Google Maps.
           </p>
@@ -762,99 +761,4 @@ export function CnpjAdmin({ adminId,onHistory }: { adminId: string;onHistory?:()
     </section>
   );
 }
-export function CnpjEnrichButton({ lead,userId }: { lead: Lead;userId:string }) {
-  const {query:q,blocked:dailyBlocked}=useCnpjQuota(userId);
-  const c = q.data as Config | undefined,
-    refresh = useRefresh();
-  const [confirm, setConfirm] = useState(false),
-    [busy, setBusy] = useState(false),
-    [pending, setPending] = useState<string | null>(null),
-    [message, setMessage] = useState("");
-  const lock = useRef(false);
-  if (lead.snapshot.enriched)
-    return (
-      <p className="prospect-help">
-        Consulta complementar realizada. Os contatos são cadastrais, sem confirmação de
-        titularidade.
-      </p>
-    );
-  if (!c?.enabled || !c.enrichEnabled) return null;
-  async function run() {
-    if (lock.current || (!pending && dailyBlocked)) return;
-    lock.current = true;
-    setBusy(true);
-    setMessage("");
-    const id = pending || crypto.randomUUID();
-    setPending(id);
-    try {
-      const r = (
-        pending
-          ? await cnpjStatus({ data: { requestId: id } })
-          : await cnpjEnrich({
-              data: { leadId: lead.id, requestId: id, expectedUnitCents: c!.enrichCents },
-            })
-      ) as Operation;
-      if (r.state === "processing") {
-        setMessage("Consulta em confirmação. Verifique esta mesma tentativa.");
-      } else {
-        setPending(null);
-        setMessage(
-          r.state === "completed"
-            ? `Consulta concluída. Débito: ${money(r.charged_cents)}.`
-            : "Consulta não concluída, sem débito.",
-        );
-        await refresh();
-      }
-      setConfirm(false);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "";
-      const rejection = cnpjRejection(message);
-      setMessage(rejection || (message === "Consulta CNPJ não encontrada" ? cnpjMissingRequest : "Confira a consulta no histórico antes de enviar outra."));
-      if (rejection || message === "Consulta CNPJ não encontrada") setPending(null);
-      setConfirm(false);
-    } finally {
-      setBusy(false);
-      lock.current = false;
-      void q.refetch();
-    }
-  }
-  return (
-    <div className="prospect-cnpj-enrich">
-      <p>
-        Consulte dados complementares cadastrais por {money(c.enrichCents)}. Telefones e e-mails
-        podem estar ausentes ou desatualizados.
-      </p>
-      <Button
-        variant="outline"
-        disabled={busy || (!pending && dailyBlocked)}
-        onClick={() => (pending ? void run() : setConfirm(true))}
-      >
-        {busy
-          ? "Consultando…"
-          : pending
-            ? "Verificar consulta complementar"
-            : "Consultar dados complementares"}
-      </Button>
-      {message && <p role="status">{message}</p>}
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Consultar dados complementares?</DialogTitle>
-            <DialogDescription>
-              Esta consulta custa {money(c.enrichCents)} da carteira se os dados forem recebidos e
-              salvos. Não há garantia de novos telefones ou e-mails.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirm(false)}>
-              Voltar
-            </Button>
-            <Button disabled={busy || (!pending && dailyBlocked)} onClick={() => void run()}>
-              Confirmar dados complementares
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+export {CnpjEnrichButton} from "./enrich-button";

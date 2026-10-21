@@ -439,3 +439,9 @@
 .cnpj-result-actions span { flex:1 1 200px; color:var(--muted-foreground); font-size:13px; line-height:1.7; }
 .prospect-lead-destination { min-width:0; scroll-margin-top:90px; }
 @media(max-width:480px) { .cnpj-result-actions { align-items:stretch; } .cnpj-result-actions button { width:100%; min-height:44px; } }
+
+.prospect-cnpj-complement { margin-block:20px; padding:16px; border:1px solid var(--border); border-radius:12px; min-width:0; overflow-wrap:anywhere; }
+.prospect-cnpj-complement h4 { font-size:13px; font-weight:650; }
+.prospect-cnpj-complement p { font-size:12px; line-height:1.8; margin-top:8px; }
+.prospect-cnpj-record .prospect-cnpj-enrich { margin-top:16px; min-width:0; overflow-wrap:anywhere; }
+@media(max-width:480px) { .prospect-cnpj-enrich>button { width:100%; white-space:normal; height:auto; min-height:40px; } }

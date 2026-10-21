@@ -4,6 +4,7 @@ import {
   cnpjCriteria,
   casaBody,
   companySnapshot,
+  mergeCnpjEnrichment,
   handleCnpj,
 } from "../../../../supabase/functions/astros-prospecting/cnpj";
 afterEach(() => vi.unstubAllGlobals());
@@ -165,4 +166,37 @@ it('refuses a simple response under the full contract without charging or a hidd
 });
 it('blocks both administrative audit reads for clients before touching the database',async()=>{
  const db=vi.fn();for(const action of ['admin-cnpj-base','admin-cnpj-deliveries'])await expect(handleCnpj(action,{page:0},{id:'owner',tipo_usuario:'cliente'},db)).rejects.toThrow('administrativo');expect(db).not.toHaveBeenCalled();
+});
+
+it('preserves existing fields and contact priority, fills blanks and stores differences separately',()=>{
+ const original={cnpj:'11222333000181',name:'Original',phone:'85933334444',address:'Endereço original',mei:false,capitalSocial:'0',openedAt:'2023-12-17',contacts:[{kind:'phone',value:'85933334444',url:'tel:85933334444',label:'Telefone cadastrado',source:'cnpj'}]};
+ const extra=companySnapshot({cnpj:'11222333000181',nome:'Original',telefone:'(85) 3333-4444',logradouro:'Outra rua',mei:true,capital_social:'5000',abertura:'17/12/2023',email:'contact@example.test',tipo:'MATRIZ',qsa:[{documento:'never-store'}]},true)!;
+ const merged=mergeCnpjEnrichment(original,extra);
+ expect(merged).toMatchObject({phone:original.phone,address:original.address,mei:false,capitalSocial:'0',name:'Original',branch:'MATRIZ',enriched:true});
+ expect(merged.contacts[0]).toEqual(original.contacts[0]);expect(merged.contacts).toHaveLength(3);
+ expect(merged.enrichment.addedFields).toContain('branch');expect(merged.enrichment.differences).toContainEqual({field:'phone',value:'8533334444'});expect(merged.enrichment.differences.some((v:any)=>v.field==='openedAt')).toBe(false);
+ expect(JSON.stringify(merged)).not.toContain('never-store');expect(original).not.toHaveProperty('enriched');
+ expect(()=>mergeCnpjEnrichment(original,{cnpj:'other'})).toThrow('CNPJ_invalid');
+});
+it('does not invent additional information for equivalent source values',()=>{
+ const merged=mergeCnpjEnrichment({cnpj:'11222333000181',phone:'(85) 3333-4444',openedAt:'2023-12-17T00:00:00Z',contacts:[{kind:'phone',value:'8533334444',url:'tel:8533334444'}]}, {cnpj:'11222333000181',phone:'8533334444',openedAt:'17/12/2023',contacts:[{kind:'phone',value:'8533334444',url:'tel:8533334444'}]});
+ expect(merged.enrichment.hasNewData).toBe(false);expect(merged.enrichment.differences).toEqual([]);expect(merged.contacts).toHaveLength(1);
+});
+it('enriches through ReceitaWS once, returns the owner snapshot, and recovers completed status without redispatch',async()=>{
+ const original={cnpj:'11222333000181',source:'cnpj',name:'Empresa',address:'Original',phone:'85933334444'};
+ const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({cnpj:original.cnpj,nome:'Empresa',telefone:'8533334444'})));vi.stubGlobal('fetch',fetch);
+ let saved:any=original,done=false;
+ const db=vi.fn(async(path:string,_method?:string,body?:any)=>{
+   if(path.startsWith('astros_cnpj_deliveries')){expect(path).toContain('user_id=eq.owner');return [{cnpj:original.cnpj,snapshot:saved}];}
+   if(path==='rpc/astros_cnpj_begin')return done?{run:false,request:{state:'completed'}}:{run:true,fetch:true};
+   if(path==='rpc/astros_cnpj_finish'){saved=body.rows_input[0];done=true;return {state:'completed',charged_cents:50};}
+   if(path==='rpc/astros_cnpj_status')return {state:'completed',criteria:{leadId:id}};
+   throw Error(path);
+ });
+ const data={requestId:id,leadId:id,expectedUnitCents:50};
+ const result=await handleCnpj('cnpj-enrich',data,{id:'owner'},db);
+ expect(result.leadSnapshot.phone).toBe(original.phone);expect(result.leadSnapshot.enrichment.differences).toContainEqual({field:'phone',value:'8533334444'});
+ await handleCnpj('cnpj-enrich',data,{id:'owner'},db);
+ const recovered=await handleCnpj('cnpj-status',{requestId:id},{id:'owner'},db);expect(recovered.leadSnapshot).toEqual(saved);
+ expect(fetch).toHaveBeenCalledTimes(1);expect(fetch.mock.calls[0][0]).toBe('https://www.receitaws.com.br/v1/cnpj/'+original.cnpj);
 });

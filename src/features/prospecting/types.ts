@@ -32,6 +32,7 @@ export type Lead = {
     source?: "cnpj" | "maps";
     registrationDate?:string; registrationReason?:string; legalNature?:string; secondaryActivities?:string[]; branch?:string; mei?:boolean|null; simples?:boolean|null; meiSince?:string; simplesSince?:string; providerUpdatedAt?:string; dataVersion?:number;
     cnpj?: string; legalName?:string; tradeName?:string; activity?:string; activityCode?:string; size?:string; registrationStatus?:string; openedAt?:string; capitalSocial?:string; enriched?:boolean;
+    enrichment?: {source:"receitaws"; queriedAt:string; providerUpdatedAt:string; addedFields:string[]; differences:{field:string;value:string|boolean|string[]}[]; hasNewData:boolean};
     name: string;
     address: string;
     phone: string;

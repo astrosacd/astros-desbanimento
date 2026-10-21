@@ -116,3 +116,15 @@ Validação: `npx tsc --noEmit`, testes de Prospecção (incluindo navegação/f
 
 ### Ir para os leads após a consulta
 Ao concluir uma pesquisa ou consulta direta CNPJ, o botão **Ver meus leads** abre a aba Meus leads no **Quadro de etapas**, com origem CNPJ. A tela rola até o quadro e recebe foco, inclusive no celular. A consulta não é repetida; é apenas navegação para os registros da própria conta. As opções Cartões e demais filtros permanecem disponíveis. Sem alterações de SQL, função ou cobrança.
+
+## Enriquecer dados sem substituir o cadastro — 20/10/2026
+
+Esta seção substitui as orientações anteriores sobre o botão de atualização cadastral do cliente. O botão passa a ser **Enriquecer dados**, opcional conforme a configuração existente, com preço e confirmação explícitos. A pesquisa inicial continua usando exclusivamente a resposta completa da Casa dos Dados; não consulta ReceitaWS automaticamente.
+
+A ReceitaWS preenche campos vazios e acrescenta contatos empresariais. Valores atuais, telefone principal, nome do cartão, etapa e snapshot original são preservados. Divergências são exibidas separadamente com fonte, data da consulta e atualização informada pelo fornecedor. Telefones diferentes permanecem como contatos alternativos, sem suposição de WhatsApp ou correção automática do número. Uma resposta válida pode não acrescentar informações: isso é avisado antes da confirmação.
+
+O SQL existente mantém bloqueio por conta, limite global de 3 chamadas ReceitaWS/minuto, cobrança atômica somente ao salvar e proteção contra cobrança repetida do mesmo enriquecimento. Falha ou limite não debita a carteira. Tentativa incerta só consulta o mesmo UUID; não reenvia ao fornecedor. Uma conclusão recuperada também devolve o snapshot atualizado da própria conta. Nenhum dado de outro cliente é consultado.
+
+**Ativação:** publicar a interface e atualizar a função existente `astros-prospecting` com o bundle regenerado. Não há novo SQL. A alteração não habilita a opção, não muda preços nem atualiza a VPS. O administrador mantém o controle do recurso.
+
+**Condições do fornecedor:** a API pública é sem chave, limitada e retorna cadastros já existentes na base. Os termos em https://receitaws.com.br/terms.pdf restringem a comercialização dos dados por outros sites; confirmar com a ReceitaWS a autorização aplicável antes de disponibilizar o recurso pago. Esta implementação não concede autorização comercial.

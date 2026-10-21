@@ -1,17 +1,4 @@
-import {useCnpjQuota,CnpjQuotaNotice} from "./quota";
-import {cnpjRejection, cnpjMissingRequest} from "./errors";
-import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { cnpjRefresh, cnpjStatus } from "../actions";
+import { CnpjEnrichButton } from "./enrich-button";
 import type { Lead } from "../types";
 export function displayCnpj(v?: string) {
   const n = (v || "").replace(/\D/g, "");
@@ -101,104 +88,80 @@ export function CnpjDetails({
         {s.providerUpdatedAt
           ? `Atualização informada pela fonte: ${displayCnpjDate(s.providerUpdatedAt)}. `
           : ""}
-        {s.collectedAt || s.checkedAt ? `Dados recebidos em ${displayCnpjDate(s.collectedAt || s.checkedAt)}.` : "Data de coleta não informada."}
+        {s.collectedAt || s.checkedAt
+          ? `Dados recebidos em ${displayCnpjDate(s.collectedAt || s.checkedAt)}.`
+          : "Data de coleta não informada."}
       </p>
-      {!readOnly && <CnpjRefreshButton key={lead.id} userId={userId} lead={lead} onUpdated={onUpdated} />}
+      {s.enrichment && (
+        <section
+          className="prospect-cnpj-complement"
+          aria-label="Dados complementares da ReceitaWS"
+        >
+          <h4>Dados complementares · ReceitaWS</h4>
+          <p className="prospect-help">
+            Consultados em {displayCnpjDate(s.enrichment.queriedAt)}.{" "}
+            {s.enrichment.providerUpdatedAt &&
+              `Atualização da fonte: ${displayCnpjDate(s.enrichment.providerUpdatedAt)}.`}{" "}
+            As informações anteriores foram preservadas.
+          </p>
+          {!!s.enrichment.addedFields.length && (
+            <p>
+              Campos preenchidos:{" "}
+              {s.enrichment.addedFields.map((k) => enrichmentLabels[k] || k).join(", ")}.
+            </p>
+          )}
+          {!s.enrichment.hasNewData && <p>A consulta não trouxe informações adicionais.</p>}
+          {!!s.enrichment.differences.length && (
+            <>
+              <p>Valores diferentes informados pela fonte complementar:</p>
+              <dl className="prospect-cnpj-data">
+                {s.enrichment.differences.map(({ field, value }) => (
+                  <div key={field}>
+                    <dt>{enrichmentLabels[field] || field}</dt>
+                    <dd>
+                      {Array.isArray(value)
+                        ? value.join("; ")
+                        : typeof value === "boolean"
+                          ? choice(value)
+                          : field === "capitalSocial"
+                            ? displayCnpjMoney(value)
+                            : /Date|Since|openedAt/.test(field)
+                              ? displayCnpjDate(value)
+                              : value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
+        </section>
+      )}
+      {!readOnly && (
+        <CnpjEnrichButton key={lead.id} userId={userId} lead={lead} onUpdated={onUpdated} />
+      )}
     </section>
   );
 }
-function CnpjRefreshButton({
-  lead,
-  userId,
-  onUpdated,
-}: {
-  userId:string;
-  lead: Lead;
-  onUpdated?: ((snapshot: Lead["snapshot"]) => void) | undefined;
-}) {
-  const {query:quotaQuery,blocked:dailyBlocked}=useCnpjQuota(userId);
-  const [confirm, setConfirm] = useState(false),
-    [pending, setPending] = useState<string | null>(null),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
-  const lock = useRef(false),
-    cache = useQueryClient();
-  async function run() {
-    if (lock.current || (!pending && dailyBlocked)) return;
-    lock.current = true;
-    setBusy(true);
-    setConfirm(false);
-    setMessage("");
-    const id = pending || crypto.randomUUID();
-    setPending(id);
-    try {
-      const r = await (pending
-        ? cnpjStatus({ data: { requestId: id } })
-        : cnpjRefresh({ data: { requestId: id, leadId: lead.id } }));
-      if (r.state === "processing") {
-        setMessage("Atualização em confirmação. Verifique esta mesma tentativa.");
-      } else {
-        setPending(null);
-        if (r.state === "completed" && r.leadSnapshot) onUpdated?.(r.leadSnapshot);
-        setMessage(
-          r.state === "completed"
-            ? "Dados cadastrais atualizados. Nenhum valor foi descontado da carteira."
-            : "Não foi possível atualizar agora. Os dados anteriores foram preservados e nenhum valor foi descontado.",
-        );
-        await Promise.all(
-          ["prospect-leads", "cnpj-history", "cnpj-admin-history", "cnpj-config"].map((k) =>
-            cache.invalidateQueries({ queryKey: [k] }),
-          ),
-        );
-      }
-    } catch (e) {
-      const error = e instanceof Error ? e.message : "";
-      const rejection = cnpjRejection(error);
-      if (rejection || error === "Consulta CNPJ não encontrada") setPending(null);
-      setMessage(rejection || (error === "Consulta CNPJ não encontrada" ? cnpjMissingRequest : "Não foi possível confirmar a atualização. Verifique esta tentativa antes de enviar outra."));
-    } finally {
-      setBusy(false);
-      lock.current = false;
-      void quotaQuery.refetch();
-    }
-  }
-  return (
-    <div className="prospect-cnpj-refresh">
-      <div>
-        <strong>Dados cadastrais</strong>
-        <p>
-          Atualize este contato sem comprar o mesmo lead novamente. A consulta respeita os limites
-          disponíveis.
-        </p>
-      </div>
-      <CnpjQuotaNotice userId={userId}/>
-      <Button
-        variant="outline"
-        disabled={busy || (!pending && dailyBlocked)}
-        onClick={() => (pending ? void run() : setConfirm(true))}
-      >
-        {busy ? "Atualizando…" : pending ? "Verificar atualização" : "Atualizar dados cadastrais"}
-      </Button>
-      {message && <p role="status">{message}</p>}
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Atualizar os dados deste contato?</DialogTitle>
-            <DialogDescription>
-              A nova consulta atualiza este cadastro, preserva sua etapa no CRM e não desconta saldo
-              da carteira. Nenhuma mensagem será enviada.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirm(false)}>
-              Voltar
-            </Button>
-            <Button disabled={busy || (!pending && dailyBlocked)} onClick={() => void run()}>
-              Confirmar atualização cadastral
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+const enrichmentLabels: Record<string, string> = {
+  legalName: "Razão social",
+  tradeName: "Nome fantasia",
+  address: "Endereço",
+  city: "Município",
+  region: "UF",
+  phone: "Telefone",
+  activity: "Atividade principal",
+  activityCode: "CNAE",
+  size: "Porte",
+  registrationStatus: "Situação cadastral",
+  registrationDate: "Data da situação",
+  registrationReason: "Motivo da situação",
+  openedAt: "Abertura",
+  capitalSocial: "Capital social",
+  legalNature: "Natureza jurídica",
+  secondaryActivities: "Atividades secundárias",
+  branch: "Matriz ou filial",
+  mei: "MEI",
+  simples: "Simples Nacional",
+  meiSince: "Opção pelo MEI",
+  simplesSince: "Opção pelo Simples",
+};
