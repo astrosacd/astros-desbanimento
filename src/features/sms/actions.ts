@@ -44,3 +44,6 @@ export const smsProviderBalance=createServerFn({method:'GET'}).inputValidator(z.
 
 export const smsFiveCatalog=createServerFn({method:'GET'}).handler(async()=>(await import('./server')).smsCall('admin-five-catalog',{},true));
 export const smsFiveOffers=createServerFn({method:'POST'}).inputValidator(z.object({serviceId:z.string().regex(/^[a-z0-9]{1,80}$/),countryId:z.string().regex(/^[a-z0-9]{1,80}$/)}).strict()).handler(async({data})=>(await import('./server')).smsCall('admin-five-offers',data,true));
+
+export const smsSaveFiveFx=createServerFn({method:'POST'}).inputValidator(z.object({apiKey:z.string().max(2000),nativeBrlUnits:z.number().int().min(1).max(10000000),marginBps:z.number().int().min(0).max(100000),feeCents:z.number().int().min(0).max(100000),fxMode:z.enum(['manual','auto']),depositUsdUnits:z.number().int().min(1000000).max(10000000000),fixedUsdUnits:z.number().int().min(0).max(100000000),depositBps:z.number().int().min(0).max(5000),conversionBps:z.number().int().min(0).max(5000)}).strict()).handler(async({data})=>(await import('./server')).smsCall('save-five-fx',data,true));
+export const smsRefreshFiveFx=createServerFn({method:'POST'}).handler(async()=>(await import('./server')).smsCall('refresh-five-fx',{},true));
