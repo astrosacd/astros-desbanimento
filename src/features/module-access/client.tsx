@@ -10,5 +10,5 @@ export function useModuleAccess(module:ModuleKey){
 }
 export function ModuleNotice({module}:{module:ModuleKey}){
  const access=useModuleAccess(module);
- return access.blocked?<div role="status" className="notice my-4"><strong>{access.message}</strong><p className="mt-2 text-sm">Seu histórico e o acompanhamento de pedidos já iniciados continuam disponíveis.</p></div>:null;
+ return access.blocked?<div role="status" className="notice my-4"><div className="min-w-0 text-sm leading-relaxed"><p className="font-semibold">{access.message}</p><p className="mt-1">Seu histórico e o acompanhamento de pedidos já iniciados continuam disponíveis.</p></div></div>:null;
 }
