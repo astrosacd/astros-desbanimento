@@ -48,3 +48,9 @@ O teste SQL executa as funções reais em PostgreSQL/PGlite e cobre preservaçã
 - https://5sim.net/rules — uso correto do serviço e da API, ausência de garantia de aceitação/contas nas plataformas.
 
 Não foi realizada compra real nem validação da credencial do proprietário durante a implementação. A existência pública de API não comprova autorização comercial individual para revenda.
+
+## Organização administrativa
+
+Há um único controle de liberação nas Configurações, no bloco Controle de novas compras, com o fornecedor escolhido e o botão Salvar funcionamento. As abas Configurar SMSPool e Configurar 5SIM guardam apenas chave e preços de cada API; trocar de aba ou salvar preços não seleciona fornecedor. O salvamento SMSPool consulta a disponibilidade atual no servidor, sem aceitar o valor antigo do navegador. Rascunhos das duas contas são preservados ao trocar de aba.
+
+Os dois saldos são consultados automaticamente e separadamente, com chave de cache por conta/fornecedor e unidade própria (USD no SMSPool; unidades nativas na 5SIM). Uma falha não oculta o saldo do outro fornecedor nem inventa saldo zero. O mesmo cartão aparece na aba de configuração da respectiva API. Os ícones de interrogação explicam os campos por clique/toque/teclado e não submetem os formulários. Alteração da interface e das server functions apenas: não requer SQL, novo deploy da Edge nem mudança do cron.
