@@ -1,0 +1,13 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const mocks=vi.hoisted(()=>({request:vi.fn(),admin:vi.fn(),cookie:vi.fn(()=> 'token')}));
+vi.mock('@tanstack/react-start/server',()=>({getCookie:mocks.cookie,setResponseHeader:vi.fn()}));
+vi.mock('../admin/auth.server',()=>({request:mocks.request,requireAdmin:mocks.admin}));
+import {myModules,adminModules,updateModule} from './server';
+const modules=['desbanimento','sms','social','prospecting'].map(module=>({module,enabled:true,globalEnabled:true,clientEnabled:true,message:''}));
+const response=(v:unknown,status=200)=>({ok:status<400,status,json:async()=>v});
+beforeEach(()=>{vi.resetAllMocks();mocks.cookie.mockReturnValue('token');mocks.admin.mockResolvedValue({id:'admin'});});
+it('derives client access from verified session and own-only RPC',async()=>{mocks.request.mockResolvedValueOnce(response({id:'owner',email_confirmed_at:'date'})).mockResolvedValueOnce(response(modules));expect((await myModules()).modules).toHaveLength(4);expect(mocks.request.mock.calls[1][0]).toBe('/rest/v1/rpc/astros_my_modules');expect(JSON.parse(mocks.request.mock.calls[1][2].body)).toEqual({});});
+it('only treats a missing new RPC as not installed',async()=>{mocks.request.mockResolvedValue(response({code:'PGRST202'},404));expect((await adminModules({userId:null})).installed).toBe(false);mocks.request.mockResolvedValue(response({code:'42501'},403));await expect(adminModules({userId:null})).rejects.toThrow('Não foi possível');});
+it('cannot save without server admin authorization',async()=>{mocks.admin.mockRejectedValue(Error('Não autorizado'));await expect(updateModule({module:'sms',enabled:false,userId:null})).rejects.toThrow('Não autorizado');expect(mocks.request).not.toHaveBeenCalled();});
+it('does not present a missing migration as a saved change',async()=>{mocks.request.mockResolvedValue(response({code:'PGRST202'},404));await expect(updateModule({module:'sms',enabled:false,userId:null})).rejects.toThrow('instalado');});
+it('rejects unconfirmed clients before module lookup',async()=>{mocks.request.mockResolvedValue(response({id:'owner'}));await expect(myModules()).rejects.toThrow('confirmada');expect(mocks.request).toHaveBeenCalledTimes(1);});

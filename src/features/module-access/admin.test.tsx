@@ -1,0 +1,12 @@
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+const mocks=vi.hoisted(()=>({save:vi.fn(),invalidate:vi.fn(),data:{installed:true,modules:[] as any[]}}));
+vi.mock('./actions',()=>({getAdminModules:vi.fn(),saveModule:mocks.save}));
+vi.mock('@tanstack/react-query',()=>({useQuery:()=>({data:mocks.data}),useQueryClient:()=>({invalidateQueries:mocks.invalidate})}));
+import {ModuleControls} from './admin';
+const row={module:'sms',globalEnabled:true,clientEnabled:true,enabled:true,message:''};
+beforeEach(()=>{vi.clearAllMocks();mocks.data={installed:true,modules:[row]};mocks.save.mockResolvedValue({saved:true});});afterEach(cleanup);
+it('saves global maintenance and a plain text notice without changing client permissions',async()=>{render(<ModuleControls adminId="admin"/>);fireEvent.change(screen.getByLabelText(/Aviso de manutenção/),{target:{value:'Atualização programada'}});fireEvent.click(screen.getByRole('button',{name:'Colocar em manutenção'}));await waitFor(()=>expect(mocks.save).toHaveBeenCalledWith({data:{module:'sms',enabled:false,userId:null,message:'Atualização programada'}}));expect(await screen.findByText('Controle atualizado.')).toBeTruthy();});
+it('blocks only the selected client and explains global precedence',async()=>{mocks.data.modules=[{...row,globalEnabled:false,enabled:false}];render(<ModuleControls adminId="admin" userId="client-1"/>);expect(screen.getByText(/Em manutenção global/)).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Bloquear para este cliente'}));await waitFor(()=>expect(mocks.save).toHaveBeenCalledWith({data:{module:'sms',enabled:false,userId:'client-1',message:''}}));});
+it('does not claim success on a rejected save',async()=>{mocks.save.mockRejectedValue(Error('Acesso recusado'));render(<ModuleControls adminId="admin"/>);fireEvent.click(screen.getByRole('button',{name:'Colocar em manutenção'}));expect(await screen.findByRole('alert')).toHaveTextContent('Acesso recusado');expect(screen.queryByText('Controle atualizado.')).toBeNull();});
+it('has no toggles before the SQL installation',()=>{mocks.data={installed:false,modules:[]};render(<ModuleControls adminId="admin"/>);expect(screen.queryByRole('button')).toBeNull();expect(screen.getByText(/ainda precisa ser instalado/)).toBeTruthy();});

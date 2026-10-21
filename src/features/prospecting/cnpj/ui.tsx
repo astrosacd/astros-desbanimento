@@ -81,8 +81,9 @@ function useRefresh() {
       ),
     );
 }
-export function CnpjPanel({ userId,onHistory,onLeads }: { userId: string;onHistory?:()=>void;onLeads?:()=>void }) {
-  const {query:config,blocked:dailyBlocked} = useCnpjQuota(userId);
+export function CnpjPanel({ userId,onHistory,onLeads,blocked=false }: { blocked?:boolean;userId: string;onHistory?:()=>void;onLeads?:()=>void }) {
+  const {query:config,blocked:quotaBlocked} = useCnpjQuota(userId);
+  const dailyBlocked=quotaBlocked||blocked;
   const c = config.data as Config | undefined;
   const history = useQuery({
     queryKey: ["cnpj-history", userId, 0],

@@ -1,3 +1,4 @@
+import {ModuleNotice,useModuleAccess} from '../module-access/client';
 import { SearchActivity } from "./search-activity";
 import {CnpjPanel} from "./cnpj/ui";
 import {DailyQuotaNotice,type DailyQuota} from "./daily-quota";
@@ -28,6 +29,7 @@ const countries = getCountries()
   .map((code) => ({ id: code, name: names.of(code) || code, iso: code }))
   .sort((a, b) => (a.id === "BR" ? -1 : b.id === "BR" ? 1 : a.name.localeCompare(b.name, "pt-BR")));
 export function ProspectingPage() {
+ const moduleAccess=useModuleAccess('prospecting');
   const [cnpjLeadEntry,setCnpjLeadEntry]=useState(false);
   const leadSection=useRef<HTMLElement>(null);
   const [historySource,setHistorySource]=useState<ProspectActivitySource>("all");
@@ -45,7 +47,7 @@ export function ProspectingPage() {
   });
   const daily = useQuery({queryKey:["prospect-daily-quota",client?.id],queryFn:()=>prospectDailyQuota(),retry:false,refetchInterval:60000});
   const dailyQuota=daily.data as DailyQuota|undefined;
-  const dailyBlocked=dailyQuota?.remaining===0;
+  const dailyBlocked=dailyQuota?.remaining===0||moduleAccess.blocked;
   const [tab, setTab] = useState("search"),
     [niche, setNiche] = useState(""),
     [country, setCountry] = useState("BR"),
@@ -184,7 +186,7 @@ export function ProspectingPage() {
           </Button>
         </div>
       </header>
-      <nav className="prospect-tabs" aria-label="Prospecção">
+      <ModuleNotice module="prospecting"/><nav className="prospect-tabs" aria-label="Prospecção">
         {[
           ["search", "Buscar empresas"],
           ["cnpj", "Empresas por CNPJ"],
@@ -197,8 +199,9 @@ export function ProspectingPage() {
           </button>
         ))}
       </nav>
-      {tab === "cnpj" && <CnpjPanel userId={client?.id || ""} onLeads={()=>{setCnpjLeadEntry(true);setTab("leads");}} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
-      {tab === "search" && (
+      {tab === "cnpj" && <CnpjPanel blocked={moduleAccess.blocked} userId={client?.id || ""} onLeads={()=>{setCnpjLeadEntry(true);setTab("leads");}} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
+      {moduleAccess.blocked&&tab==="search"&&<p className="notice">Novas consultas estão indisponíveis. Acesse Meus leads ou Histórico de buscas.</p>}
+      {tab === "search" && (!moduleAccess.blocked||!!pending) && (
         <div className="prospect-search-layout">
           <section className="prospect-card">
             <header className="prospect-section-heading">

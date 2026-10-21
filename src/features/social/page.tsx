@@ -1,3 +1,4 @@
+import {ModuleNotice,useModuleAccess} from '../module-access/client';
 import { categoryLabel } from "./category";
 import { SocialNetworkIcon } from "./network-icon";
 import { useSocialEstimate, LivePrice, AverageDelivery } from "./live-price";
@@ -33,6 +34,7 @@ import { ServiceReference } from "./service-reference";
 import { emptySocialPreferences, type SocialPreferences } from "./types";
 import { DeliveryInformation } from "./delivery";
 export function SocialPage() {
+ const moduleAccess=useModuleAccess('social');
   const { client } = useRouteContext({ from: "__root__" });
   const cache = useQueryClient();
   const [preferencesOpen, setPreferencesOpen] = useState(false),
@@ -274,13 +276,13 @@ export function SocialPage() {
           </Button>
         </div>
       </header>
-      <Tabs value={tab} onValueChange={setTab}>
+      <ModuleNotice module="social"/><Tabs value={tab} onValueChange={setTab}>
         <TabsList className="social-tabs" aria-label="Redes sociais">
           <TabsTrigger value="new">Novo pedido</TabsTrigger>
           <TabsTrigger value="orders">Meus pedidos</TabsTrigger>
         </TabsList>
         <TabsContent value="new" forceMount hidden={tab !== "new"}>
-          <ol className="social-client-steps" aria-label="Etapas do pedido">
+          {moduleAccess.blocked&&!attempted?<p className="notice">Novos pedidos estão indisponíveis. Acesse Meus pedidos para acompanhar os existentes.</p>:<><ol className="social-client-steps" aria-label="Etapas do pedido">
             {[
               ["Escolha o serviço", "Rede, tipo e categoria"],
               ["Confira os detalhes", "Destino e quantidade"],
@@ -777,7 +779,7 @@ export function SocialPage() {
               </p>
             )}
           </div>
-        </TabsContent>
+        </>}</TabsContent>
         <TabsContent value="orders">
           <SocialHistory />
         </TabsContent>

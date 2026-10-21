@@ -1,0 +1,11 @@
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {render,screen,cleanup} from '@testing-library/react';
+const mocks=vi.hoisted(()=>({query:{data:undefined as any,isPending:false,isError:false}}));
+vi.mock('./actions',()=>({getMyModules:vi.fn()}));
+vi.mock('@tanstack/react-query',()=>({useQuery:()=>mocks.query}));
+vi.mock('@tanstack/react-router',()=>({useRouteContext:()=>({client:{id:'client'}})}));
+import {ModuleNotice} from './client';
+beforeEach(()=>{mocks.query={data:undefined,isPending:false,isError:false};});afterEach(cleanup);
+it('shows the maintenance reason while retaining explicit access to accepted operations',()=>{mocks.query.data={modules:[{module:'sms',enabled:false,message:'Atualização do módulo SMS'}]};render(<ModuleNotice module="sms"/>);expect(screen.getByRole('status')).toHaveTextContent('Atualização do módulo SMS');expect(screen.getByText(/pedidos já iniciados continuam disponíveis/)).toBeTruthy();});
+it('does not spread one module block into another',()=>{mocks.query.data={modules:[{module:'sms',enabled:false,message:'Manutenção'}]};render(<ModuleNotice module="social"/>);expect(screen.queryByRole('status')).toBeNull();});
+it('does not invent a maintenance state from a failed lookup',()=>{mocks.query.isError=true;render(<ModuleNotice module="sms"/>);expect(screen.queryByRole('status')).toBeNull();});
