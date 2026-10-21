@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {fiveOffer,fiveOrder,fiveRejection,handler} from '../../../supabase/functions/astros-sms/index';
+import {fiveAdminOffers,fiveOffer,fiveOrder,fiveRejection,handler} from '../../../supabase/functions/astros-sms/index';
 const actor='00000000-0000-4000-8000-000000000001',orderId='00000000-0000-4000-8000-000000000002',quoteId='00000000-0000-4000-8000-000000000003',epoch='2026-10-21T15:00:00Z';
 const activation={id:123,phone:'+5511999999999',product:'whatsapp',country:'brazil',operator:'virtual1',price:10,status:'PENDING',expires:'2026-10-21T15:20:00Z',sms:null};
 const expected={product:'whatsapp',country:'brazil'};
@@ -63,3 +63,19 @@ it('keeps old SMSPool checks on SMSPool after switching to 5SIM',async()=>{const
 it('claims cancellation before external request and never repeats uncertain cancellation',async()=>{const calls=setup({existing:true,cancelNetwork:true});await handler(req('cancel'));await handler(req('cancel'));expect(calls.filter(v=>v.url.includes('/user/cancel/'))).toHaveLength(1);expect(calls.findIndex(v=>v.url.includes('astros_sms_claim_five_cancel'))).toBeLessThan(calls.findIndex(v=>v.url.includes('/user/cancel/')));expect(calls.some(v=>v.url.includes('astros_sms_settle')&&v.body.target==='refunded')).toBe(false);});
 it('admin review is audited and routed to original 5SIM without exposing SMS code',async()=>{const calls=setup({existing:true,active:'smspool',role:'admin',checkStatus:'RECEIVED',checkSms:[{code:'987654'}]});const r=await handler(req('admin-review',{orderId,actionId:quoteId,mode:'check',reason:'Conferência solicitada pelo cliente'}));expect(r.status).toBe(200);expect(await r.text()).not.toContain('987654');expect(calls.find(v=>v.url.includes('astros_sms_review_finish'))?.body).toMatchObject({target:'received',code_value:'987654',expected_provider:'123'});expect(calls.some(v=>v.url.includes('smspool.net'))).toBe(false);});
 it('worker reconciles 5SIM orders independently of active SMSPool selection',async()=>{const calls=setup({existing:true,active:'smspool'});const r=await handler(req('worker'));expect((await r.json()).checked).toBe(1);expect(calls.some(v=>v.url.includes('5sim.net/v1/user/check/123'))).toBe(true);expect(calls.some(v=>v.url.includes('/user/buy/'))).toBe(false);});
+
+it('projects distinct operator prices, stock and optional historical rate without guessing currency',()=>{
+ const result=fiveAdminOffers({brazil:{whatsapp:{virtual4:{cost:30,count:5,rate:0},virtual61:{cost:10,count:2},virtual66:{cost:20,count:0,rate:42.5},broken:{cost:'invalid',count:4},missingStock:{cost:5,count:null}}}},'brazil','whatsapp');
+ expect(result).toEqual([{operator:'virtual61',costNative:10,stock:2,deliveryRate:null},{operator:'virtual66',costNative:20,stock:0,deliveryRate:42.5},{operator:'virtual4',costNative:30,stock:5,deliveryRate:0}]);
+});
+it('admin inspects 5SIM operators independently of active provider, key, conversion and wallet',async()=>{
+ const calls=setup({role:'admin',active:'smspool'});const r=await handler(req('admin-five-offers',{serviceId:'whatsapp',countryId:'brazil'}));
+ expect(r.status).toBe(200);expect(await r.json()).toMatchObject({service:'WhatsApp',country:'Brazil',currencyConfirmed:false,offers:[{operator:'virtual1',costNative:10,stock:5,deliveryRate:null}]});
+ expect(calls.some(v=>v.url.includes('astros_sms_private')||v.url.includes('astros_sms_settings')||v.url.includes('astros_sms_quotes')||v.url.includes('astros_sms_reserve')||v.url.includes('/user/buy/')||v.url.includes('/user/profile'))).toBe(false);
+});
+it('client cannot access either administrative 5SIM inspection action',async()=>{
+ for(const action of ['admin-five-catalog','admin-five-offers']){const calls=setup();expect((await handler(req(action,{serviceId:'whatsapp',countryId:'brazil'}))).status).toBe(400);expect(calls.some(v=>v.url.includes('5sim.net')||v.url.includes('astros_sms_private'))).toBe(false);}
+});
+it('client quotes keep only final price and availability, without operator costs or delivery rates',async()=>{
+ setup();const r=await handler(req('quote',{serviceId:'whatsapp',countryId:'brazil'}));expect(r.status).toBe(200);const text=await r.text();expect(text).not.toContain('costNative');expect(text).not.toContain('deliveryRate');expect(text).not.toContain('virtual1');expect(text).toContain('priceCents');
+});
