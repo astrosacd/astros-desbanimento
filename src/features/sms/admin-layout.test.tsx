@@ -3,6 +3,7 @@ import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 const data={enabled:true,hasKey:true,workerReady:true,fxMode:'manual',usdBrlUnits:55000,marginBps:5000,feeCents:100};
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:vi.fn()}),useQuery:()=>({data,isPending:false,isError:false,refetch:vi.fn()})}));
 vi.mock('./actions',()=>({smsAdminSettings:vi.fn(),smsSaveSettings:vi.fn(),smsRefreshFx:vi.fn()}));
+vi.mock('./providers-admin',()=>({SmsProvidersAdmin:()=> <p>Seleção de fornecedor</p>}));
 vi.mock('./supplier-balance',()=>({SmsSupplierBalance:()=> <p>Saldo do fornecedor</p>}));
 vi.mock('./operations',()=>({SmsOperations:()=> <p>Indicadores da operação</p>}));
 vi.mock('./orders',()=>({SmsHistory:()=> <p>Histórico administrativo</p>}));

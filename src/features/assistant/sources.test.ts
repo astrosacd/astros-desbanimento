@@ -101,3 +101,9 @@ it("accepts a bounded diagnostic projection and strips unexpected private fields
   expect(JSON.stringify(result)).not.toContain("private-key");
   expect(JSON.stringify(result)).not.toContain("private-provider-data");
 });
+
+it("keeps the named SMSPool source on SMSPool regardless of active purchase supplier",async()=>{
+ vi.mocked(request).mockResolvedValue(new Response(JSON.stringify({balanceUnits:1000000,currency:'USD',checkedAt:'2026-10-21T12:00:00Z'})));
+ expect(await supplierBalance('admin','sms')).toMatchObject({name:'SMSPool',available:true,balanceUsd:1});
+ expect(request).toHaveBeenCalledWith('/functions/v1/astros-sms','admin',expect.objectContaining({body:JSON.stringify({action:'admin-balance',data:{supplier:'smspool'}})}));
+});
