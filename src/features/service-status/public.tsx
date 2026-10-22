@@ -1,5 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowUpRight, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  ArrowUpRight,
+  RefreshCw,
+  ShieldCheck,
+  CheckCircle2,
+  TriangleAlert,
+  Clock3,
+  Server,
+  LockKeyhole,
+  MessageSquare,
+  Share2,
+  Search,
+  Building2,
+} from "lucide-react";
 import { ENDPOINT, labels, snapshotSchema, visibleSnapshot, overall, type Snapshot } from "./model";
 import "./status.css";
 const time = (s: string | null) =>
@@ -22,45 +36,123 @@ export function StatusBoard({ snapshot }: { snapshot: Snapshot }) {
     maintenance: "Manutenção em andamento",
     unknown: "Aguardando confirmação dos serviços",
   };
+  const normal = data.components.filter((c) => c.status === "operational").length;
+  const attention = data.components.filter(
+    (c) => c.status === "degraded" || c.status === "unavailable",
+  ).length;
+  const maintenance = data.components.filter((c) => c.status === "maintenance").length;
+  const confirmed =
+    data.components
+      .map((c) => c.checkedAt)
+      .filter((v): v is string => !!v && Number.isFinite(Date.parse(v)))
+      .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+  const icons: Record<string, typeof Activity> = {
+    panel: Server,
+    auth: LockKeyhole,
+    desbanimento: ShieldCheck,
+    sms: MessageSquare,
+    social: Share2,
+    prospect_maps: Search,
+    prospect_cnpj: Building2,
+  };
+  const descriptions: Record<string, string> = {
+    panel: "Acesso à plataforma",
+    auth: "Login e autenticação",
+    desbanimento: "Solicitações e acompanhamento",
+    sms: "Números e recebimento de códigos",
+    social: "Serviços e acompanhamento de pedidos",
+    prospect_maps: "Busca de empresas no Google Maps",
+    prospect_cnpj: "Consulta e prospecção por CNPJ",
+  };
+  const StatusIcon =
+    status === "operational" ? CheckCircle2 : status === "unknown" ? Clock3 : TriangleAlert;
   return (
     <>
       <section className={"status-hero status-" + status}>
+        <div className="status-hero-icon">
+          <StatusIcon size={30} />
+        </div>
         <div className="status-eyebrow">
           <span className="status-dot" />
           DISPONIBILIDADE AGORA
         </div>
         <h1>{titles[status]}</h1>
         <p>Acompanhe a disponibilidade técnica da Astros Mais e os avisos da nossa equipe.</p>
-        <small>Atualização do monitor: {time(data.generatedAt)}</small>
+        <div className="status-hero-meta">
+          <span>
+            <Clock3 size={14} />
+            Última verificação: {time(confirmed)}
+          </span>
+          <span>
+            <RefreshCw size={14} />
+            Monitoramento automático
+          </span>
+        </div>
+        <div className="status-summary" aria-label="Resumo dos serviços">
+          <div>
+            <strong>
+              {normal}
+              <small> / {data.components.length}</small>
+            </strong>
+            <span>Operacionais</span>
+          </div>
+          <div>
+            <strong>{attention}</strong>
+            <span>Precisam de atenção</span>
+          </div>
+          <div>
+            <strong>{maintenance}</strong>
+            <span>Em manutenção</span>
+          </div>
+        </div>
       </section>
       <section className="status-services" aria-labelledby="services-title">
         <div className="status-section-heading">
-          <h2 id="services-title">Nossos serviços</h2>
+          <div>
+            <span className="status-kicker">VISÃO GERAL</span>
+            <h2 id="services-title">Disponibilidade dos serviços</h2>
+          </div>
           <span>Verificação a cada 2 minutos</span>
         </div>
-        {data.components.map((c) => (
-          <article className="status-service" key={c.key}>
-            <div>
-              <h3>{c.label}</h3>
-              {c.message && <p>{c.message}</p>}
-              <small>
-                {c.source === "module"
-                  ? "Manutenção global configurada no painel"
-                  : c.source === "manual"
-                    ? "Aviso da equipe"
-                    : `Verificado: ${time(c.checkedAt)}`}
-              </small>
-            </div>
-            <span className={"status-pill status-" + c.status}>
-              <span className="status-dot" />
-              {labels[c.status]}
-            </span>
-          </article>
-        ))}
+        <div className="status-service-grid">
+          {data.components.map((c) => {
+            const Icon = icons[c.key] ?? Activity;
+            return (
+              <article className="status-service" key={c.key}>
+                <div className="status-service-heading">
+                  <span className="status-service-icon">
+                    <Icon size={20} />
+                  </span>
+                  <div>
+                    <h3>{c.label}</h3>
+                    <span className="status-service-description">{descriptions[c.key]}</span>
+                  </div>
+                </div>
+                <div className="status-service-detail">
+                  {c.message && <p>{c.message}</p>}
+                  <small>
+                    {c.source === "module"
+                      ? "Manutenção global configurada no painel"
+                      : c.source === "manual"
+                        ? "Aviso da equipe"
+                        : `Verificado: ${time(c.checkedAt)}`}
+                  </small>
+                </div>
+                <span className={"status-pill status-" + c.status}>
+                  <span className="status-dot" />
+                  {labels[c.status]}
+                </span>
+              </article>
+            );
+          })}
+        </div>
       </section>
       <section className="status-history">
         <div className="status-section-heading">
-          <h2>Atualizações recentes</h2>
+          <div>
+            <span className="status-kicker">ACOMPANHAMENTO</span>
+            <h2>Atualizações recentes</h2>
+          </div>
           <span>Últimos 30 dias</span>
         </div>
         {data.events.length ? (
@@ -108,9 +200,9 @@ export function PublicStatus() {
     <div className="status-page">
       <header className="status-header">
         <a href="https://mais.astroscomunicacaodigital.com" className="status-brand">
-          <Activity size={26} />
+          <img src="/brand/astros-symbol.png" alt="" width="38" height="38" />
           <span>
-            astros<span>mais</span>
+            Astros <span>Mais</span>
             <small>Status dos serviços</small>
           </span>
         </a>
@@ -142,11 +234,14 @@ export function PublicStatus() {
         )}
         <aside className="status-note">
           <ShieldCheck size={19} />
-          <p>
-            As verificações consultam conexões, configuração e disponibilidade técnica. Elas não
-            realizam compras, envios ou testes de cobrança. A disponibilidade de números e ofertas
-            pode variar.
-          </p>
+          <div>
+            <strong>Informação para você acompanhar com confiança</strong>
+            <p>
+              Esta página acompanha a disponibilidade técnica dos nossos serviços. A disponibilidade
+              de números e ofertas pode variar. Acompanhe por aqui os avisos e as atualizações da
+              equipe.
+            </p>
+          </div>
         </aside>
       </main>
       <footer>

@@ -323,3 +323,482 @@
     max-width: 100%;
   }
 }
+/* Public service center: clear hierarchy, readable cards and honest live totals. */
+.status-page {
+  background: radial-gradient(ellipse at 85% 0, rgba(22, 168, 157, 0.08), transparent 42%), #f6f8fb;
+  color: #172638;
+  padding: 0 32px;
+}
+.status-page main,
+.status-header,
+.status-page footer {
+  max-width: 1080px;
+}
+.status-header {
+  padding: 26px 0;
+  border-color: #dfe6ee;
+}
+.status-header a {
+  color: #496174;
+  font-weight: 600;
+  min-height: 44px;
+}
+.status-header .status-brand {
+  color: #172638;
+  font-size: 26px;
+  letter-spacing: -0.045em;
+  gap: 12px;
+}
+.status-brand img {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.status-brand > span > span {
+  color: #087e83;
+  margin-left: 0;
+}
+.status-brand small {
+  color: #607487;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.status-header > a:last-child {
+  padding: 10px 16px;
+  border: 1px solid #d5dfe8;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 4px #132b4205;
+}
+.status-page main {
+  padding-top: 32px;
+}
+.status-hero {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(125deg, #102d3b, #123e48);
+  border: 1px solid #224b55;
+  box-shadow: 0 12px 40px #0e354b12;
+  border-radius: 22px;
+  padding: 34px 38px 0;
+  color: #f1f7fa;
+  margin-bottom: 34px;
+  overflow-wrap: anywhere;
+}
+.status-hero-icon {
+  float: right;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border: 1px solid #ffffff25;
+  background: #ffffff0c;
+  border-radius: 18px;
+  color: var(--status-color);
+  margin-left: 18px;
+}
+.status-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.17em;
+}
+.status-hero h1 {
+  font-weight: 650;
+  font-size: clamp(25px, 3.4vw, 36px);
+  max-width: 750px;
+  margin: 16px 0 12px;
+  line-height: 1.25;
+}
+.status-hero p {
+  color: #b8d0d8;
+  font-size: 14px;
+  max-width: 680px;
+  margin: 0;
+  line-height: 1.75;
+}
+.status-hero-meta {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 23px 0 29px;
+  color: #b8d0d8;
+  font-size: 11px;
+}
+.status-hero-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.status-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid #ffffff20;
+  margin: 0 -38px;
+  padding: 22px 38px;
+  gap: 20px;
+  background: #ffffff04;
+  border-radius: 0 0 22px 22px;
+}
+.status-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.status-summary > div + div {
+  border-left: 1px solid #ffffff20;
+  padding-left: 26px;
+}
+.status-summary strong {
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.status-summary strong small {
+  display: inline;
+  margin: 0;
+  color: #97b4c0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.status-summary > div > span {
+  font-size: 11px;
+  color: #b8d0d8;
+}
+.status-section-heading {
+  margin: 28px 0 18px;
+  align-items: flex-end;
+}
+.status-kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  color: #087e83;
+  margin-bottom: 7px;
+}
+.status-section-heading h2 {
+  font-size: 20px;
+  color: #172638;
+  letter-spacing: -0.025em;
+}
+.status-section-heading > span {
+  color: #617587;
+  font-size: 11px;
+}
+.status-service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.status-service,
+.status-service:nth-child(2),
+.status-service:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: stretch;
+  border: 1px solid #dfe6ee;
+  border-radius: 14px;
+  background: #fff;
+  margin: 0;
+  padding: 22px;
+  box-shadow: 0 2px 5px #132b4203;
+  min-width: 0;
+}
+.status-service-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.status-service-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #eff6f7;
+  color: #087e83;
+}
+.status-service-heading > div {
+  min-width: 0;
+}
+.status-service h3 {
+  font-size: 14px;
+  color: #172638;
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+.status-service-description {
+  font-size: 11px;
+  color: #6a7e8e;
+  line-height: 1.6;
+}
+.status-service-detail {
+  margin-top: auto;
+}
+.status-service p {
+  color: #4c6377;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.status-service small {
+  color: #718493;
+  font-size: 10px;
+  line-height: 1.7;
+  display: block;
+}
+.status-pill {
+  align-self: flex-start;
+  border: 1px solid color-mix(in srgb, var(--status-color) 22%, transparent);
+  background: color-mix(in srgb, var(--status-color) 7%, #fff);
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--status-color);
+}
+.status-service-grid .status-operational {
+  --status-color: #087c5b;
+}
+.status-service-grid .status-degraded {
+  --status-color: #996710;
+}
+.status-service-grid .status-unavailable {
+  --status-color: #ba364f;
+}
+.status-service-grid .status-maintenance {
+  --status-color: #5d57ba;
+}
+.status-service-grid .status-unknown {
+  --status-color: #5d7086;
+}
+.status-services {
+  margin-bottom: 36px;
+}
+.status-history {
+  margin: 0 0 30px;
+}
+.status-history article {
+  position: relative;
+  background: #fff;
+  border: 1px solid #dfe6ee;
+  padding: 21px 24px;
+  margin-top: -1px;
+  gap: 17px;
+}
+.status-history article:nth-child(2) {
+  border-radius: 14px 14px 0 0;
+}
+.status-history article:last-child {
+  border-radius: 0 0 14px 14px;
+}
+.status-history article:nth-child(2):last-child {
+  border-radius: 14px;
+}
+.status-history article > .status-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  box-shadow: 0 0 0 4px #f2f5f8;
+}
+.status-history .status-operational {
+  --status-color: #087c5b;
+}
+.status-history .status-degraded {
+  --status-color: #996710;
+}
+.status-history .status-unavailable {
+  --status-color: #ba364f;
+}
+.status-history .status-maintenance {
+  --status-color: #5d57ba;
+}
+.status-history h3 {
+  color: #24394b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.status-history p {
+  color: #5e7386;
+  font-size: 12px;
+  margin: 0;
+}
+.status-history small {
+  color: #738696;
+  font-size: 10px;
+}
+.status-empty {
+  border: 1px dashed #cdd9e3;
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  color: #617587;
+  text-align: center;
+}
+.status-note {
+  background: #edf3f6;
+  border: 1px solid #e0e8ee;
+  color: #50697d;
+  padding: 22px;
+  margin: 30px 0;
+  border-radius: 14px;
+  gap: 14px;
+}
+.status-note svg {
+  color: #087e83;
+}
+.status-note strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: #304e62;
+  font-weight: 600;
+}
+.status-note p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #61798c;
+}
+.status-page footer {
+  border-color: #dfe6ee;
+  color: #647a8c;
+  font-size: 10px;
+  padding: 24px 0 30px;
+}
+.status-hero:has(> h1) {
+  padding-bottom: 30px;
+}
+.status-hero button {
+  font-size: 12px;
+  min-height: 44px;
+  margin-top: 18px;
+  color: #fff;
+  border-color: #ffffff40;
+}
+.status-header a:focus-visible,
+.status-hero button:focus-visible {
+  outline: 3px solid #20b6b0;
+  outline-offset: 4px;
+}
+.status-admin-preview {
+  background: #f6f8fb;
+  color: #172638;
+}
+@media (min-width: 1000px) {
+  .status-service-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .status-page {
+    padding: 0 18px;
+  }
+  .status-header {
+    padding: 19px 0;
+    gap: 10px;
+  }
+  .status-header .status-brand {
+    font-size: 22px;
+    gap: 9px;
+  }
+  .status-brand img {
+    width: 31px;
+    height: 31px;
+  }
+  .status-brand small {
+    font-size: 9px;
+  }
+  .status-header > a:last-child {
+    font-size: 10px;
+    padding: 8px 10px;
+    gap: 5px;
+  }
+  .status-header > a:last-child svg {
+    width: 13px;
+  }
+  .status-page main {
+    padding-top: 22px;
+  }
+  .status-hero {
+    padding: 25px 22px 0;
+    border-radius: 17px;
+  }
+  .status-hero h1 {
+    font-size: 26px;
+  }
+  .status-hero-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    margin-left: 10px;
+  }
+  .status-hero-icon svg {
+    width: 23px;
+  }
+  .status-eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.13em;
+    padding-top: 3px;
+  }
+  .status-hero p {
+    font-size: 12px;
+  }
+  .status-hero-meta {
+    gap: 9px;
+    font-size: 10px;
+    margin: 20px 0;
+  }
+  .status-summary {
+    margin: 0 -22px;
+    padding: 18px 22px;
+    gap: 10px;
+    border-radius: 0 0 17px 17px;
+  }
+  .status-summary > div + div {
+    padding-left: 12px;
+  }
+  .status-summary strong {
+    font-size: 24px;
+  }
+  .status-summary strong small {
+    font-size: 12px;
+  }
+  .status-summary > div > span {
+    font-size: 9px;
+    line-height: 1.6;
+  }
+  .status-service-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px;
+  }
+  .status-service,
+  .status-service:nth-child(2),
+  .status-service:last-child {
+    padding: 20px;
+    gap: 13px;
+  }
+  .status-service > div {
+    flex: initial;
+  }
+  .status-section-heading h2 {
+    font-size: 18px;
+  }
+  .status-section-heading > span {
+    font-size: 10px;
+  }
+  .status-history article {
+    padding: 19px;
+    gap: 13px;
+  }
+  .status-note {
+    padding: 18px;
+  }
+  .status-page footer {
+    gap: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-page * {
+    scroll-behavior: auto;
+  }
+}
