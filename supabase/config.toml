@@ -5,3 +5,6 @@ verify_jwt = false
 # This function verifies confirmed Auth identity and role on every request itself.
 [functions.astros-prospecting]
 verify_jwt = false
+# Public sanitized status GET; worker POST verifies its dedicated private secret.
+[functions.astros-status]
+verify_jwt = false

@@ -25,6 +25,8 @@ import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedesSociaisRouteImport } from './routes/redes-sociais'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SolicitacoesRouteImport } from './routes/solicitacoes'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as StatusHealthRouteImport } from './routes/status-health'
 import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as TermosRouteImport } from './routes/termos'
 
@@ -108,6 +110,16 @@ const SolicitacoesRoute = SolicitacoesRouteImport.update({
   path: '/solicitacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusHealthRoute = StatusHealthRouteImport.update({
+  id: '/status-health',
+  path: '/status-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuporteRoute = SuporteRouteImport.update({
   id: '/suporte',
   path: '/suporte',
@@ -136,6 +148,8 @@ export interface FileRoutesByFullPath {
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
+  '/status': typeof StatusRoute
+  '/status-health': typeof StatusHealthRoute
   '/suporte': typeof SuporteRoute
   '/termos': typeof TermosRoute
 }
@@ -156,6 +170,8 @@ export interface FileRoutesByTo {
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
+  '/status': typeof StatusRoute
+  '/status-health': typeof StatusHealthRoute
   '/suporte': typeof SuporteRoute
   '/termos': typeof TermosRoute
 }
@@ -177,6 +193,8 @@ export interface FileRoutesById {
   '/redes-sociais': typeof RedesSociaisRoute
   '/reset-password': typeof ResetPasswordRoute
   '/solicitacoes': typeof SolicitacoesRoute
+  '/status': typeof StatusRoute
+  '/status-health': typeof StatusHealthRoute
   '/suporte': typeof SuporteRoute
   '/termos': typeof TermosRoute
 }
@@ -199,6 +217,8 @@ export interface FileRouteTypes {
     | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
+    | '/status'
+    | '/status-health'
     | '/suporte'
     | '/termos'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +239,8 @@ export interface FileRouteTypes {
     | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
+    | '/status'
+    | '/status-health'
     | '/suporte'
     | '/termos'
   id:
@@ -239,6 +261,8 @@ export interface FileRouteTypes {
     | '/redes-sociais'
     | '/reset-password'
     | '/solicitacoes'
+    | '/status'
+    | '/status-health'
     | '/suporte'
     | '/termos'
   fileRoutesById: FileRoutesById
@@ -260,6 +284,8 @@ export interface RootRouteChildren {
   RedesSociaisRoute: typeof RedesSociaisRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SolicitacoesRoute: typeof SolicitacoesRoute
+  StatusRoute: typeof StatusRoute
+  StatusHealthRoute: typeof StatusHealthRoute
   SuporteRoute: typeof SuporteRoute
   TermosRoute: typeof TermosRoute
 }
@@ -378,6 +404,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SolicitacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status-health': {
+      id: '/status-health'
+      path: '/status-health'
+      fullPath: '/status-health'
+      preLoaderRoute: typeof StatusHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suporte': {
       id: '/suporte'
       path: '/suporte'
@@ -412,6 +452,8 @@ const rootRouteChildren: RootRouteChildren = {
   RedesSociaisRoute: RedesSociaisRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SolicitacoesRoute: SolicitacoesRoute,
+  StatusRoute: StatusRoute,
+  StatusHealthRoute: StatusHealthRoute,
   SuporteRoute: SuporteRoute,
   TermosRoute: TermosRoute,
 }

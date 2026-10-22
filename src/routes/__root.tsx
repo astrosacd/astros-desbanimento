@@ -81,7 +81,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location,context }) => {
-    const publicPaths = ['/login', '/cadastro', '/recuperar-senha', '/reset-password', '/termos'];
+    const publicPaths = ['/login', '/cadastro', '/recuperar-senha', '/reset-password', '/termos','/status','/status-health'];
     if (publicPaths.includes(location.pathname) || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) return { client: null };
     const client = await navigationSession(context.queryClient,()=>getClientSession());
     if (!client) throw redirect({ to: '/login' });
