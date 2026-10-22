@@ -3,7 +3,7 @@ import {Outlet,useMatches} from '@tanstack/react-router';
 import {AppShell} from '../demo/shell';
 import {Toaster} from 'sonner';
 import type {ClientIdentity} from '../auth/session.server';
-const standalonePaths=new Set(['/login','/cadastro','/recuperar-senha','/reset-password','/termos','/alterar-senha','/admin']);
+const standalonePaths=new Set(['/login','/cadastro','/recuperar-senha','/reset-password','/termos','/status','/status-health','/alterar-senha','/admin']);
 export function ClientRouteFrame({identity}:{identity?:ClientIdentity|null}){
  // The requested URL can change while Outlet still presents the previous page.
  // Use the same presented route matches as Outlet to choose its surrounding layout.

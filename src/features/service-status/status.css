@@ -1,0 +1,325 @@
+.status-page {
+  min-height: 100vh;
+  background: #0a101b;
+  color: #e8eef7;
+  font-family: inherit;
+  padding: 0 24px;
+}
+.status-page main,
+.status-header,
+.status-page footer {
+  max-width: 920px;
+  margin: auto;
+}
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 35px 0;
+  border-bottom: 1px solid #233044;
+}
+.status-header a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a9bbd3;
+  font-size: 13px;
+  text-decoration: none;
+}
+.status-header .status-brand {
+  color: #f1f6ff;
+  font-size: 25px;
+  font-weight: 700;
+  gap: 13px;
+}
+.status-brand > span > span {
+  color: #72ddb4;
+  margin-left: 5px;
+}
+.status-brand small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #8fa5c1;
+  margin-top: 2px;
+}
+.status-page main {
+  padding-top: 38px;
+}
+.status-hero {
+  border: 1px solid #2a3c50;
+  background: linear-gradient(125deg, #142735, #111a2a);
+  border-radius: 22px;
+  padding: 36px;
+  margin-bottom: 35px;
+}
+.status-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  color: var(--status-color, #94a3b8);
+}
+.status-hero h1 {
+  font-size: clamp(25px, 4vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  margin: 16px 0;
+}
+.status-hero p {
+  color: #a8bad0;
+  line-height: 1.7;
+  font-size: 15px;
+  max-width: 620px;
+}
+.status-hero small {
+  display: block;
+  color: #8fa5c1;
+  font-size: 12px;
+  margin-top: 25px;
+}
+.status-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin: 25px 0 16px;
+  flex-wrap: wrap;
+}
+.status-section-heading h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+.status-section-heading > span {
+  font-size: 11px;
+  color: #8fa5c1;
+}
+.status-services {
+  margin-bottom: 42px;
+}
+.status-service {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  border: 1px solid #243043;
+  padding: 21px 24px;
+  background: #101927;
+  margin-top: -1px;
+}
+.status-service:nth-child(2) {
+  border-radius: 15px 15px 0 0;
+}
+.status-service:last-child {
+  border-radius: 0 0 15px 15px;
+}
+.status-service > div {
+  min-width: 0;
+}
+.status-service h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.status-service p {
+  font-size: 13px;
+  color: #b5c4d7;
+  margin: 8px 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.status-service small {
+  color: #8298b6;
+  font-size: 11px;
+}
+.status-pill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--status-color, #94a3b8);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 30px;
+  background: #0a101b;
+}
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-color, #94a3b8);
+  flex-shrink: 0;
+}
+.status-operational {
+  --status-color: #71dfb0;
+}
+.status-degraded {
+  --status-color: #f6c974;
+}
+.status-unavailable {
+  --status-color: #f18b97;
+}
+.status-maintenance {
+  --status-color: #9eaaff;
+}
+.status-unknown {
+  --status-color: #9aaec9;
+}
+.status-history article {
+  display: flex;
+  gap: 15px;
+  padding: 23px 0;
+  border-bottom: 1px solid #233044;
+}
+.status-history article > .status-dot {
+  margin-top: 7px;
+}
+.status-history h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 7px 0;
+}
+.status-history p,
+.status-empty {
+  font-size: 13px;
+  color: #a8bad0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.status-history small {
+  font-size: 11px;
+  color: #8fa5c1;
+}
+.status-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #101927;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 40px 0;
+  color: #8fa5c1;
+}
+.status-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.status-note p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+}
+.status-page footer {
+  border-top: 1px solid #233044;
+  padding: 25px 0 35px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 11px;
+  color: #8fa5c1;
+  flex-wrap: wrap;
+}
+.status-hero button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  border: 1px solid #8fa5c1;
+  padding: 9px 15px;
+  border-radius: 8px;
+}
+.status-admin-form {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px 0;
+  display: grid;
+  gap: 18px;
+}
+.status-admin-form h3,
+.status-admin-preview > h3 {
+  font-weight: 600;
+  font-size: 18px;
+}
+.status-admin-form > p {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  line-height: 1.7;
+}
+.status-admin-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.status-admin-form select,
+.status-admin-form textarea {
+  width: 100%;
+  min-width: 0;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px;
+}
+.status-admin-diagnostic {
+  padding: 15px;
+  background: var(--muted);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.status-admin-preview {
+  padding: 22px;
+  border: 1px solid #243043;
+  border-radius: 16px;
+  background: #0a101b;
+  color: #e8eef7;
+  min-width: 0;
+}
+.status-admin-preview > .status-hero {
+  margin-top: 20px;
+}
+@media (max-width: 550px) {
+  .status-page {
+    padding: 0 16px;
+  }
+  .status-header {
+    padding: 23px 0;
+    gap: 10px;
+  }
+  .status-header .status-brand {
+    font-size: 21px;
+  }
+  .status-header > a:last-child {
+    font-size: 11px;
+  }
+  .status-hero {
+    padding: 25px 20px;
+    border-radius: 16px;
+  }
+  .status-service {
+    padding: 18px 15px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .status-service > div {
+    flex: 1 1 190px;
+  }
+  .status-admin-form,
+  .status-admin-preview {
+    padding: 16px;
+  }
+  .status-service .status-pill {
+    max-width: 100%;
+  }
+}
