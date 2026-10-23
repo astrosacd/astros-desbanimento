@@ -4,6 +4,7 @@ const server = vi.hoisted(() => ({ getCookie: vi.fn(), setCookie: vi.fn(), delet
 const api = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('@tanstack/react-start/server', () => server);
 vi.mock('../admin/auth.server', () => api);
+vi.mock('./signup-protection.server', () => ({ requireSignupPermit: vi.fn() }));
 import { signup, currentClient, reset, recover, login, logout } from './session.server';
 const response = (data: unknown, ok = true, status = 200) => ({ ok, status, json: async () => data });
 beforeEach(() => { vi.resetAllMocks(); });
