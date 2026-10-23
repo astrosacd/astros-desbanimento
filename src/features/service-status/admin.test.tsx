@@ -47,6 +47,7 @@ function setup() {
 it("publishes a notice for only the selected component with an expiry", async () => {
   setup();
   fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
+  fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "maintenance" } });
   fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
     target: { value: "Manutenção programada para SMS" },
   });
@@ -127,6 +128,7 @@ it("validates the future maintenance window before saving", async () => {
   fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
     target: { value: "Manutenção programada." },
   });
+  fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "maintenance" } });
   fireEvent.click(screen.getByLabelText("Agendar para uma data futura"));
   fireEvent.change(screen.getByLabelText("Início da manutenção — Brasília"), {
     target: { value: "2099-01-01T14:00" },
@@ -137,4 +139,59 @@ it("validates the future maintenance window before saving", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Publicar aviso" }));
   expect(await screen.findByText(/Informe uma manutenção com início futuro/)).toBeInTheDocument();
   expect(mocks.save).not.toHaveBeenCalled();
+});
+
+it("never prefills an existing notice and clears every draft field after publishing", async () => {
+  mocks.read.mockResolvedValue({
+    ...data,
+    settings: data.settings.map((s) => ({
+      ...s,
+      manual: "unavailable",
+      message: "Aviso anterior salvo",
+      notice_phase: "identified",
+      impact: "Impacto anterior",
+      next_update: "2099-01-01T15:00:00Z",
+      starts_at: "2099-01-01T14:00:00Z",
+    })),
+  });
+  setup();
+  const select = await screen.findByLabelText("Status público");
+  expect(select).toHaveValue("");
+  expect(screen.getByLabelText("Mensagem para os clientes")).toHaveValue("");
+  expect(screen.getByText("Aviso anterior salvo")).toBeInTheDocument();
+  expect(screen.getByLabelText("Impacto para o cliente")).toHaveValue("");
+  fireEvent.change(select, { target: { value: "unavailable" } });
+  fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
+    target: { value: "Nova comunicação pública" },
+  });
+  fireEvent.change(screen.getByLabelText("Impacto para o cliente"), {
+    target: { value: "Novo impacto" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Publicar aviso" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+  await waitFor(() => expect(select).toHaveValue(""));
+  expect(screen.getByLabelText("Mensagem para os clientes")).toHaveValue("");
+  expect(screen.getByLabelText("Impacto para o cliente")).toHaveValue("");
+  expect(screen.getByLabelText("Próxima atualização — horário de Brasília (opcional)")).toHaveValue(
+    "",
+  );
+  fireEvent.submit(select.closest("form")!);
+  await screen.findByText(
+    "Selecione o status e escreva uma nova mensagem com pelo menos 5 caracteres.",
+  );
+  expect(mocks.save).toHaveBeenCalledOnce();
+});
+it("clears a draft on service change but preserves it after a failed publication", async () => {
+  setup();
+  const select = await screen.findByLabelText("Serviço");
+  const message = screen.getByLabelText("Mensagem para os clientes");
+  fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "operational" } });
+  fireEvent.change(message, { target: { value: "Aviso ainda não enviado" } });
+  mocks.save.mockRejectedValueOnce(Error("Falha ao salvar"));
+  fireEvent.click(screen.getByRole("button", { name: "Publicar aviso" }));
+  await screen.findByText("Falha ao salvar");
+  expect(message).toHaveValue("Aviso ainda não enviado");
+  fireEvent.change(select, { target: { value: "sms" } });
+  expect(message).toHaveValue("");
+  expect(screen.getByLabelText("Status público")).toHaveValue("");
 });

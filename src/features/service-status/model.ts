@@ -71,7 +71,7 @@ export const saveSchema = z
     expires: z.string().datetime({ offset: true }).nullable(),
     details: detailsSchema.optional(),
   })
-  .refine((v) => !v.status || v.status === "operational" || v.message.length >= 5, {
+  .refine((v) => !v.status || v.message.length >= 5, {
     message: "Escreva um aviso público com pelo menos 5 caracteres.",
   });
 export type Save = z.infer<typeof saveSchema>;

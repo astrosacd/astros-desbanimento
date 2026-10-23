@@ -49,6 +49,23 @@ describe("public service status", () => {
     s.components[2].status = "unavailable";
     expect(overall(s)).toBe("unavailable");
   });
+  it("also requires a fresh message for operational notices while allowing automatic reset", () => {
+    expect(
+      saveSchema.safeParse({ key: "sms", status: "operational", message: "   ", expires: null })
+        .success,
+    ).toBe(false);
+    expect(
+      saveSchema.safeParse({
+        key: "sms",
+        status: "operational",
+        message: "Serviço normalizado",
+        expires: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      saveSchema.safeParse({ key: "sms", status: null, message: "", expires: null }).success,
+    ).toBe(true);
+  });
   it("requires an explanatory public message and restricts component and status keys", () => {
     expect(
       saveSchema.safeParse({ key: "sms", status: "maintenance", message: "", expires: null })
