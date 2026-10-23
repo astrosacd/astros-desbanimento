@@ -92,7 +92,21 @@ export function createHandler(
       });
     };
     try {
-      if (request.method === "GET") return reply(await db("rpc/astros_status_public", {}));
+      if (request.method === "GET") {
+        if (new URL(request.url).searchParams.get("health") === "monitor") {
+          const health = await db("rpc/astros_status_monitor_health", {});
+          const healthy =
+            health?.service === "astros-status-monitor" &&
+            health.checksFresh === true &&
+            health.syncFresh === true &&
+            fresh(health.checkedAt, 2);
+          return reply(
+            { service: "astros-status-monitor", status: healthy ? "ok" : "stale" },
+            healthy ? 200 : 503,
+          );
+        }
+        return reply(await db("rpc/astros_status_public", {}));
+      }
       const supplied = request.headers.get("X-Astros-Status-Worker");
       if (!supplied || supplied.length > 128) return reply({ error: "Não autorizado" }, 401);
       const privateRows = await db("astros_status_private?id=eq.true&select=worker_secret");
@@ -187,7 +201,11 @@ export function createHandler(
                   },
                   20000,
                 );
-            if ((!five && p?.success === 0) || !validBalance(p?.balance) || (five && !(Number.isSafeInteger(p?.id) && p.id > 0)))
+            if (
+              (!five && p?.success === 0) ||
+              !validBalance(p?.balance) ||
+              (five && !(Number.isSafeInteger(p?.id) && p.id > 0))
+            )
               return result("failed", "invalid_response");
             return Number(p.balance) > 0
               ? result("ok", "ok")

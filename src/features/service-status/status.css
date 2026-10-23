@@ -802,3 +802,45 @@
     scroll-behavior: auto;
   }
 }
+
+.status-admin-form input[type="datetime-local"] {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d8e2ed;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+}
+.status-field-help {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.status-admin-form .status-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.status-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.status-date-grid p {
+  grid-column: 1 / -1;
+}
+.status-monitor-url {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  margin: 12px 0;
+}
+.status-service-detail p {
+  white-space: pre-line;
+}
+@media (max-width: 600px) {
+  .status-date-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

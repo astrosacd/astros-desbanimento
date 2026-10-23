@@ -130,6 +130,13 @@ export function StatusBoard({ snapshot }: { snapshot: Snapshot }) {
                 </div>
                 <div className="status-service-detail">
                   {c.message && <p>{c.message}</p>}
+                  {c.scheduled && (
+                    <p>
+                      <strong>Manutenção programada</strong>
+                      <br />
+                      {c.scheduled.message}
+                    </p>
+                  )}
                   <small>
                     {c.source === "module"
                       ? "Manutenção global configurada no painel"

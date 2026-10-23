@@ -47,7 +47,8 @@ function fixture() {
     nextId = 200,
     lostCreate = false,
     rejectedCreate = false,
-    lostUpdate = false;
+    lostUpdate = false,
+    lostDelete = false;
   const db = vi.fn(async (path: string, body?: any) => {
     if (path.endsWith("_claim"))
       return {
@@ -115,7 +116,15 @@ function fixture() {
     }
     const id = path.split("/")[2],
       r = reports.find((r) => r.data.id === id);
-    if (!r) throw Error("unexpected report");
+    if (!r) return json({}, 404);
+    if (method === "DELETE") {
+      reports.splice(reports.indexOf(r), 1);
+      if (lostDelete) {
+        lostDelete = false;
+        throw Error("lost cancellation response");
+      }
+      return new Response(null, { status: 204 });
+    }
     if (path.endsWith("/status-updates")) {
       if (body.affected_resources) {
         r.data.attributes.affected_resources = body.affected_resources;
@@ -147,7 +156,12 @@ function fixture() {
     return json(r);
   });
   const run = () =>
-    syncBetterStack({ apiKey: "private-betterstack", db, fetcher, readJson: (r) => r.json() });
+    syncBetterStack({
+      apiKey: "private-betterstack",
+      db,
+      fetcher,
+      readJson: (r) => (r.status === 204 ? Promise.resolve(null) : r.json()),
+    });
   return {
     items,
     components,
@@ -163,6 +177,9 @@ function fixture() {
     },
     rejectCreate: () => {
       rejectedCreate = true;
+    },
+    loseDelete: () => {
+      lostDelete = true;
     },
     loseUpdate: () => {
       lostUpdate = true;
@@ -341,7 +358,7 @@ describe("Better Stack status-only bridge", () => {
       apiKey: undefined,
       db: f.db,
       fetcher: f.fetcher,
-      readJson: (r) => r.json(),
+      readJson: (r) => (r.status === 204 ? Promise.resolve(null) : r.json()),
     });
     expect(f.fetcher).not.toHaveBeenCalled();
     expect(f.result()).toBe("configuration_missing");
@@ -353,7 +370,7 @@ describe("Better Stack status-only bridge", () => {
         apiKey: "secret",
         db: async () => null,
         fetcher,
-        readJson: (r) => r.json(),
+        readJson: (r) => (r.status === 204 ? Promise.resolve(null) : r.json()),
       }),
     ).toEqual({ skipped: true });
     expect(
@@ -363,7 +380,7 @@ describe("Better Stack status-only bridge", () => {
           throw Error("missing");
         },
         fetcher,
-        readJson: (r) => r.json(),
+        readJson: (r) => (r.status === 204 ? Promise.resolve(null) : r.json()),
       }),
     ).toEqual({ installed: false });
     expect(fetcher).not.toHaveBeenCalled();
@@ -375,4 +392,86 @@ describe("Better Stack status-only bridge", () => {
     expect(() => bridgeTarget("fake")).toThrow();
     expect(bridgeTarget("maintenance")).toBe("maintenance");
   });
+});
+
+it("publishes future maintenance without marking the effective automatic snapshot down, and cancels only its own future report", async () => {
+  const f = fixture();
+  const component = f.components.find((c: any) => c.key === "sms")!;
+  const start = new Date(Date.now() + 3600000).toISOString();
+  const end = new Date(Date.now() + 7200000).toISOString();
+  component.scheduled = {
+    startsAt: start,
+    endsAt: end,
+    message: "Manutenção programada com impacto informado",
+  };
+  await f.run();
+  const created = f.calls.find((c: any) => c.method === "POST")!;
+  expect(created.body).toMatchObject({
+    report_type: "maintenance",
+    starts_at: start,
+    ends_at: end,
+    notify_subscribers: false,
+  });
+  expect(component.status).toBe("operational");
+  await f.run();
+  expect(f.calls.filter((c: any) => c.method === "POST")).toHaveLength(1);
+  component.scheduled = null;
+  await f.run();
+  expect(f.calls.filter((c: any) => c.method === "DELETE")).toHaveLength(1);
+  expect(f.calls.some((c: any) => c.path.includes("/resources/") && c.method !== "GET")).toBe(
+    false,
+  );
+});
+it("a current failure takes precedence over a future maintenance", async () => {
+  const f = fixture();
+  const c = f.components.find((c: any) => c.key === "sms")!;
+  c.status = "unavailable";
+  c.scheduled = {
+    startsAt: new Date(Date.now() + 3600000).toISOString(),
+    endsAt: new Date(Date.now() + 7200000).toISOString(),
+    message: "Agendamento futuro",
+  };
+  await f.run();
+  expect(f.calls.find((c: any) => c.method === "POST")!.body).toMatchObject({
+    report_type: "manual",
+    affected_resources: [{ status_page_resource_id: "103", status: "downtime" }],
+  });
+});
+
+it("reconciles cancellation of its future report after a lost delete response without replay", async () => {
+  const f = fixture();
+  const c = f.components.find((c: any) => c.key === "sms")!;
+  c.scheduled = {
+    startsAt: new Date(Date.now() + 3600000).toISOString(),
+    endsAt: new Date(Date.now() + 7200000).toISOString(),
+    message: "Manutenção planejada",
+  };
+  await f.run();
+  c.scheduled = null;
+  f.loseDelete();
+  await f.run();
+  expect(f.items.find((i: any) => i.component === "sms").pending).toBe(true);
+  await f.run();
+  expect(f.result()).toBe("ok");
+  expect(f.items.find((i: any) => i.component === "sms").report_id).toBe(null);
+  expect(f.calls.filter((c: any) => c.method === "DELETE")).toHaveLength(1);
+});
+it("updates the same owned report when progress and impact change", async () => {
+  const f = fixture();
+  const c = f.components.find((c: any) => c.key === "sms")!;
+  c.source = "manual";
+  c.status = "unavailable";
+  c.message = "Investigando. Novas ativações afetadas.";
+  await f.run();
+  c.message = "Causa identificada. Próxima atualização às 14h (Brasília).";
+  await f.run();
+  await f.run();
+  expect(
+    f.calls.filter((c: any) => c.path === "/status-reports" && c.method === "POST"),
+  ).toHaveLength(1);
+  const updates = f.calls.filter(
+    (c: any) => c.path.endsWith("/status-updates") && c.method === "POST",
+  );
+  expect(updates).toHaveLength(1);
+  expect(updates[0].body).toMatchObject({ message: c.message, notify_subscribers: false });
 });

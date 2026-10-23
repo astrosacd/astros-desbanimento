@@ -32,6 +32,29 @@ describe("read-only status worker", () => {
     expect(await r.text()).not.toContain("private");
     expect(r.headers.get("Cache-Control")).toBe("no-store");
   });
+  it.each([
+    [true, true, 200],
+    [false, true, 503],
+    [true, false, 503],
+  ])(
+    "checks monitor freshness independently of service availability (%s/%s)",
+    async (checksFresh, syncFresh, expected) => {
+      const fetcher = vi.fn(async (_input: any) =>
+        response({
+          service: "astros-status-monitor",
+          checksFresh,
+          syncFresh,
+          checkedAt: new Date().toISOString(),
+          secret: "never-public",
+        }),
+      );
+      const r = await createHandler(env, fetcher)(new Request("https://edge?health=monitor"));
+      expect(r.status).toBe(expected);
+      expect(fetcher.mock.calls[0]?.[0]).toContain("rpc/astros_status_monitor_health");
+      expect(await r.text()).not.toContain("never-public");
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
   it("rejects missing or wrong worker credentials without claiming a batch", async () => {
     const fetcher = vi.fn(async () => response([{ worker_secret: "saved-secret" }]));
     const handle = createHandler(env, fetcher);
@@ -126,12 +149,19 @@ describe("read-only status worker", () => {
         return response([{ worker_secret: "saved-secret" }]);
       return new Response("private-database-error", { status: 500 });
     });
-    const r = await createHandler(env, fetcher)(new Request("https://edge", {
-      method: "POST", headers: { "X-Astros-Status-Worker": "saved-secret" },
-    }));
+    const r = await createHandler(
+      env,
+      fetcher,
+    )(
+      new Request("https://edge", {
+        method: "POST",
+        headers: { "X-Astros-Status-Worker": "saved-secret" },
+      }),
+    );
     expect(r.status).toBe(503);
     expect(await r.json()).toEqual({
-      error: "Não foi possível concluir a verificação", etapa: "rpc/astros_status_claim",
+      error: "Não foi possível concluir a verificação",
+      etapa: "rpc/astros_status_claim",
     });
   });
   it("does not run checks when a worker already owns the lease", async () => {

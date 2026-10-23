@@ -26,7 +26,10 @@ const bridgeMessages: Record<string, string> = {
   unknown: "Não foi possível confirmar a disponibilidade técnica deste serviço.",
 };
 class BridgeError extends Error {
-  constructor(readonly category: string) {
+  constructor(
+    readonly category: string,
+    readonly httpStatus?: number,
+  ) {
     super(category);
   }
 }
@@ -107,8 +110,10 @@ export async function syncBetterStack(options: {
         [400, 401, 403, 404, 405, 409, 422, 429].includes(response.status)
           ? "api_rejected"
           : "api_unavailable",
+        response.status,
       );
     }
+    if (method === "DELETE" && response.status === 204) return null;
     try {
       const data = await readJson(response);
       if (
@@ -211,7 +216,32 @@ export async function syncBetterStack(options: {
       batch.items.map(async (item: BridgeItem) => {
         try {
           await patch(item, { resource_id: resources[item.component] });
-          const c: any = components.get(item.component);
+          let c: any = components.get(item.component);
+          if (
+            c.scheduled &&
+            c.source === "automatic" &&
+            c.status === "operational" &&
+            c.checkedAt &&
+            Number.isFinite(Date.parse(c.checkedAt)) &&
+            Date.now() - Date.parse(c.checkedAt) <= 600000 &&
+            Date.parse(c.checkedAt) <= Date.now() + 60000
+          ) {
+            if (
+              !Number.isFinite(Date.parse(c.scheduled.startsAt)) ||
+              !Number.isFinite(Date.parse(c.scheduled.endsAt)) ||
+              Date.parse(c.scheduled.startsAt) <= Date.now() ||
+              Date.parse(c.scheduled.endsAt) <= Date.parse(c.scheduled.startsAt) ||
+              typeof c.scheduled.message !== "string"
+            )
+              throw new BridgeError("invalid_response");
+            c = {
+              ...c,
+              status: "maintenance",
+              source: "manual",
+              message: c.scheduled.message,
+              startsAt: c.scheduled.startsAt,
+            };
+          }
           let status = c.status;
           if (
             c.source === "automatic" &&
@@ -246,14 +276,35 @@ export async function syncBetterStack(options: {
           }
           let current: any = null;
           if (item.report_id) {
-            current = await api("/status-reports/" + item.report_id);
-            validateReport(current, item);
+            try {
+              current = await api("/status-reports/" + item.report_id);
+              validateReport(current, item);
+            } catch (e) {
+              // A saved cancellation intent + provider 404 proves our future report is absent.
+              if (
+                item.pending &&
+                item.report_type === "maintenance" &&
+                e instanceof BridgeError &&
+                e.httpStatus === 404
+              ) {
+                await patch(item, {
+                  report_id: null,
+                  report_type: null,
+                  title: null,
+                  pending: false,
+                  fingerprint: null,
+                });
+              } else throw e;
+            }
           }
           // A resolved manual notice is published once; recovering a service closes only our report.
           if (current && target === "resolved") {
             const a = current.data.attributes;
             if (item.report_type === "maintenance") {
-              if (Date.parse(a.ends_at) > Date.now())
+              if (Date.parse(a.starts_at) > Date.now()) {
+                await patch(item, { pending: true });
+                await api("/status-reports/" + item.report_id, "DELETE");
+              } else if (Date.parse(a.ends_at) > Date.now())
                 await api("/status-reports/" + item.report_id, "PATCH", {
                   ends_at: new Date().toISOString(),
                 });
@@ -289,7 +340,10 @@ export async function syncBetterStack(options: {
           ) {
             const attributes = current.data.attributes;
             if (item.report_type === "maintenance") {
-              if (Date.parse(attributes.ends_at) > Date.now())
+              if (Date.parse(attributes.starts_at) > Date.now()) {
+                await patch(item, { pending: true });
+                await api("/status-reports/" + item.report_id, "DELETE");
+              } else if (Date.parse(attributes.ends_at) > Date.now())
                 await api("/status-reports/" + item.report_id, "PATCH", {
                   ends_at: new Date().toISOString(),
                 });
@@ -327,7 +381,10 @@ export async function syncBetterStack(options: {
               " · " +
               new Date().toLocaleString("pt-BR", { timeZone: "America/Fortaleza", hour12: false });
             await patch(item, { title, report_type: kind, pending: true, fingerprint: null });
-            const expiry = c.source === "manual" ? batch.expiries?.[item.component] : null;
+            const expiry =
+              c.source === "manual"
+                ? (c.scheduled?.endsAt ?? batch.expiries?.[item.component])
+                : null;
             const endsAt =
               typeof expiry === "string" && Date.parse(expiry) > Date.now()
                 ? expiry
@@ -340,7 +397,15 @@ export async function syncBetterStack(options: {
                 notify_subscribers: false,
                 affected_resources: [{ status_page_resource_id: item.resource_id, status: target }],
                 ...(kind === "maintenance"
-                  ? { starts_at: new Date().toISOString(), ends_at: endsAt }
+                  ? {
+                      starts_at:
+                        c.source === "manual" &&
+                        c.startsAt &&
+                        Number.isFinite(Date.parse(c.startsAt))
+                          ? c.startsAt
+                          : new Date().toISOString(),
+                      ends_at: endsAt,
+                    }
                   : {}),
               });
               validateReport(created, item);
@@ -359,17 +424,29 @@ export async function syncBetterStack(options: {
             }
           }
           if (kind === "maintenance") {
-            const expiry = c.source === "manual" ? batch.expiries?.[item.component] : null;
+            const expiry =
+              c.source === "manual"
+                ? (c.scheduled?.endsAt ?? batch.expiries?.[item.component])
+                : null;
             const end =
               typeof expiry === "string" && Date.parse(expiry) > Date.now()
                 ? expiry
                 : new Date(Date.now() + 90 * 86400000).toISOString();
             const saved = current.data.attributes.ends_at;
+            const desiredStart = c.source === "manual" && c.startsAt ? c.startsAt : null;
+            const moveStart =
+              (Date.parse(current.data.attributes.starts_at) > Date.now() ||
+                (desiredStart && Date.parse(desiredStart) > Date.now())) &&
+              Date.parse(current.data.attributes.starts_at) !== Date.parse(desiredStart ?? "");
             if (
+              moveStart ||
               (expiry && Date.parse(saved) !== Date.parse(end)) ||
               (!expiry && Date.parse(saved) < Date.now() + 86400000)
             )
-              await api("/status-reports/" + item.report_id, "PATCH", { ends_at: end });
+              await api("/status-reports/" + item.report_id, "PATCH", {
+                ends_at: end,
+                ...(moveStart ? { starts_at: desiredStart ?? new Date().toISOString() } : {}),
+              });
             if (item.fingerprint !== fingerprint && lastMessage(current) !== message)
               await api("/status-reports/" + item.report_id + "/status-updates", "POST", {
                 message,
