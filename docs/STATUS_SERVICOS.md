@@ -98,3 +98,10 @@ Sugestões: `Some services are down` → `Alguns serviços estão indisponíveis
 Referências: [traduções nativas](https://betterstack.com/docs/uptime/working-with-status-pages/customize-status-page-css-js/), [relatórios de manutenção](https://betterstack.com/docs/uptime/api/create-a-new-status-page-report/), [cancelamento de relatório futuro](https://betterstack.com/docs/uptime/api/delete-an-existing-status-page-report/), [frequência dos monitores](https://betterstack.com/docs/uptime/check-frequency/).
 
 Validação local desta etapa: 46 testes de status passaram (incluindo retorno vazio 204/200, autorização, campos estruturados, Brasília, janela inválida, monitor atrasado, manutenção futura, cancelamento com resposta perdida e atualização sem duplicação); TypeScript sem erros; três verificações SQL com PGlite passaram, incluindo reaplicação, precedência, RLS, datas e frescor; builds Cloudflare e VPS concluídos. A tentativa de conferência visual por Chromium não pôde executar porque o navegador não estava instalado e o download falhou; a nova tela ainda precisa ser conferida visualmente no Lovable antes da VPS. Nenhum aviso, agendamento, alerta ou tradução real foi alterado por esses testes locais.
+
+
+## Novo aviso sempre em branco
+
+O formulário não carrega o conteúdo do aviso salvo. Ao abrir, trocar de serviço, publicar com sucesso ou voltar ao automático, limpa status, mensagem, impacto, próxima atualização e datas de agendamento; restaura andamento Investigando e duração de duas horas. O serviço selecionado é preservado após salvar. O aviso público existente continua somente no diagnóstico, até ser substituído, removido ou expirar normalmente.
+
+Toda publicação exige selecionar um status e escrever mensagem nova de pelo menos cinco caracteres, inclusive Operacional; a validação compartilhada do servidor também exige a mensagem. Voltar ao automático funciona sem preencher um novo aviso. Em erro de publicação, o rascunho é preservado. Os campos ficam bloqueados enquanto salva para não descartar mudanças feitas durante o envio. Não exige SQL ou novo deploy da Edge Function; publicar Lovable e atualizar a imagem da VPS.

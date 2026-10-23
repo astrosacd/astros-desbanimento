@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { getStatusAdmin, saveStatus } from "./actions";
 import {
   labels,
   phases,
-  brasiliaInput,
   fromBrasiliaInput,
   MONITOR_HEALTH_URL,
   saveSchema,
@@ -43,7 +42,7 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
     refetchInterval: 60000,
   });
   const [key, setKey] = useState<Save["key"]>("panel");
-  const [status, setStatus] = useState("maintenance");
+  const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
   const [hours, setHours] = useState("2");
   const [phase, setPhase] = useState<keyof typeof phases>("investigating");
@@ -55,10 +54,23 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
   const enhanced = query.data?.settings.some((s) => s.notice_phase !== undefined) ?? false;
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  function resetDraft() {
+    setStatus("");
+    setMessage("");
+    setHours("2");
+    setPhase("investigating");
+    setImpact("");
+    setNextUpdate("");
+    setScheduled(false);
+    setStartsAt("");
+    setEndsAt("");
+  }
   async function save(automatic = false) {
     setBusy(true);
     setNotice("");
     try {
+      if (!automatic && (!status || message.trim().length < 5))
+        throw Error("Selecione o status e escreva uma nova mensagem com pelo menos 5 caracteres.");
       const start = scheduled && !automatic ? fromBrasiliaInput(startsAt) : null;
       const end = scheduled && !automatic ? fromBrasiliaInput(endsAt) : null;
       const next = automatic ? null : fromBrasiliaInput(nextUpdate);
@@ -104,6 +116,7 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
           : {}),
       });
       await saveStatus({ data });
+      resetDraft();
       await cache.invalidateQueries({ queryKey: ["status-admin", adminId] });
       setNotice(
         automatic
@@ -123,20 +136,6 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
     }
   }
   const setting = query.data?.settings.find((s) => s.key === key);
-  const hydrated = useRef<string | null>(null);
-  useEffect(() => {
-    if (!setting || hydrated.current === key) return;
-    hydrated.current = key;
-    setStatus(setting.manual ?? "maintenance");
-    setMessage(setting.message);
-    setPhase(setting.notice_phase ?? "investigating");
-    setImpact(setting.impact ?? "");
-    setNextUpdate(brasiliaInput(setting.next_update));
-    const future = !!setting.starts_at && Date.parse(setting.starts_at) > Date.now();
-    setScheduled(future);
-    setStartsAt(future ? brasiliaInput(setting.starts_at) : "");
-    setEndsAt(future ? brasiliaInput(setting.expires_at) : "");
-  }, [key, setting]);
   return (
     <div className="status-admin">
       <section className="admin-welcome">
@@ -222,168 +221,179 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
               tem prioridade sobre ambos. Cada serviço tem um aviso por vez: salvar substitui o
               aviso ou agendamento anterior.
             </p>
-            <label>
-              Serviço
-              <select
-                value={key}
-                onChange={(e) => {
-                  hydrated.current = null;
-                  setKey(e.target.value as Save["key"]);
-                  setNotice("");
-                }}
-              >
-                {query.data.settings.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Status público
-              <select
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  if (e.target.value !== "maintenance") setScheduled(false);
-                  if (e.target.value === "operational") setPhase("resolved");
-                  else if (phase === "resolved") setPhase("investigating");
-                }}
-              >
-                {(["maintenance", "degraded", "unavailable", "operational"] as const).map((s) => (
-                  <option value={s} key={s}>
-                    {labels[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="status-field-help">
-              Indisponível aparece em vermelho. Instabilidade indica funcionamento parcial. Em
-              manutenção usa o indicador próprio do Better Stack e não bloqueia compras no painel.
-              Operacional manual também substitui o resultado automático até expirar; use Voltar ao
-              automático para retomar as verificações como fonte pública.
+            <p>
+              Preencha um novo aviso a cada publicação. O aviso já salvo aparece apenas no
+              diagnóstico abaixo.
             </p>
-            {enhanced && (
-              <>
-                <label>
-                  Andamento do incidente
-                  <select
-                    value={phase}
-                    onChange={(e) => {
-                      const value = e.target.value as keyof typeof phases;
-                      setPhase(value);
-                      if (value === "resolved") {
-                        setStatus("operational");
-                        setScheduled(false);
-                        setNextUpdate("");
-                      }
-                    }}
-                  >
-                    {Object.entries(phases).map(([value, text]) => (
-                      <option key={value} value={value}>
-                        {text}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Impacto para o cliente
-                  <textarea
-                    value={impact}
-                    onChange={(e) => setImpact(e.target.value)}
-                    maxLength={300}
-                    rows={2}
-                    placeholder="Explique o que está afetado e o que continua disponível, somente se estiver confirmado."
-                  />
-                </label>
-                <label>
-                  Próxima atualização — horário de Brasília (opcional)
-                  <input
-                    type="datetime-local"
-                    value={nextUpdate}
-                    disabled={phase === "resolved"}
-                    onChange={(e) => setNextUpdate(e.target.value)}
-                  />
-                </label>
-                <p className="status-field-help">
-                  É o próximo comunicado da equipe, não uma previsão de solução. Se o prazo passar,
-                  ficará indicado que uma atualização é aguardada.
-                </p>
-              </>
-            )}
-            <label>
-              Mensagem para os clientes
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                maxLength={500}
-                placeholder="Estamos realizando uma manutenção. Acompanhe as atualizações por aqui."
-                required={status !== "operational"}
-                rows={3}
-              />
-            </label>
-            {enhanced && status === "maintenance" && (
-              <label className="status-checkbox">
-                <input
-                  type="checkbox"
-                  checked={scheduled}
-                  onChange={(e) => setScheduled(e.target.checked)}
-                />
-                Agendar para uma data futura
-              </label>
-            )}
-            {scheduled && enhanced ? (
-              <div className="status-date-grid">
-                <label>
-                  Início da manutenção — Brasília
-                  <input
-                    type="datetime-local"
-                    required
-                    value={startsAt}
-                    onChange={(e) => setStartsAt(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Término previsto — Brasília
-                  <input
-                    type="datetime-local"
-                    required
-                    value={endsAt}
-                    onChange={(e) => setEndsAt(e.target.value)}
-                  />
-                </label>
-                <p>
-                  O agendamento comunica a manutenção. O status muda durante a janela e retorna ao
-                  automático ao terminar; operações não são pausadas por este aviso. Uma falha em
-                  andamento tem prioridade sobre a publicação antecipada.
-                </p>
-              </div>
-            ) : (
+            <fieldset disabled={busy} className="grid min-w-0 gap-[18px] border-0 p-0 m-0">
               <label>
-                Voltar ao automático após
-                <select value={hours} onChange={(e) => setHours(e.target.value)}>
-                  <option value="0.1666666667">10 minutos (teste)</option>
-                  <option value="1">1 hora</option>
-                  <option value="2">2 horas</option>
-                  <option value="4">4 horas</option>
-                  <option value="24">24 horas</option>
-                  <option value="">Até eu remover o aviso</option>
+                Serviço
+                <select
+                  value={key}
+                  onChange={(e) => {
+                    resetDraft();
+                    setKey(e.target.value as Save["key"]);
+                    setNotice("");
+                  }}
+                >
+                  {query.data.settings.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </label>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button disabled={busy} type="submit">
-                {busy ? "Salvando…" : "Publicar aviso"}
-              </Button>
-              <Button
-                disabled={busy}
-                type="button"
-                variant="outline"
-                onClick={() => void save(true)}
-              >
-                Voltar ao automático
-              </Button>
-            </div>
+              <label>
+                Status público
+                <select
+                  value={status}
+                  required
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    if (e.target.value !== "maintenance") setScheduled(false);
+                    if (e.target.value === "operational") setPhase("resolved");
+                    else if (phase === "resolved") setPhase("investigating");
+                  }}
+                >
+                  <option value="" disabled>
+                    Selecione o status
+                  </option>
+                  {(["maintenance", "degraded", "unavailable", "operational"] as const).map((s) => (
+                    <option value={s} key={s}>
+                      {labels[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="status-field-help">
+                Indisponível aparece em vermelho. Instabilidade indica funcionamento parcial. Em
+                manutenção usa o indicador próprio do Better Stack e não bloqueia compras no painel.
+                Operacional manual também substitui o resultado automático até expirar; use Voltar
+                ao automático para retomar as verificações como fonte pública.
+              </p>
+              {enhanced && (
+                <>
+                  <label>
+                    Andamento do incidente
+                    <select
+                      value={phase}
+                      onChange={(e) => {
+                        const value = e.target.value as keyof typeof phases;
+                        setPhase(value);
+                        if (value === "resolved") {
+                          setStatus("operational");
+                          setScheduled(false);
+                          setNextUpdate("");
+                        }
+                      }}
+                    >
+                      {Object.entries(phases).map(([value, text]) => (
+                        <option key={value} value={value}>
+                          {text}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Impacto para o cliente
+                    <textarea
+                      value={impact}
+                      onChange={(e) => setImpact(e.target.value)}
+                      maxLength={300}
+                      rows={2}
+                      placeholder="Explique o que está afetado e o que continua disponível, somente se estiver confirmado."
+                    />
+                  </label>
+                  <label>
+                    Próxima atualização — horário de Brasília (opcional)
+                    <input
+                      type="datetime-local"
+                      value={nextUpdate}
+                      disabled={phase === "resolved"}
+                      onChange={(e) => setNextUpdate(e.target.value)}
+                    />
+                  </label>
+                  <p className="status-field-help">
+                    É o próximo comunicado da equipe, não uma previsão de solução. Se o prazo
+                    passar, ficará indicado que uma atualização é aguardada.
+                  </p>
+                </>
+              )}
+              <label>
+                Mensagem para os clientes
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  maxLength={500}
+                  placeholder="Estamos realizando uma manutenção. Acompanhe as atualizações por aqui."
+                  required
+                  minLength={5}
+                  rows={3}
+                />
+              </label>
+              {enhanced && status === "maintenance" && (
+                <label className="status-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={scheduled}
+                    onChange={(e) => setScheduled(e.target.checked)}
+                  />
+                  Agendar para uma data futura
+                </label>
+              )}
+              {scheduled && enhanced ? (
+                <div className="status-date-grid">
+                  <label>
+                    Início da manutenção — Brasília
+                    <input
+                      type="datetime-local"
+                      required
+                      value={startsAt}
+                      onChange={(e) => setStartsAt(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Término previsto — Brasília
+                    <input
+                      type="datetime-local"
+                      required
+                      value={endsAt}
+                      onChange={(e) => setEndsAt(e.target.value)}
+                    />
+                  </label>
+                  <p>
+                    O agendamento comunica a manutenção. O status muda durante a janela e retorna ao
+                    automático ao terminar; operações não são pausadas por este aviso. Uma falha em
+                    andamento tem prioridade sobre a publicação antecipada.
+                  </p>
+                </div>
+              ) : (
+                <label>
+                  Voltar ao automático após
+                  <select value={hours} onChange={(e) => setHours(e.target.value)}>
+                    <option value="0.1666666667">10 minutos (teste)</option>
+                    <option value="1">1 hora</option>
+                    <option value="2">2 horas</option>
+                    <option value="4">4 horas</option>
+                    <option value="24">24 horas</option>
+                    <option value="">Até eu remover o aviso</option>
+                  </select>
+                </label>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <Button disabled={busy} type="submit">
+                  {busy ? "Salvando…" : "Publicar aviso"}
+                </Button>
+                <Button
+                  disabled={busy}
+                  type="button"
+                  variant="outline"
+                  onClick={() => void save(true)}
+                >
+                  Voltar ao automático
+                </Button>
+              </div>
+            </fieldset>
             {notice && <p role="status">{notice}</p>}
             <div className="status-admin-diagnostic">
               <strong>Diagnóstico privado do serviço selecionado</strong>
