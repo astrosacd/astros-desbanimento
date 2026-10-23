@@ -481,8 +481,10 @@ export function createHandler(
     const base = env("SUPABASE_URL"),
       service = env("SUPABASE_SERVICE_ROLE_KEY");
     if (!base || !service) return reply({ error: "Monitoramento indisponível" }, 503);
-    const db = async (path: string, body?: unknown) =>
-      fetchJson(base + "/rest/v1/" + path, {
+    let etapa = "inicio";
+    const db = async (path: string, body?: unknown) => {
+      etapa = path.split("?")[0];
+      return fetchJson(base + "/rest/v1/" + path, {
         method: body === undefined ? "GET" : "POST",
         headers: {
           apikey: service,
@@ -491,6 +493,7 @@ export function createHandler(
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
+    };
     try {
       if (request.method === "GET") return reply(await db("rpc/astros_status_public", {}));
       const supplied = request.headers.get("X-Astros-Status-Worker");
@@ -649,7 +652,7 @@ export function createHandler(
       }
       return reply({ checked: samples.length, bridge });
     } catch {
-      return reply({ error: "Não foi possível concluir a verificação" }, 503);
+      return reply({ error: "Não foi possível concluir a verificação", etapa }, 503);
     }
   };
 }

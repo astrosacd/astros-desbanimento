@@ -120,6 +120,20 @@ describe("read-only status worker", () => {
       expect(await r.text()).not.toMatch(/private|api-key|five-key|balance/);
     },
   );
+  it("returns only the fixed database stage when a monitoring RPC fails", async () => {
+    const fetcher = vi.fn(async (input: any) => {
+      if (String(input).includes("astros_status_private"))
+        return response([{ worker_secret: "saved-secret" }]);
+      return new Response("private-database-error", { status: 500 });
+    });
+    const r = await createHandler(env, fetcher)(new Request("https://edge", {
+      method: "POST", headers: { "X-Astros-Status-Worker": "saved-secret" },
+    }));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({
+      error: "Não foi possível concluir a verificação", etapa: "rpc/astros_status_claim",
+    });
+  });
   it("does not run checks when a worker already owns the lease", async () => {
     let calls = 0;
     const fetcher = vi.fn(async () =>
