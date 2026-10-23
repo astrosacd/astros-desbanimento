@@ -63,8 +63,9 @@ describe("read-only status worker", () => {
           return response("2a67ddc4-d932-4192-8bc1-55ecec199d33");
         if (url.endsWith("astros_status_finish")) {
           finished = JSON.parse(init.body);
-          return response(null);
+          return new Response(null, { status: 204 });
         }
+        if (url.endsWith("astros_status_bridge_claim")) return response(null);
         if (url.endsWith("/status-health"))
           return response({
             service: "astros-mais",
@@ -107,6 +108,7 @@ describe("read-only status worker", () => {
         }),
       );
       expect(r.status).toBe(200);
+      expect(calls.some((c) => c.url.endsWith("astros_status_bridge_claim"))).toBe(true);
       expect(finished.samples).toHaveLength(7);
       expect(finished.samples.every((s: any) => s.result === "ok")).toBe(true);
       expect(

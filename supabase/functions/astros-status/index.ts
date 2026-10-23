@@ -14,6 +14,7 @@ const cors = {
   "Content-Type": "application/json",
 };
 export async function boundedJson(response: Response): Promise<any> {
+  if (response.ok && response.status === 204) return null;
   if (!response.ok || !response.body) throw Error("unreachable");
   const reader = response.body.getReader();
   const parts: Uint8Array[] = [];
