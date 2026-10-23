@@ -19,7 +19,15 @@ async function rpc(name: string, body: unknown) {
     throw Error(
       "Não foi possível acessar o status. Confira se o SQL desta função já foi instalado.",
     );
-  return response.json();
+  const text = await response.text();
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Error(
+      "O status retornou uma resposta inválida. Atualize a página para conferir se o aviso foi salvo antes de tentar novamente.",
+    );
+  }
 }
 const adminSchema = z.object({
   public: snapshotSchema,
@@ -45,6 +53,10 @@ const adminSchema = z.object({
       manual: z.enum(["operational", "degraded", "unavailable", "maintenance"]).nullable(),
       message: z.string(),
       expires_at: z.string().nullable(),
+      notice_phase: z.enum(["investigating", "identified", "monitoring", "resolved"]).optional(),
+      impact: z.string().optional(),
+      next_update: z.string().nullable().optional(),
+      starts_at: z.string().nullable().optional(),
     }),
   ),
 });
@@ -53,11 +65,12 @@ export async function readStatusAdmin() {
 }
 export async function writeStatus(input: Save) {
   const data = saveSchema.parse(input);
-  await rpc("astros_status_save", {
+  await rpc(data.details ? "astros_status_save_v2" : "astros_status_save", {
     component_key: data.key,
     manual_status: data.status,
     public_message: data.message,
     expires: data.expires,
+    ...(data.details ? { details: data.details } : {}),
   });
   return { saved: true };
 }

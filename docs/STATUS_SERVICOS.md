@@ -57,3 +57,44 @@ A página externa configurada pelo proprietário é **https://astros-mais.better
 Referências oficiais: [autenticação da API](https://betterstack.com/docs/uptime/api/getting-started-with-uptime-api/), [recursos](https://betterstack.com/docs/uptime/api/list-existing-resources-of-a-status-page/), [relatórios](https://betterstack.com/docs/uptime/api/create-a-new-status-page-report/), [atualizações](https://betterstack.com/docs/uptime/api/create-a-new-status-update/), [manutenção](https://betterstack.com/docs/uptime/api/update-an-existing-status-page-report/).
 
 Testes adicionais: `src/features/service-status/betterstack.test.ts` cobre mapeamento, perda de resposta, deduplicação, ausência de confirmação, manutenção, recuperação, mensagens manuais, segredo ausente e notificações desativadas. `node scripts/check-betterstack-status.cjs` verifica SQL/RLS, leases, checkpoint, reaplicação e projeções privadas com PGlite opcional de desenvolvimento, sem banco real.
+
+## Comunicação de incidentes e proteção do monitor (23/10/2026)
+
+Instalação adicional, sempre uma etapa por vez com o proprietário:
+
+1. Executar `supabase/migrations/20261023_status_incident_communication.sql`. É aditivo, preserva avisos, histórico, cron e estados privados da ponte; não altera carteira, fornecedores, compras ou controles de módulos. Não reaplicar migrações antigas depois desta, pois elas contêm definições anteriores dos RPCs.
+2. Atualizar **a função existente astros-status** usando todo `supabase/astros-status.deploy.ts`. Manter Verify JWT with legacy secret desativado somente nessa função. Não criar função ou cron adicional.
+3. Publicar a interface no Lovable e testar um aviso curto de **Indisponível** com texto claramente identificado como teste. **Em manutenção** usa o indicador nativo de manutenção; não deve ser apresentado como sinônimo de vermelho. Verificar publicação real, depois **Voltar ao automático** e confirmar encerramento no Better Stack. Estes testes não bloqueiam serviços nem simulam indisponibilidade real.
+4. Validar atualização de andamento/impacto/próxima atualização, manutenção futura e cancelamento de um agendamento. Os testes locais não confirmam respostas reais do fornecedor de status. Só então atualizar a imagem da VPS com o fluxo habitual.
+
+### Correção do aviso manual
+
+`astros_status_save` e o novo `astros_status_save_v2` retornam `void`. O servidor aceita resposta HTTP de sucesso sem corpo (204 ou 200 vazio); não chama `response.json()` incondicionalmente. O erro anterior `Unexpected end of JSON input` podia ocorrer **depois de salvar** o aviso. Conferir o aviso atual antes de repetir. Respostas inválidas não são tratadas como confirmação; o texto orienta a atualizar e conferir, sem mostrar o corpo bruto.
+
+### Avisos estruturados
+
+O formulário oferece andamento (Investigando, Causa identificada, Acompanhando recuperação, Resolvido), impacto público até 300 caracteres, próxima atualização opcional, mensagem até 500 caracteres e manutenção com início/fim no horário **de Brasília, UTC-3**. Os campos `datetime-local` são convertidos explicitamente, independentemente do fuso do navegador. Próxima atualização é compromisso de comunicação, não previsão de solução. Ao passar do prazo, o texto passa a informar atualização aguardada. Resolvido exige status Operacional; o controle Voltar ao automático remove a sobreposição pública.
+
+Um serviço tem um aviso/agendamento por vez; salvar substitui o anterior. A manutenção programada não força indisponibilidade antes do início, não pausa operações e expira pelo relógio do banco. A ponte antecipa a manutenção nativa apenas quando o serviço automático está operacional e recente; um incidente atual ou manutenção global tem prioridade. Depois do início, a janela aparece como manutenção; ao término, volta à condição automática real. O admin tem opção de expiração em dez minutos para um teste público breve. Operacional manual também sobrepõe as verificações até expirar/remover; não usar para esconder falhas reais.
+
+A sincronização continua deduplicando conteúdo, não notifica assinantes e escreve somente relatórios próprios. Uma manutenção **futura** cancelada é removida apenas pelo ID previamente salvo e revalidado como pertencente à ponte; registra intenção antes do DELETE. Após resposta perdida, 404 confirma a ausência desse mesmo relatório e permite limpar o vínculo. Relatórios iniciados são encerrados, preservando histórico; relatórios criados manualmente no Better Stack, recursos e monitores não são apagados.
+
+### Monitor externo do próprio monitoramento (configuração ainda necessária)
+
+Endpoint público somente leitura:
+
+`https://tevljvidqbvrcgzqypwf.supabase.co/functions/v1/astros-status?health=monitor`
+
+Retorna HTTP 200 com `{ "service": "astros-status-monitor", "status": "ok" }` somente se os sete checks têm confirmação de até dez minutos e a ponte está ativa com última sincronização integral de até dez minutos. Retorna 503 se uma dessas confirmações estiver ausente/velha ou se o Supabase não puder responder. Um serviço pode estar indisponível enquanto o monitor está saudável: o teste verifica a atualidade das verificações/publicação, não exige todos verdes. Resposta pública não contém diagnósticos privados, IDs, saldo ou segredos. GET não dispara worker nem altera estado.
+
+**Para ativar o alerta independente**, no Better Stack criar monitor HTTP para a URL acima, esperando status 200, frequência permitida pelo plano e destinatários escolhidos pelo proprietário. Opcionalmente adicionar esse monitor à página com nome **Atualização do status**. Ele fica separado dos sete recursos manuais e detecta cron parado, ponte sem sucesso, Edge indisponível ou Supabase inteiro fora do ar. O monitor externo e os destinatários precisam ser configurados no Better Stack; o deploy sozinho não ativa e-mails. Não armazenar token/API key no campo URL do monitor.
+
+### Português na página nativa (configuração ainda necessária)
+
+Os comunicados criados pela ponte já são em português. Para títulos, menus e textos gerais, abrir a página no Better Stack → **Settings → Translations** e configurar as traduções disponíveis na conta. A documentação oficial indica tradução nativa dos textos e formatos; a API de edição da página não documenta parâmetros de tradução, portanto não enviamos campos inventados ou JavaScript para substituir textos.
+
+Sugestões: `Some services are down` → `Alguns serviços estão indisponíveis`; `All services are operational` → `Todos os serviços estão operacionais`; `Current status by service` → `Status atual por serviço`; `Previous incidents` → `Histórico de incidentes`; `Downtime` → `Indisponível`; `Degraded` → `Instabilidade`; `Maintenance` → `Manutenção`; `Today` → `Hoje`. Preservar todos os marcadores/variáveis nos textos de data e porcentagem. Usar o fuso America/Fortaleza/Brasília. Conferir a tela e eventuais condições do plano antes de ativar opção paga; não instalar CSS/JS ou mudar domínio para traduzir.
+
+Referências: [traduções nativas](https://betterstack.com/docs/uptime/working-with-status-pages/customize-status-page-css-js/), [relatórios de manutenção](https://betterstack.com/docs/uptime/api/create-a-new-status-page-report/), [cancelamento de relatório futuro](https://betterstack.com/docs/uptime/api/delete-an-existing-status-page-report/), [frequência dos monitores](https://betterstack.com/docs/uptime/check-frequency/).
+
+Validação local desta etapa: 46 testes de status passaram (incluindo retorno vazio 204/200, autorização, campos estruturados, Brasília, janela inválida, monitor atrasado, manutenção futura, cancelamento com resposta perdida e atualização sem duplicação); TypeScript sem erros; três verificações SQL com PGlite passaram, incluindo reaplicação, precedência, RLS, datas e frescor; builds Cloudflare e VPS concluídos. A tentativa de conferência visual por Chromium não pôde executar porque o navegador não estava instalado e o download falhou; a nova tela ainda precisa ser conferida visualmente no Lovable antes da VPS. Nenhum aviso, agendamento, alerta ou tradução real foi alterado por esses testes locais.

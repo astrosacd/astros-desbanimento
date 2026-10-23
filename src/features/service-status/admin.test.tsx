@@ -76,3 +76,65 @@ it("returning to automatic clears only the public override", async () => {
   );
   expect(await screen.findByText("Monitoramento automático retomado.")).toBeInTheDocument();
 });
+it("saves incident progress, impact and next update in Brasília time", async () => {
+  mocks.read.mockResolvedValue({
+    ...data,
+    settings: data.settings.map((s) => ({
+      ...s,
+      notice_phase: "investigating",
+      impact: "",
+      next_update: null,
+      starts_at: null,
+    })),
+  });
+  setup();
+  fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
+  fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "unavailable" } });
+  fireEvent.change(screen.getByLabelText("Andamento do incidente"), {
+    target: { value: "identified" },
+  });
+  fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
+    target: { value: "Estamos corrigindo a conexão." },
+  });
+  fireEvent.change(screen.getByLabelText("Impacto para o cliente"), {
+    target: { value: "Novas ativações indisponíveis." },
+  });
+  fireEvent.change(screen.getByLabelText("Próxima atualização — horário de Brasília (opcional)"), {
+    target: { value: "2099-01-01T12:00" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Publicar aviso" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+  expect(mocks.save.mock.calls[0][0].data.details).toEqual({
+    phase: "identified",
+    impact: "Novas ativações indisponíveis.",
+    startsAt: null,
+    nextUpdate: "2099-01-01T15:00:00.000Z",
+  });
+});
+it("validates the future maintenance window before saving", async () => {
+  mocks.read.mockResolvedValue({
+    ...data,
+    settings: data.settings.map((s) => ({
+      ...s,
+      notice_phase: "investigating",
+      impact: "",
+      next_update: null,
+      starts_at: null,
+    })),
+  });
+  setup();
+  fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
+  fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
+    target: { value: "Manutenção programada." },
+  });
+  fireEvent.click(screen.getByLabelText("Agendar para uma data futura"));
+  fireEvent.change(screen.getByLabelText("Início da manutenção — Brasília"), {
+    target: { value: "2099-01-01T14:00" },
+  });
+  fireEvent.change(screen.getByLabelText("Término previsto — Brasília"), {
+    target: { value: "2099-01-01T13:00" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Publicar aviso" }));
+  expect(await screen.findByText(/Informe uma manutenção com início futuro/)).toBeInTheDocument();
+  expect(mocks.save).not.toHaveBeenCalled();
+});
