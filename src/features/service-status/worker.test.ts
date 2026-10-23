@@ -49,64 +49,90 @@ describe("read-only status worker", () => {
     ).toBe(401);
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
-  it("checks only fixed read-only endpoints and submits one bounded sample per service", async () => {
-    const calls: { url: string; body: any }[] = [];
-    let finished: any;
-    const fetcher = vi.fn(async (input: any, init: any) => {
-      const url = String(input);
-      calls.push({ url, body: init?.body });
-      if (url.includes("astros_status_private"))
+  it.each(["five_sim", "smspool"])(
+    "checks fixed read-only endpoints with %s and submits one sample per service",
+    async (supplier) => {
+      const calls: { url: string; body: any }[] = [];
+      let finished: any;
+      const fetcher = vi.fn(async (input: any, init: any) => {
+        const url = String(input);
+        calls.push({ url, body: init?.body });
+        if (url.includes("astros_status_private"))
+          return response([{ worker_secret: "saved-secret" }]);
+        if (url.endsWith("astros_status_claim"))
+          return response("2a67ddc4-d932-4192-8bc1-55ecec199d33");
+        if (url.endsWith("astros_status_finish")) {
+          finished = JSON.parse(init.body);
+          return new Response(null, { status: 204 });
+        }
+        if (url.endsWith("astros_status_bridge_claim")) return response(null);
+        if (url.endsWith("/status-health"))
+          return response({
+            service: "astros-mais",
+            status: "ok",
+            timestamp: new Date().toISOString(),
+          });
+        if (url.endsWith("/auth/v1/settings"))
+          return response({ external: { email: true }, disable_signup: false });
+        if (url.includes("astros_service_worker_status"))
+          return response([{ last_seen: new Date().toISOString() }]);
+        if (url.includes("/fields/table/511/")) return response([{ id: 1, name: "Nome" }]);
+        if (url.includes("_settings?"))
+          return response([
+            { enabled: true, worker_at: new Date().toISOString(), active_supplier: supplier },
+          ]);
+        if (url.includes("_private?"))
+          return response([{ api_key: "api-key", five_sim_key: "five-key" }]);
+        if (url.includes("astros_prospect_capacity"))
+          return response([{ worker_seen_at: new Date().toISOString() }]);
+        if (url.includes("/user/profile")) return response({ id: 12, balance: 10 });
+        if (url.endsWith("/request/balance")) {
+          expect(init.body instanceof FormData).toBe(true);
+          expect(init.body.get("key")).toBe("api-key");
+          expect(init.headers?.["Content-Type"]).toBeUndefined();
+          return response({ balance: "10.00" });
+        }
+        if (url.includes("smmraja")) return response({ balance: "12.50", currency: "USD" });
+        if (url.includes("/account.json")) return response({ total_searches_left: 100 });
+        if (url.endsWith("/v5/saldo"))
+          return response({ saldo_total: 50, saldos: { pesquisa: 50 } });
+        throw Error("Unexpected endpoint " + url);
+      });
+      const r = await createHandler(
+        env,
+        fetcher,
+      )(
+        new Request("https://edge", {
+          method: "POST",
+          headers: { "X-Astros-Status-Worker": "saved-secret" },
+        }),
+      );
+      expect(r.status).toBe(200);
+      expect(calls.some((c) => c.url.endsWith("astros_status_bridge_claim"))).toBe(true);
+      expect(finished.samples).toHaveLength(7);
+      expect(finished.samples.every((s: any) => s.result === "ok")).toBe(true);
+      expect(
+        calls.some((c) =>
+          /buy|purchase|search\.json|reserve|wallet|rows\/table|enriquecer/.test(c.url),
+        ),
+      ).toBe(false);
+      expect(calls.find((c) => c.url.includes("smmraja"))?.body).toBe("key=api-key&action=balance");
+      expect(await r.text()).not.toMatch(/private|api-key|five-key|balance/);
+    },
+  );
+  it("returns only the fixed database stage when a monitoring RPC fails", async () => {
+    const fetcher = vi.fn(async (input: any) => {
+      if (String(input).includes("astros_status_private"))
         return response([{ worker_secret: "saved-secret" }]);
-      if (url.endsWith("astros_status_claim"))
-        return response("2a67ddc4-d932-4192-8bc1-55ecec199d33");
-      if (url.endsWith("astros_status_finish")) {
-        finished = JSON.parse(init.body);
-        return response(null);
-      }
-      if (url.endsWith("/status-health"))
-        return response({
-          service: "astros-mais",
-          status: "ok",
-          timestamp: new Date().toISOString(),
-        });
-      if (url.endsWith("/auth/v1/settings"))
-        return response({ external: { email: true }, disable_signup: false });
-      if (url.includes("astros_service_worker_status"))
-        return response([{ last_seen: new Date().toISOString() }]);
-      if (url.includes("/fields/table/511/")) return response([{ id: 1, name: "Nome" }]);
-      if (url.includes("_settings?"))
-        return response([
-          { enabled: true, worker_at: new Date().toISOString(), active_supplier: "five_sim" },
-        ]);
-      if (url.includes("_private?"))
-        return response([{ api_key: "api-key", five_sim_key: "five-key" }]);
-      if (url.includes("astros_prospect_capacity"))
-        return response([{ worker_seen_at: new Date().toISOString() }]);
-      if (url.includes("/user/profile")) return response({ id: 12, balance: 10 });
-      if (url.includes("smmraja")) return response({ balance: "12.50", currency: "USD" });
-      if (url.includes("/account.json")) return response({ total_searches_left: 100 });
-      if (url.endsWith("/v5/saldo")) return response({ saldo_total: 50, saldos: { pesquisa: 50 } });
-      throw Error("Unexpected endpoint " + url);
+      return new Response("private-database-error", { status: 500 });
     });
-    const r = await createHandler(
-      env,
-      fetcher,
-    )(
-      new Request("https://edge", {
-        method: "POST",
-        headers: { "X-Astros-Status-Worker": "saved-secret" },
-      }),
-    );
-    expect(r.status).toBe(200);
-    expect(finished.samples).toHaveLength(7);
-    expect(finished.samples.every((s: any) => s.result === "ok")).toBe(true);
-    expect(
-      calls.some((c) =>
-        /buy|purchase|search\.json|reserve|wallet|rows\/table|enriquecer/.test(c.url),
-      ),
-    ).toBe(false);
-    expect(calls.find((c) => c.url.includes("smmraja"))?.body).toBe("key=api-key&action=balance");
-    expect(await r.text()).not.toMatch(/private|api-key|five-key|balance/);
+    const r = await createHandler(env, fetcher)(new Request("https://edge", {
+      method: "POST", headers: { "X-Astros-Status-Worker": "saved-secret" },
+    }));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({
+      error: "Não foi possível concluir a verificação", etapa: "rpc/astros_status_claim",
+    });
   });
   it("does not run checks when a worker already owns the lease", async () => {
     let calls = 0;

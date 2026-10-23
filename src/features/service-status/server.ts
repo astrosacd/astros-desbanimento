@@ -23,6 +23,18 @@ async function rpc(name: string, body: unknown) {
 }
 const adminSchema = z.object({
   public: snapshotSchema,
+  bridge: z
+    .object({
+      enabled: z.boolean(),
+      lastChecked: z.string().nullable(),
+      lastSuccess: z.string().nullable(),
+      diagnostic: z.string(),
+      items: z.array(
+        z.object({ key: z.string(), diagnostic: z.string(), lastSynced: z.string().nullable() }),
+      ),
+    })
+    .nullable()
+    .optional(),
   settings: z.array(
     z.object({
       key: z.string(),

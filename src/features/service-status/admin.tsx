@@ -14,6 +14,18 @@ const diagnostics: Record<string, string> = {
   capacity_unavailable: "Fornecedor sem saldo ou capacidade disponível",
   invalid_response: "Resposta técnica não reconhecida",
 };
+const bridgeDiagnostics: Record<string, string> = {
+  waiting: "Aguardando primeira sincronização.",
+  ok: "Sincronização concluída.",
+  api_unavailable: "Não foi possível comunicar com o Better Stack.",
+  api_rejected:
+    "O Better Stack não autorizou ou não aceitou a atualização. Confira o token e a configuração.",
+  configuration_missing: "O token do Better Stack ainda não está disponível na função.",
+  mapping_mismatch: "Confira os sete nomes dos serviços e o endereço da página no Better Stack.",
+  awaiting_confirmation:
+    "Uma publicação ficou sem confirmação. O sistema está consultando o Better Stack para evitar duplicação.",
+  invalid_response: "O Better Stack retornou uma resposta não reconhecida.",
+};
 export function StatusAdmin({ adminId }: { adminId: string }) {
   const cache = useQueryClient();
   const query = useQuery({
@@ -40,7 +52,11 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
       });
       await saveStatus({ data });
       await cache.invalidateQueries({ queryKey: ["status-admin", adminId] });
-      setNotice(automatic ? "Monitoramento automático retomado." : "Aviso público salvo.");
+      setNotice(
+        automatic
+          ? "Monitoramento automático retomado."
+          : "Aviso salvo. A publicação no Better Stack será confirmada pela sincronização.",
+      );
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Não foi possível salvar.");
     } finally {
@@ -65,7 +81,7 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
           Abrir página pública <ExternalLink size={16} />
         </a>
         <p className="mt-2 text-sm">
-          Guarde o endereço público: ele fica no Lovable, separado da VPS do painel.
+          Guarde o endereço público: ele fica no Better Stack, separado da VPS do painel.
         </p>
       </section>
       {query.isError ? (
@@ -74,6 +90,52 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
         <p>Consultando monitoramento…</p>
       ) : (
         <>
+          <section className="status-admin-diagnostic" aria-label="Integração com Better Stack">
+            <h3 className="font-semibold">Página pública no Better Stack</h3>
+            {query.data.bridge ? (
+              <>
+                <p>
+                  {bridgeDiagnostics[query.data.bridge.diagnostic] ??
+                    "Sincronização sem confirmação."}
+                </p>
+                <p>
+                  Última confirmação de todos os serviços:{" "}
+                  {query.data.bridge.lastSuccess
+                    ? new Date(query.data.bridge.lastSuccess).toLocaleString("pt-BR", {
+                        timeZone: "America/Fortaleza",
+                      })
+                    : "Aguardando"}
+                </p>
+                {query.data.bridge.lastSuccess &&
+                  Date.now() - Date.parse(query.data.bridge.lastSuccess) > 600000 && (
+                    <p role="status">
+                      A confirmação da sincronização está desatualizada. Confira os diagnósticos
+                      abaixo.
+                    </p>
+                  )}
+                {query.data.bridge.items
+                  .filter((i) => i.diagnostic !== "ok")
+                  .map((i) => (
+                    <p key={i.key}>
+                      <strong>
+                        {query.data.settings.find((s) => s.key === i.key)?.label ?? i.key}:
+                      </strong>{" "}
+                      {bridgeDiagnostics[i.diagnostic] ?? "Sem confirmação"}
+                    </p>
+                  ))}
+              </>
+            ) : (
+              <p>
+                A integração com o Better Stack ainda precisa do SQL e da atualização da função
+                astros-status.
+              </p>
+            )}
+            <p>
+              Os avisos salvos aqui são repassados na próxima verificação, normalmente em até 2
+              minutos. Sem confirmação técnica é enviado como instabilidade, com explicação no
+              histórico.
+            </p>
+          </section>
           <form
             className="status-admin-form"
             onSubmit={(e) => {
@@ -173,7 +235,7 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
             </div>
           </form>
           <div className="status-admin-preview">
-            <h3>O que o cliente vê agora</h3>
+            <h3>Prévia local do monitoramento</h3>
             <StatusBoard snapshot={query.data.public} />
           </div>
         </>

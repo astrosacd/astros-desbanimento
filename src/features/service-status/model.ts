@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const STATUS_URL = "https://desbanimento-de-numeros.lovable.app/status";
+export const STATUS_URL = "https://astros-mais.betteruptime.com";
 export const ENDPOINT = "https://tevljvidqbvrcgzqypwf.supabase.co/functions/v1/astros-status";
 export const state = z.enum(["operational", "degraded", "unavailable", "maintenance", "unknown"]);
 export const labels: Record<z.infer<typeof state> | "automatic", string> = {

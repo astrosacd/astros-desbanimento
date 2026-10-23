@@ -1,4 +1,5 @@
-/** Read-only technical monitor. Never imports or calls transaction handlers. */
+import { syncBetterStack } from "./betterstack.ts";
+/** Read-only provider checks, with optional status-only publication to Better Stack. Never calls transaction handlers. */
 declare const Deno: {
   env: { get(key: string): string | undefined };
   serve: (handler: (r: Request) => Promise<Response>) => void;
@@ -13,6 +14,7 @@ const cors = {
   "Content-Type": "application/json",
 };
 export async function boundedJson(response: Response): Promise<any> {
+  if (response.ok && response.status === 204) return null;
   if (!response.ok || !response.body) throw Error("unreachable");
   const reader = response.body.getReader();
   const parts: Uint8Array[] = [];
@@ -63,8 +65,8 @@ export function createHandler(
   env: (key: string) => string | undefined,
   fetcher: typeof fetch = fetch,
 ) {
-  const fetchJson = (url: string, init: RequestInit = {}) =>
-    fetcher(url, { ...init, redirect: "error", signal: AbortSignal.timeout(8000) }).then(
+  const fetchJson = (url: string, init: RequestInit = {}, timeoutMs = 8000) =>
+    fetcher(url, { ...init, redirect: "error", signal: AbortSignal.timeout(timeoutMs) }).then(
       boundedJson,
     );
   return async (request: Request): Promise<Response> => {
@@ -76,8 +78,10 @@ export function createHandler(
     const base = env("SUPABASE_URL"),
       service = env("SUPABASE_SERVICE_ROLE_KEY");
     if (!base || !service) return reply({ error: "Monitoramento indisponível" }, 503);
-    const db = async (path: string, body?: unknown) =>
-      fetchJson(base + "/rest/v1/" + path, {
+    let etapa = "inicio";
+    const db = async (path: string, body?: unknown) => {
+      etapa = path.split("?")[0];
+      return fetchJson(base + "/rest/v1/" + path, {
         method: body === undefined ? "GET" : "POST",
         headers: {
           apikey: service,
@@ -86,6 +90,7 @@ export function createHandler(
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
+    };
     try {
       if (request.method === "GET") return reply(await db("rpc/astros_status_public", {}));
       const supplied = request.headers.get("X-Astros-Status-Worker");
@@ -163,11 +168,26 @@ export function createHandler(
             const apiKey = five ? secret.five_sim_key : secret.api_key;
             if (!apiKey) return result("unknown", "configuration_missing");
             const p = five
-              ? await fetchJson("https://5sim.net/v1/user/profile", {
-                  headers: { Authorization: "Bearer " + apiKey, Accept: "application/json" },
-                })
-              : await fetchJson("https://api.smspool.net/user/balance", form({ key: apiKey }));
-            if (!validBalance(p?.balance) || (five && !(Number.isSafeInteger(p?.id) && p.id > 0)))
+              ? await fetchJson(
+                  "https://5sim.net/v1/user/profile",
+                  {
+                    headers: { Authorization: "Bearer " + apiKey, Accept: "application/json" },
+                  },
+                  15000,
+                )
+              : await fetchJson(
+                  "https://api.smspool.net/request/balance",
+                  {
+                    method: "POST",
+                    body: (() => {
+                      const data = new FormData();
+                      data.set("key", apiKey);
+                      return data;
+                    })(),
+                  },
+                  20000,
+                );
+            if ((!five && p?.success === 0) || !validBalance(p?.balance) || (five && !(Number.isSafeInteger(p?.id) && p.id > 0)))
               return result("failed", "invalid_response");
             return Number(p.balance) > 0
               ? result("ok", "ok")
@@ -215,9 +235,21 @@ export function createHandler(
       };
       const samples = await Promise.all(keys.map(check));
       await db("rpc/astros_status_finish", { lease_token: token, samples });
-      return reply({ checked: samples.length });
+      // Optional bridge failures cannot discard the local health checks.
+      let bridge: unknown = { synced: false };
+      try {
+        bridge = await syncBetterStack({
+          apiKey: env("ASTROS_BETTERSTACK_API_TOKEN"),
+          db,
+          fetcher,
+          readJson: boundedJson,
+        });
+      } catch {
+        /* Private sync diagnostics are persisted by the bridge. */
+      }
+      return reply({ checked: samples.length, bridge });
     } catch {
-      return reply({ error: "Não foi possível concluir a verificação" }, 503);
+      return reply({ error: "Não foi possível concluir a verificação", etapa }, 503);
     }
   };
 }

@@ -59,7 +59,11 @@ it("publishes a notice for only the selected component with an expiry", async ()
     message: "Manutenção programada para SMS",
   });
   expect(Date.parse(saved.expires)).toBeGreaterThan(Date.now() + 7100000);
-  expect(await screen.findByText("Aviso público salvo.")).toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      "Aviso salvo. A publicação no Better Stack será confirmada pela sincronização.",
+    ),
+  ).toBeInTheDocument();
 });
 it("returning to automatic clears only the public override", async () => {
   setup();
