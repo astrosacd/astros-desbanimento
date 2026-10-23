@@ -1,0 +1,20 @@
+import { cleanup, render, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { SignupCaptcha } from './signup-captcha';
+afterEach(() => { cleanup(); delete window.turnstile; });
+it('clears expired/error challenges, re-renders after a consumed attempt and removes the widget', async () => {
+ const renderWidget = vi.fn(() => 'widget-1'), remove = vi.fn(), onToken = vi.fn();
+ window.turnstile = { render: renderWidget, remove };
+ const view = render(<SignupCaptcha siteKey="public-key" attempt={0} onToken={onToken}/>);
+ await waitFor(() => expect(renderWidget).toHaveBeenCalledTimes(1));
+ const options = renderWidget.mock.calls[0]![1] as Record<string, Function>;
+ expect(options.action).toBe('signup'); expect(options.size).toBe('compact');
+ options.callback!('valid-token'); expect(onToken).toHaveBeenLastCalledWith('valid-token');
+ options['expired-callback']!(); expect(onToken).toHaveBeenLastCalledWith('');
+ options.callback!('valid-token'); options['timeout-callback']!(); expect(onToken).toHaveBeenLastCalledWith('');
+ options['error-callback']!(); expect(onToken).toHaveBeenLastCalledWith('');
+ view.rerender(<SignupCaptcha siteKey="public-key" attempt={1} onToken={onToken}/>);
+ await waitFor(() => expect(renderWidget).toHaveBeenCalledTimes(2));
+ expect(remove).toHaveBeenCalledWith('widget-1');
+ view.unmount(); onToken.mockClear(); options.callback!('stale-token'); expect(onToken).not.toHaveBeenCalled();
+});

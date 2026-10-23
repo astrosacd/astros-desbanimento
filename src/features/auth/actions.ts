@@ -9,3 +9,5 @@ export const resetClient = createServerFn({ method: 'POST' }).inputValidator(z.o
 export const logoutClient = createServerFn({ method: 'POST' }).handler(async () => (await import('./session.server')).logout());
 
 export const updateClientProfile = createServerFn({ method: 'POST' }).inputValidator(profileSchema).handler(async ({ data }) => (await import('./profile.server')).updateProfile(data));
+
+export const getSignupProtection = createServerFn({ method: 'GET' }).handler(async () => (await import('./signup-protection.server')).signupProtectionConfig());
