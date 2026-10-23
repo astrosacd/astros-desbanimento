@@ -176,7 +176,7 @@ export function createHandler(
                   15000,
                 )
               : await fetchJson(
-                  "https://api.smspool.net/user/balance",
+                  "https://api.smspool.net/request/balance",
                   {
                     method: "POST",
                     body: (() => {
@@ -187,7 +187,7 @@ export function createHandler(
                   },
                   20000,
                 );
-            if (!validBalance(p?.balance) || (five && !(Number.isSafeInteger(p?.id) && p.id > 0)))
+            if ((!five && p?.success === 0) || !validBalance(p?.balance) || (five && !(Number.isSafeInteger(p?.id) && p.id > 0)))
               return result("failed", "invalid_response");
             return Number(p.balance) > 0
               ? result("ok", "ok")

@@ -86,7 +86,7 @@ describe("read-only status worker", () => {
         if (url.includes("astros_prospect_capacity"))
           return response([{ worker_seen_at: new Date().toISOString() }]);
         if (url.includes("/user/profile")) return response({ id: 12, balance: 10 });
-        if (url.endsWith("/user/balance")) {
+        if (url.endsWith("/request/balance")) {
           expect(init.body instanceof FormData).toBe(true);
           expect(init.body.get("key")).toBe("api-key");
           expect(init.headers?.["Content-Type"]).toBeUndefined();
