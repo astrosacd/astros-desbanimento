@@ -1,6 +1,6 @@
 // Never import this module into browser code. Secrets are server environment only.
 export function customMailEnabled() { return process.env['ASTROS_CUSTOM_EMAIL_ENABLED'] === 'true'; }
-export async function customMail(data: { type: 'signup' | 'recovery'; email: string; name?: string; whatsapp?: string; password?: string; signupPermit?: string | undefined }) {
+export async function customMail(data: { type: 'signup' | 'recovery'; email: string; name?: string; whatsapp?: string; password?: string; signupPermit?: string | undefined; referralCode?: string | undefined }) {
  const secret = process.env['ASTROS_EMAIL_INTERNAL_SECRET'];
  const url = (process.env['SUPABASE_URL'] ?? 'https://tevljvidqbvrcgzqypwf.supabase.co').replace(/\/$/, '');
  if (!secret || secret.length < 32 || !url.startsWith('https://')) throw new Error('O envio de e-mails da Astros ainda não foi configurado.');

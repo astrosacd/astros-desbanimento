@@ -1,10 +1,11 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import type { ReactNode } from 'react';
-const mocks=vi.hoisted(()=>({resetClient:vi.fn(),navigate:vi.fn(),invalidate:vi.fn(),getSignupProtection:vi.fn(),signupClient:vi.fn()}));
+const mocks=vi.hoisted(()=>({resetClient:vi.fn(),navigate:vi.fn(),invalidate:vi.fn(),getSignupProtection:vi.fn(),signupClient:vi.fn(),rememberAffiliate:vi.fn()}));
 vi.mock('./actions',()=>({resetClient:mocks.resetClient,loginClient:vi.fn(),signupClient:mocks.signupClient,recoverClient:vi.fn(),getSignupProtection:mocks.getSignupProtection}));
 vi.mock('@tanstack/react-router',()=>({useRouter:()=>({navigate:mocks.navigate,invalidate:mocks.invalidate}),Link:({children,to}:{children:ReactNode;to:string})=><a href={to}>{children}</a>}));
 vi.mock('@/features/demo/shell',()=>({Wordmark:()=> <div>Astros</div>}));
+vi.mock('../affiliates/actions',()=>({rememberAffiliate:mocks.rememberAffiliate}));
 vi.mock('./signup-captcha',()=>({SignupCaptcha:({onToken}:{onToken:(t:string)=>void})=><button type="button" onClick={()=>onToken('captcha-token')}>Validar segurança</button>}));
 import { Entrance } from './page';
 beforeEach(()=>{cleanup();vi.resetAllMocks();window.history.replaceState(null,'','/reset-password#type=recovery&access_token=private-recovery');});
@@ -62,4 +63,14 @@ it('blocks signup when security configuration cannot load and allows retry',asyn
  fireEvent.click(screen.getByRole('button',{name:'Tentar novamente'}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Criar minha conta'})).not.toBeDisabled());
  expect(mocks.signupClient).not.toHaveBeenCalled();
+});
+
+it('records referral before allowing signup while retaining CAPTCHA protection',async()=>{
+ window.history.replaceState(null,'','/cadastro?ref='+ 'a'.repeat(32));
+ let done:()=>void=()=>{};mocks.rememberAffiliate.mockReturnValue(new Promise<void>(r=>{done=r;}));
+ mocks.getSignupProtection.mockResolvedValue({enabled:false,siteKey:'',endpoint:''});
+ render(<Entrance mode="cadastro"/>);
+ await waitFor(()=>expect(mocks.rememberAffiliate).toHaveBeenCalledWith({data:{code:'a'.repeat(32)}}));
+ expect(screen.getByRole('button',{name:'Criar minha conta'})).toBeDisabled();done();
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Criar minha conta'})).not.toBeDisabled());
 });

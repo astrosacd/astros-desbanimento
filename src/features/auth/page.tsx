@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/features/demo/shell';
 import { loginClient, signupClient, recoverClient, resetClient, getSignupProtection } from './actions';
 import { signupSchema } from './validation';
+import {rememberAffiliate} from '../affiliates/actions';
 import { SignupCaptcha } from './signup-captcha';
 type Mode = 'login' | 'cadastro' | 'recuperacao' | 'reset';
 const titles = { login: 'Entre na sua conta', cadastro: 'Crie sua conta', recuperacao: 'Esqueceu sua senha?', reset: 'Defina sua nova senha' };
 export function Entrance({ mode, passwordUpdated = false }: { mode: Mode; passwordUpdated?: boolean }) {
  const router = useRouter();
+ const [referralReady,setReferralReady]=useState(mode!=='cadastro');
+ useEffect(()=>{if(mode!=='cadastro')return;let active=true;const code=new URLSearchParams(window.location.search).get('ref')||'';if(!/^[a-f0-9]{32}$/.test(code)){setReferralReady(true);return;}rememberAffiliate({data:{code}}).then(()=>{if(active)setReferralReady(true);}).catch(()=>{if(active)setError('Não foi possível registrar sua indicação. Recarregue a página para tentar novamente.');});return()=>{active=false;};},[mode]);
  const [protection, setProtection] = useState<Awaited<ReturnType<typeof getSignupProtection>> | null>(null);
  const [captchaToken, setCaptchaToken] = useState('');
  const [captchaAttempt, setCaptchaAttempt] = useState(0);
@@ -42,6 +45,7 @@ export function Entrance({ mode, passwordUpdated = false }: { mode: Mode; passwo
    if (mode === 'cadastro') {
     const parsed = signupSchema.safeParse({ name, email, whatsapp, password });
     if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || 'Confira os dados do cadastro.');
+    if (!referralReady) throw new Error('Aguarde o registro da indicação.');
     if (!protection) throw new Error('Aguarde a verificação de segurança.');
     let signupPermit: string | undefined;
     if (protection.enabled) {
@@ -73,6 +77,6 @@ export function Entrance({ mode, passwordUpdated = false }: { mode: Mode; passwo
  {mode === 'login' && <Link className="entrance-forgot" to="/recuperar-senha">Esqueci minha senha</Link>}
  {mode === 'cadastro' && <>{protection?.enabled && <SignupCaptcha siteKey={protection.siteKey} attempt={captchaAttempt} onToken={setCaptchaToken}/>} {configError && <div role="alert"><p className="error-text">{configError}</p><button type="button" onClick={() => setConfigAttempt(n => n + 1)}>Tentar novamente</button></div>}{!protection && !configError && <p role="status">Carregando verificação de segurança…</p>}</>}
  {error && <p role="alert" className="error-text">{error}</p>}{message && <p role="status" className="notice entrance-notice">{message}</p>}
- <Button type="submit" className="w-full mt-6 min-h-11" disabled={busy || (mode === 'reset' && !token) || (mode === 'cadastro' && (!protection || (protection.enabled && !captchaToken)))}>{busy ? 'Aguarde…' : mode === 'login' ? 'Entrar no painel' : mode === 'cadastro' ? 'Criar minha conta' : mode === 'recuperacao' ? 'Enviar link de recuperação' : 'Salvar nova senha'}{!busy && <ArrowRight size={17}/>}</Button></form>
+ <Button type="submit" className="w-full mt-6 min-h-11" disabled={busy || (mode === 'reset' && !token) || (mode === 'cadastro' && (!referralReady || !protection || (protection.enabled && !captchaToken)))}>{busy ? 'Aguarde…' : mode === 'login' ? 'Entrar no painel' : mode === 'cadastro' ? 'Criar minha conta' : mode === 'recuperacao' ? 'Enviar link de recuperação' : 'Salvar nova senha'}{!busy && <ArrowRight size={17}/>}</Button></form>
  <div className="entrance-links">{mode === 'login' ? <>Ainda não tem conta? <Link to="/cadastro">Cadastre-se</Link></> : <Link to="/login">Voltar para o login</Link>}{mode === 'recuperacao' && <Link to="/cadastro">Criar uma conta</Link>}</div>{mode === 'login' && <PwaInstallButton entry/>}<div className="entrance-bottom"><ShieldCheck size={14}/><span>Sua conta, seu acesso.</span><span className="entrance-footer-dot" aria-hidden="true">·</span><Link to="/termos">Termos de uso</Link></div></section></main>;
 }

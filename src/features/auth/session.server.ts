@@ -2,6 +2,7 @@ import { getCookie, setCookie, deleteCookie, getRequestUrl, setResponseHeader } 
 import { request } from '../admin/auth.server';
 import { customMail, customMailEnabled } from './custom-mail.server';
 import { requireSignupPermit } from './signup-protection.server';
+import {referral,clearReferral} from '../affiliates/referral.server';
 const COOKIE = 'astros_client_session';
 export type ClientIdentity = { id: string; email: string; name: string; requiresPasswordChange?:boolean };
 function noCache() { setResponseHeader('Cache-Control', 'private, no-store'); }
@@ -27,15 +28,16 @@ export async function login(data: { email: string; password: string }) {
 export async function signup(data: { name: string; email: string; whatsapp: string; password: string; signupPermit?: string | undefined }) {
  noCache();
  await requireSignupPermit(data.signupPermit, data.email);
- if (customMailEnabled()) { await customMail({ type: 'signup', ...data }); return { signedIn: false }; }
- const r = await request(`/auth/v1/signup?redirect_to=${encodeURIComponent(origin() + '/login')}`, undefined, { method: 'POST', body: JSON.stringify({ email: data.email, password: data.password, data: { nome: data.name, whatsapp: data.whatsapp, ...(data.signupPermit ? { astros_signup_permit: data.signupPermit } : {}) } }) });
+ const referralCode=referral();
+ if (customMailEnabled()) { await customMail({ type: 'signup', ...data, ...(referralCode?{referralCode}:{}) }); clearReferral(); return { signedIn: false }; }
+ const r = await request(`/auth/v1/signup?redirect_to=${encodeURIComponent(origin() + '/login')}`, undefined, { method: 'POST', body: JSON.stringify({ email: data.email, password: data.password, data: { nome: data.name, whatsapp: data.whatsapp, ...(referralCode?{astros_referral_code:referralCode}:{}), ...(data.signupPermit ? { astros_signup_permit: data.signupPermit } : {}) } }) });
  if (!r.ok) {
   const e = await r.json().catch(() => ({}));
   if (r.status === 429) throw new Error('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
   if (e.code === 'user_already_exists') throw new Error('Esse e-mail já possui cadastro. Entre ou recupere sua senha.');
   throw new Error('Não foi possível concluir o cadastro. Tente novamente. Se já possui conta, entre ou recupere sua senha.');
  }
- const s = await r.json();
+ const s = await r.json(); clearReferral();
  // A duplicate signup never changes an existing account or signs it in.
  if (s.access_token) { remember(s.access_token, s.expires_in); return { signedIn: true }; }
  return { signedIn: false };

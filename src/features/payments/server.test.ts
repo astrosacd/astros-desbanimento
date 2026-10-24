@@ -18,3 +18,5 @@ it('does not claim success when the database returns a different price',async()=
  const {savePrices}=await import('./server');mock.requireAdmin.mockResolvedValue({id:'admin'});mock.request.mockResolvedValue(response({servicePriceCents:0,minimumEnabled:false,minimumRechargeCents:500}));
  await expect(savePrices({servicePriceCents:12500,minimumEnabled:false,minimumRechargeCents:500})).rejects.toThrow('confirmados');
 });
+
+it('projects a negative net balance as available zero and an explicit pending adjustment',async()=>{mock.request.mockResolvedValueOnce(response({id:'own-uuid'})).mockResolvedValueOnce(response([{recarga:'-10.00'}])).mockResolvedValueOnce(response([])).mockResolvedValueOnce(response([]));expect(await wallet()).toMatchObject({balanceCents:0,adjustmentCents:1000});expect(mock.request.mock.calls[1]![0]).toContain('id=eq.own-uuid');});

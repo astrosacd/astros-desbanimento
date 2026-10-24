@@ -38,7 +38,7 @@ Deno.serve(async request => {
   if (!allowed) return reply(429, 'Aguarde alguns minutos antes de tentar novamente.');
   if (input.type === 'signup') {
    // Create only: duplicate accounts are never modified or re-confirmed here.
-   const { error } = await supabase.auth.admin.createUser({ email, password: input.password, email_confirm: false, user_metadata: { nome: input.name.trim(), whatsapp: input.whatsapp, ...(typeof input.signupPermit === 'string' && /^[0-9a-f]{64}$/.test(input.signupPermit) ? { astros_signup_permit: input.signupPermit } : {}) } });
+   const { error } = await supabase.auth.admin.createUser({ email, password: input.password, email_confirm: false, user_metadata: { nome: input.name.trim(), whatsapp: input.whatsapp, ...(typeof input.referralCode==='string'&&/^[a-f0-9]{32}$/.test(input.referralCode)?{astros_referral_code:input.referralCode}:{}), ...(typeof input.signupPermit === 'string' && /^[0-9a-f]{64}$/.test(input.signupPermit) ? { astros_signup_permit: input.signupPermit } : {}) } });
    if (error) {
     if (error.code === 'email_exists' || error.code === 'user_already_exists') return reply(200, 'Confira seu e-mail. Se já tem conta, entre ou recupere a senha.');
     return reply(400, 'Não foi possível concluir o cadastro.');

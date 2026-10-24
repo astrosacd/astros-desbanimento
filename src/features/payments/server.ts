@@ -35,7 +35,8 @@ export async function wallet() {
  let ordersResponse=await request(`/rest/v1/astros_payment_orders?user_id=eq.${encodeURIComponent(user.id)}&select=id,method,status,amount_cents,qr_code,qr_base64,checkout_url,card_mode,created_at&order=created_at.desc&limit=20`,token);
  if(ordersResponse.status===400)ordersResponse=await request(`/rest/v1/astros_payment_orders?user_id=eq.${encodeURIComponent(user.id)}&select=id,method,status,amount_cents,qr_code,qr_base64,checkout_url,created_at&order=created_at.desc&limit=20`,token);
  const orders: Array<{id:string;method:string;status:string;amount_cents:number;qr_code:string|null;qr_base64:string|null;checkout_url:string|null;card_mode?:string;created_at:string}>=ordersResponse.ok?await ordersResponse.json():[];
- return { orders, balanceCents:Math.round(Number(rows[0].recarga ?? 0)*100), movements };
+ const netBalanceCents=Math.round(Number(rows[0].recarga ?? 0)*100);
+ return { orders, balanceCents:Math.max(0,netBalanceCents), adjustmentCents:Math.max(0,-netBalanceCents), movements };
 }
 
 export async function prices() {
