@@ -60,3 +60,13 @@ it('VPS enforces Secure cookies behind the HTTPS proxy', async () => {
  await login({ email: 'maria@example.com', password: '12345678' });
  expect(server.setCookie).toHaveBeenCalledWith('astros_client_session', 'token', expect.objectContaining({ secure: true, httpOnly: true }));
 });
+
+it('passes a referral code only during new signup and keeps account role out of the payload',async()=>{
+ server.getCookie.mockImplementation((name:string)=>name==='astros_referral'?'a'.repeat(32):undefined);
+ api.request.mockResolvedValueOnce(response({user:{id:'uuid'}}));
+ await signup({name:'Maria Costa',email:'maria@example.com',whatsapp:'5585999999999',password:'12345678'});
+ const payload=JSON.parse(api.request.mock.calls[0][2].body);
+ expect(payload.data.astros_referral_code).toBe('a'.repeat(32));
+ expect(payload.data.tipo_usuario).toBeUndefined();
+ expect(server.deleteCookie).toHaveBeenCalledWith('astros_referral',{path:'/'});
+});

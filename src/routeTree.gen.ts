@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AfiliacaoRouteImport } from './routes/afiliacao'
 import { Route as AlterarSenhaRouteImport } from './routes/alterar-senha'
 import { Route as ApiRouteImport } from './routes/api'
 import { Route as AtivacoesSmsRouteImport } from './routes/ativacoes-sms'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AfiliacaoRoute = AfiliacaoRouteImport.update({
+  id: '/afiliacao',
+  path: '/afiliacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlterarSenhaRoute = AlterarSenhaRouteImport.update({
@@ -134,6 +140,7 @@ const TermosRoute = TermosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/afiliacao': typeof AfiliacaoRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/ativacoes-sms': typeof AtivacoesSmsRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/afiliacao': typeof AfiliacaoRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/ativacoes-sms': typeof AtivacoesSmsRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/afiliacao': typeof AfiliacaoRoute
   '/alterar-senha': typeof AlterarSenhaRoute
   '/api': typeof ApiRoute
   '/ativacoes-sms': typeof AtivacoesSmsRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/afiliacao'
     | '/alterar-senha'
     | '/api'
     | '/ativacoes-sms'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/afiliacao'
     | '/alterar-senha'
     | '/api'
     | '/ativacoes-sms'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/afiliacao'
     | '/alterar-senha'
     | '/api'
     | '/ativacoes-sms'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AfiliacaoRoute: typeof AfiliacaoRoute
   AlterarSenhaRoute: typeof AlterarSenhaRoute
   ApiRoute: typeof ApiRoute
   AtivacoesSmsRoute: typeof AtivacoesSmsRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/afiliacao': {
+      id: '/afiliacao'
+      path: '/afiliacao'
+      fullPath: '/afiliacao'
+      preLoaderRoute: typeof AfiliacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alterar-senha': {
@@ -438,6 +458,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AfiliacaoRoute: AfiliacaoRoute,
   AlterarSenhaRoute: AlterarSenhaRoute,
   ApiRoute: ApiRoute,
   AtivacoesSmsRoute: AtivacoesSmsRoute,
