@@ -16,6 +16,8 @@ import {
   Smartphone,
   ListChecks,
   Share2,
+  Search,
+  Gift,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -309,6 +311,26 @@ export function SupportChatPage() {
             <span>
               <strong>Redes sociais</strong>
               <small>Serviços e pedidos</small>
+            </span>
+            <ArrowUpRight size={16} />
+          </Link>
+          <Link to="/prospeccao">
+            <span className="support-shortcut-icon">
+              <Search size={19} />
+            </span>
+            <span>
+              <strong>Prospecção</strong>
+              <small>Leads e histórico de buscas</small>
+            </span>
+            <ArrowUpRight size={16} />
+          </Link>
+          <Link to="/afiliacao">
+            <span className="support-shortcut-icon">
+              <Gift size={19} />
+            </span>
+            <span>
+              <strong>Afiliação</strong>
+              <small>Indicações e comissões</small>
             </span>
             <ArrowUpRight size={16} />
           </Link>
