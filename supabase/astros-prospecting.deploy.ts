@@ -1033,11 +1033,201 @@ export async function handleInstagram(
   return { ...config, candidates, request: await db("rpc/astros_instagram_read", "POST", args) };
 }
 
+type ReviewsObject = Record<string, any>;
+export function reviewsPlaceId(snapshot: ReviewsObject): string | null {
+  const id = typeof snapshot?.id === "string" ? snapshot.id : "";
+  return !snapshot?.cnpj && snapshot?.source !== "cnpj" && /^pid:[A-Za-z0-9_-]{10,200}$/.test(id)
+    ? id.slice(4)
+    : null;
+}
+function reviewText(v: unknown, max = 800) {
+  return typeof v === "string"
+    ? v
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .trim()
+        .slice(0, max)
+    : "";
+}
+function reviewDate(v: unknown) {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v) && Number.isFinite(Date.parse(v))
+    ? new Date(v).toISOString()
+    : "";
+}
+function reviewLink(v: unknown) {
+  try {
+    const u = new URL(String(v));
+    return u.protocol === "https:" &&
+      ["www.google.com", "google.com", "maps.google.com"].includes(u.hostname) &&
+      u.pathname.startsWith("/maps") &&
+      !u.username &&
+      !u.password &&
+      !u.port &&
+      u.href.length <= 2048
+      ? u.href
+      : "";
+  } catch {
+    return "";
+  }
+}
+export function reviewsProjection(data: ReviewsObject, placeId: string) {
+  if (
+    data?.search_metadata?.status !== "Success" ||
+    !Array.isArray(data.reviews) ||
+    !data.place_info ||
+    typeof data.place_info.title !== "string" ||
+    !data.place_info.title.trim() ||
+    (data.search_parameters?.place_id && data.search_parameters.place_id !== placeId)
+  )
+    throw Error("Avaliações não confirmadas");
+  const rating = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 5 ? v : null;
+  const seen = new Set<string>();
+  const reviews = data.reviews
+    .slice(0, 20)
+    .flatMap((r: ReviewsObject) => {
+      if (
+        !r ||
+        typeof r !== "object" ||
+        (r.source && r.source !== "Google") ||
+        rating(r.rating) === null
+      )
+        return [];
+      const id = reviewText(r.review_id, 250);
+      if (!id || seen.has(id)) return [];
+      seen.add(id);
+      return [
+        {
+          id,
+          rating: rating(r.rating),
+          text: reviewText(r.snippet),
+          date: reviewText(r.date, 100),
+          isoDate: reviewDate(r.iso_date),
+          url: reviewLink(r.link),
+          response: reviewText(r.response?.snippet),
+          responseDate: reviewText(r.response?.date, 100),
+          responseIsoDate: reviewDate(r.response?.iso_date),
+        },
+      ];
+    })
+    .slice(0, 10);
+  // No reviewer identity, contributor ID, photo, raw response or third-party tracking links.
+  const projection = {
+    placeId,
+    name: reviewText(data.place_info.title, 200),
+    rating: rating(data.place_info.rating),
+    total:
+      typeof data.place_info.reviews === "number" &&
+      Number.isSafeInteger(data.place_info.reviews) &&
+      data.place_info.reviews >= 0
+        ? data.place_info.reviews
+        : null,
+    reviews,
+    source: "google_maps_reviews",
+    sort: "newestFirst",
+    queriedAt: new Date().toISOString(),
+    url:
+      "https://www.google.com/maps/search/?" +
+      new URLSearchParams({
+        api: "1",
+        query: reviewText(data.place_info.title, 200),
+        query_place_id: placeId,
+      }),
+  };
+  while (new TextEncoder().encode(JSON.stringify(projection)).length > 30000 && reviews.length)
+    reviews.pop();
+  return projection;
+}
+export async function handleReviews(
+  action: string,
+  data: ReviewsObject,
+  actor: ReviewsObject,
+  db: (path: string, method?: string, body?: unknown) => Promise<any>,
+  optional: (name: string, body: unknown) => Promise<any>,
+  sync: () => Promise<any>,
+  supplier: (path: string, params: Record<string, string>) => Promise<any>,
+) {
+  const config = await optional("astros_reviews_config", {
+    actor: actor.id,
+    administrator: action.startsWith("admin-"),
+  });
+  if (action === "admin-reviews-config") return config || { installed: false, enabled: false };
+  if (!config) {
+    if (action === "reviews-read")
+      return { installed: false, enabled: false, eligible: false, request: { state: "none" } };
+    throw Error("Ative a atualização de avaliações antes de continuar");
+  }
+  if (action === "admin-reviews-save") {
+    if (
+      typeof data.enabled !== "boolean" ||
+      ![data.dailyCalls, data.userDaily, data.reserveCalls].every(Number.isSafeInteger)
+    )
+      throw Error("Configuração de avaliações inválida");
+    await db("rpc/astros_reviews_save", "POST", {
+      actor: actor.id,
+      active: data.enabled,
+      daily_limit: data.dailyCalls,
+      user_limit: data.userDaily,
+      reserve_limit: data.reserveCalls,
+    });
+    return { saved: true };
+  }
+  const validId = (v: unknown) => {
+    if (
+      typeof v !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
+    )
+      throw Error("Referência de avaliações inválida");
+    return v;
+  };
+  if (data.source !== undefined && data.source !== "maps")
+    throw Error("Avaliações disponíveis somente para leads Google Maps");
+  const args = { actor: actor.id, lead_key: validId(data.leadId), origin_key: "maps" };
+  const snapshot = await db("rpc/astros_reviews_snapshot", "POST", args),
+    placeId = reviewsPlaceId(snapshot);
+  if (action === "reviews-consult") {
+    const id = validId(data.requestId);
+    if (!placeId) throw Error("Este lead não possui identificação Maps compatível");
+    if (config.enabled) await sync().catch(() => {});
+    const begin = await db("rpc/astros_reviews_begin", "POST", {
+      ...args,
+      request_key: id,
+      place_key: placeId,
+    });
+    if (begin.dispatch) {
+      let projection = null;
+      try {
+        projection = reviewsProjection(
+          await supplier("search.json", {
+            engine: "google_maps_reviews",
+            place_id: placeId,
+            hl: "pt-br",
+            sort_by: "newestFirst",
+            num: "10",
+          }),
+          placeId,
+        );
+      } catch {
+        /* Preserve reservation; never retry an uncertain dispatch. */
+      }
+      await db("rpc/astros_reviews_finish", "POST", {
+        actor: actor.id,
+        request_key: begin.requestId,
+        payload: projection,
+      });
+    }
+  } else if (action !== "reviews-read") throw Error("Operação de avaliações indisponível");
+  return {
+    ...config,
+    eligible: !!placeId,
+    request: await db("rpc/astros_reviews_read", "POST", args),
+  };
+}
+
 declare const Deno:{env:{get:(name:string)=>string|undefined};serve:(handler:(req:Request)=>Promise<Response>)=>void};
 type Obj=Record<string,any>;
 function env(n:string){const v=Deno.env.get(n);if(!v)throw Error('Prospecção ainda não configurada.');return v;}
 const json=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
-const safeMessages=['Outra consulta Instagram está em andamento. Tente mais tarde','Origem inválida','Lead não encontrado na sua conta','Perfil Instagram inválido','Referência Instagram divergente','Perfil não consta nos links deste lead','Consulta Instagram desativada','Consulta Instagram indisponível para esta conta','Aguarde a atualização da cota SerpApi','Buscas Google Maps têm prioridade. Tente mais tarde','Cota reservada às buscas. Tente mais tarde','Limite diário de consultas Instagram atingido','Configuração Instagram inválida','Configure a chave SerpApi antes de ativar','Este módulo está em manutenção. Novas operações estão temporariamente indisponíveis.','Este módulo não está liberado para sua conta. Fale com o suporte.','Configuração CNPJ inválida', 'Configure a chave CNPJ antes de ativar', 'Referência CNPJ divergente', 'Busca CNPJ temporariamente indisponível', 'Consulte o preço CNPJ novamente', 'Filtros CNPJ inválidos', 'Consulta complementar indisponível', 'Lead CNPJ não encontrado', 'Confira a consulta CNPJ em andamento', 'Limite diário de consultas CNPJ atingido', 'Esta pesquisa CNPJ já está em andamento', 'Limite de consultas CNPJ ao fornecedor atingido', 'Consulta CNPJ não encontrada', 'Resposta CNPJ inválida'].concat(['Conta indisponível','Configuração inválida','Configure a chave antes de ativar','Referência inválida','Referência divergente','Prospecção temporariamente indisponível','Consulte o preço novamente','Busca inválida','Saldo insuficiente. Faça uma recarga','Confira a busca anterior antes de iniciar outra','Limite diário de buscas atingido','Busca não encontrada','Ative o processamento automático de Prospecção']);
+const safeMessages=['Configuração Avaliações inválida','Identificação Maps inválida','Empresa Maps não corresponde ao lead','Referência de avaliações divergente','Consulta Avaliações desativada','Consulta Avaliações indisponível para esta conta','Outra consulta Avaliações está em andamento. Tente mais tarde','Limite diário de consultas Avaliações atingido','Outra consulta Instagram está em andamento. Tente mais tarde','Origem inválida','Lead não encontrado na sua conta','Perfil Instagram inválido','Referência Instagram divergente','Perfil não consta nos links deste lead','Consulta Instagram desativada','Consulta Instagram indisponível para esta conta','Aguarde a atualização da cota SerpApi','Buscas Google Maps têm prioridade. Tente mais tarde','Cota reservada às buscas. Tente mais tarde','Limite diário de consultas Instagram atingido','Configuração Instagram inválida','Configure a chave SerpApi antes de ativar','Este módulo está em manutenção. Novas operações estão temporariamente indisponíveis.','Este módulo não está liberado para sua conta. Fale com o suporte.','Configuração CNPJ inválida', 'Configure a chave CNPJ antes de ativar', 'Referência CNPJ divergente', 'Busca CNPJ temporariamente indisponível', 'Consulte o preço CNPJ novamente', 'Filtros CNPJ inválidos', 'Consulta complementar indisponível', 'Lead CNPJ não encontrado', 'Confira a consulta CNPJ em andamento', 'Limite diário de consultas CNPJ atingido', 'Esta pesquisa CNPJ já está em andamento', 'Limite de consultas CNPJ ao fornecedor atingido', 'Consulta CNPJ não encontrada', 'Resposta CNPJ inválida'].concat(['Conta indisponível','Configuração inválida','Configure a chave antes de ativar','Referência inválida','Referência divergente','Prospecção temporariamente indisponível','Consulte o preço novamente','Busca inválida','Saldo insuficiente. Faça uma recarga','Confira a busca anterior antes de iniciar outra','Limite diário de buscas atingido','Busca não encontrada','Ative o processamento automático de Prospecção']);
 async function db(path:string,method='GET',body?:unknown):Promise<any>{const r=await fetch(env('SUPABASE_URL')+'/rest/v1/'+path,{method,headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:'Bearer '+env('SUPABASE_SERVICE_ROLE_KEY'),'Content-Type':'application/json',Prefer:'return=representation'},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(12000)});const v=await r['json']().catch(()=>null);if(!r['ok'])throw Error(v?.message==='Cota reservada às buscas. Tente mais tarde'?'A consulta ao Instagram está temporariamente indisponível. Tente novamente mais tarde.':safeMessages.includes(v?.message)?v['message']:'Não foi possível confirmar os dados de prospecção. Confira a ativação do módulo.');return v;}
 // Optional read bridge allows the Maps-only installation to keep working before CNPJ SQL activation.
 async function optionalRpc(name:string,body:unknown){const r=await fetch(env('SUPABASE_URL')+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:'Bearer '+env('SUPABASE_SERVICE_ROLE_KEY'),'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(12000)});const v=await r.json().catch(()=>null);if(!r.ok&&['PGRST202','42883'].includes(v?.code))return null;if(!r.ok||!v)throw Error('Não foi possível confirmar os dados de prospecção.');return v;}
@@ -1058,6 +1248,7 @@ async function worker(req:Request){const key=(await db('astros_prospect_private?
 const statuses=['new','contacted','negotiating','won','discarded'];
 export async function handler(req:Request){try{
  if(req.method!=='POST')return json({error:'Método indisponível.'},405);if(Number(req.headers.get('content-length')||0)>32768)return json({error:'Pedido muito grande.'},413);const raw=await req.text();if(raw.length>32768)return json({error:'Pedido muito grande.'},413);const body=JSON.parse(raw),action=String(body.action),data=body.data??{};if(action==='worker')return await worker(req);const actor=await user(req);const admin=action.startsWith('admin-');if(admin&&actor['tipo_usuario']!=='admin')throw Error('Acesso administrativo necessário.');
+ if(action.startsWith('reviews-')||action.startsWith('admin-reviews-')){try{return json(await handleReviews(action,data,actor,db,optionalRpc,()=>syncCapacity(),supplier));}catch(error){if(error instanceof Error&&['A consulta ao Instagram está temporariamente indisponível. Tente novamente mais tarde.','Buscas Google Maps têm prioridade. Tente mais tarde','Aguarde a atualização da cota SerpApi','Outra consulta Instagram está em andamento. Tente mais tarde'].includes(error.message))throw Error('A consulta de avaliações está temporariamente indisponível. Tente novamente mais tarde.');throw error;}}
  if(action.startsWith('instagram-')||action.startsWith('admin-instagram-'))return json(await handleInstagram(action,data,actor,db,optionalRpc,()=>syncCapacity(),supplier));
  if(action==='cnpj-config')return json(await optionalRpc('astros_cnpj_config',{actor:actor['id']})||{installed:false,enabled:false,unitCents:0,enrichEnabled:false,enrichCents:0});
  if(action.startsWith('cnpj-')||action.startsWith('admin-cnpj-'))return json(await handleCnpj(action,data,actor,db));

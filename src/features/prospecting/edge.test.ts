@@ -35,3 +35,5 @@ it('blocks a customer from requesting the Casa dos Dados account balance',async(
 it.each(['admin-cnpj-base','admin-cnpj-deliveries'])('blocks customer audit %s',async action=>{const r=await handler(req(action));expect(r.status).toBe(400);expect(fetcher.mock.calls.some(c=>String(c[0]).includes('astros_cnpj_admin_audit'))).toBe(false);});
 
 it.each(['admin-instagram-config','admin-instagram-save'])('blocks customer Instagram admin action %s before private reads',async action=>{fetcher.mockClear();const r=await handler(req(action));expect(r.status).toBe(400);expect(fetcher.mock.calls.some(c=>String(c[0]).includes('astros_instagram_')||String(c[0]).includes('astros_prospect_private'))).toBe(false);});
+
+it.each(['admin-reviews-config','admin-reviews-save'])('blocks customer reviews admin action %s before private reads',async action=>{fetcher.mockClear();const r=await handler(req(action));expect(r.status).toBe(400);expect(fetcher.mock.calls.some(c=>String(c[0]).includes('astros_reviews_')||String(c[0]).includes('astros_prospect_private'))).toBe(false);});
