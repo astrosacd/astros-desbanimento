@@ -1,15 +1,239 @@
-import {Search} from 'lucide-react';
-import {SmsSupplierBalance} from '../sms/supplier-balance';
-import {SmsOperations} from '../sms/operations';
-import {BalanceSummary} from '../payments/balance-summary';
-import {Link,useRouteContext} from '@tanstack/react-router';
-import {ArrowUpRight,ShieldCheck,Headphones,Layers3,MessageSquare,Share2} from 'lucide-react';
-import {Button} from '@/components/ui/button';
-export function ClientHome(){
- const {client}=useRouteContext({from:'__root__'});
- const name=client?.name.trim().split(/\s+/)[0]||'Cliente';
- return <div className="platform-home"><header className="platform-home-heading"><span className="eyebrow">ASTROS MAIS / INÍCIO</span><h1>Olá, {name}.</h1><p>Escolha o serviço que deseja acessar.</p></header><section className="platform-home-welcome"><span className="platform-home-symbol"><Layers3 size={28}/></span><div><h2>Seu ponto de acesso à Astros.</h2><p>Serviços organizados por área e atendimento em um só lugar.</p></div></section><BalanceSummary/><section aria-labelledby="platform-services"><div className="platform-section-heading"><h2 id="platform-services">Serviços disponíveis</h2><p>Acesse uma área para consultar suas opções.</p></div><div className="platform-home-grid"><article className="platform-service-card"><span className="platform-service-icon"><ShieldCheck size={28}/></span><span className="platform-service-label">DESBANIMENTO</span><h2>Desbanimento de números</h2><p>Envie números, acompanhe solicitações e consulte as informações deste serviço.</p><Button asChild><Link to="/desbanimento">Acessar desbanimento<ArrowUpRight size={18}/></Link></Button></article><article className="platform-service-card"><span className="platform-service-icon"><MessageSquare size={28}/></span><span className="platform-service-label">ATIVAÇÕES SMS</span><h2>Receba seu código por SMS</h2><p>Consulte serviços e países, compre uma ativação e acompanhe o código no painel.</p><Button asChild><Link to="/ativacoes-sms">Acessar ativações SMS<ArrowUpRight size={18}/></Link></Button></article><article className="platform-service-card"><span className="platform-service-icon"><Share2 size={28}/></span><span className="platform-service-label">REDES SOCIAIS</span><h2>Serviços para redes sociais</h2><p>Confira os serviços liberados, consulte preços e acompanhe a entrega dos seus pedidos.</p><Button asChild><Link to="/redes-sociais">Acessar redes sociais<ArrowUpRight size={18}/></Link></Button></article><article className="platform-service-card"><span className="platform-service-icon"><Search size={28}/></span><span className="platform-service-label">PROSPECÇÃO</span><h2>Encontre empresas e oportunidades</h2><p>Pesquise por nicho e região, consulte a presença digital e organize seus leads.</p><Button asChild><Link to="/prospeccao">Acessar prospecção<ArrowUpRight size={18}/></Link></Button></article><article className="platform-service-card platform-support-card"><span className="platform-service-icon"><Headphones size={28}/></span><span className="platform-service-label">ATENDIMENTO</span><h2>Central de suporte</h2><p>Fale com a equipe da Astros para receber ajuda com sua conta e seus serviços.</p><Button variant="outline" asChild><Link to="/suporte">Abrir atendimento<ArrowUpRight size={18}/></Link></Button></article></div></section></div>;
+import { Search, Gift } from "lucide-react";
+import { RecentActivity } from "./recent-activity";
+import { useModuleAccess } from "../module-access/client";
+import { SmsSupplierBalance } from "../sms/supplier-balance";
+import { SmsOperations } from "../sms/operations";
+import { BalanceSummary } from "../payments/balance-summary";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import {
+  ArrowUpRight,
+  ShieldCheck,
+  Headphones,
+  Layers3,
+  MessageSquare,
+  Share2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+const services = [
+  {
+    area: "desbanimento" as const,
+    label: "DESBANIMENTO",
+    title: "Desbanimento de números",
+    description: "Envie números e acompanhe o andamento das suas solicitações.",
+    action: "Acessar desbanimento",
+    to: "/desbanimento" as const,
+    Icon: ShieldCheck,
+  },
+  {
+    area: "sms" as const,
+    label: "ATIVAÇÕES SMS",
+    title: "Seu código, direto no painel",
+    description: "Escolha serviço e país. Compre e acompanhe sua ativação.",
+    action: "Acessar ativações SMS",
+    to: "/ativacoes-sms" as const,
+    Icon: MessageSquare,
+  },
+  {
+    area: "social" as const,
+    label: "REDES SOCIAIS",
+    title: "Serviços para suas redes",
+    description: "Consulte opções, confira valores e acompanhe a entrega.",
+    action: "Acessar redes sociais",
+    to: "/redes-sociais" as const,
+    Icon: Share2,
+  },
+  {
+    area: "prospecting" as const,
+    label: "PROSPECÇÃO",
+    title: "Encontre sua próxima oportunidade",
+    description: "Busque empresas pelo Maps ou CNPJ e organize seus contatos.",
+    action: "Acessar prospecção",
+    to: "/prospeccao" as const,
+    Icon: Search,
+  },
+];
+function ServiceShortcut({ service }: { service: (typeof services)[number] }) {
+  const access = useModuleAccess(service.area);
+  const { Icon } = service;
+  return (
+    <article className="platform-service-card" data-area={service.area}>
+      <div className="platform-service-top">
+        <span className="platform-service-icon">
+          <Icon size={24} />
+        </span>
+        <span className="platform-service-label">{service.label}</span>
+      </div>
+      <h2>{service.title}</h2>
+      <p>{service.description}</p>
+      {access.blocked && (
+        <span className="home-access-note">
+          Novas solicitações indisponíveis. Histórico acessível.
+        </span>
+      )}
+      <Button asChild variant="outline">
+        <Link to={service.to}>
+          {service.action}
+          <ArrowUpRight size={17} />
+        </Link>
+      </Button>
+    </article>
+  );
 }
-export function AdminHome({name,onService,onSms,onSocial,onProspect,onSupport,adminId}:{adminId?:string;name:string;onService:()=>void;onSms:()=>void;onSocial?:()=>void;onProspect?:()=>void;onSupport:()=>void}){
- return <div className="platform-home"><section className="platform-home-welcome"><span className="platform-home-symbol"><Layers3 size={28}/></span><div><h2>Bem-vindo, {name.trim().split(/\s+/)[0]}.</h2><p>Escolha a área que deseja administrar na Astros Mais.</p></div></section>{adminId&&<div className="sms-home-operation"><SmsSupplierBalance adminId={adminId}/><SmsOperations adminId={adminId} compact onOpen={onSms}/></div>}<div className="platform-home-grid"><article className="platform-service-card"><span className="platform-service-icon"><ShieldCheck size={28}/></span><span className="platform-service-label">ÁREA DE GESTÃO</span><h2>Desbanimento de números</h2><p>Acesse o dashboard, solicitações e configurações atuais deste serviço.</p><Button onClick={onService}>Gerenciar desbanimento<ArrowUpRight size={18}/></Button></article><article className="platform-service-card"><span className="platform-service-icon"><MessageSquare size={28}/></span><span className="platform-service-label">ATIVAÇÕES SMS</span><h2>Ativações SMS</h2><p>Configure a integração, os preços e acompanhe os pedidos deste serviço.</p><Button onClick={onSms}>Gerenciar ativações SMS<ArrowUpRight size={18}/></Button></article>{onSocial&&<article className="platform-service-card"><span className="platform-service-icon"><Share2 size={28}/></span><span className="platform-service-label">REDES SOCIAIS</span><h2>Redes sociais</h2><p>Configure o fornecedor, escolha os serviços e acompanhe os pedidos desta área.</p><Button onClick={onSocial}>Gerenciar redes sociais<ArrowUpRight size={18}/></Button></article>}{onProspect&&<article className="platform-service-card"><span className="platform-service-icon"><Search size={28}/></span><span className="platform-service-label">PROSPECÇÃO</span><h2>Prospecção de empresas</h2><p>Configure a pesquisa, o preço por lead e acompanhe as buscas dos clientes.</p><Button onClick={onProspect}>Gerenciar prospecção<ArrowUpRight size={18}/></Button></article>}<article className="platform-service-card platform-support-card"><span className="platform-service-icon"><Headphones size={28}/></span><span className="platform-service-label">ATENDIMENTO GERAL</span><h2>Central de suporte</h2><p>Gerencie o atendimento compartilhado pelos serviços da Astros Mais.</p><Button variant="outline" onClick={onSupport}>Gerenciar atendimento<ArrowUpRight size={18}/></Button></article></div></div>;
+export function ClientHome() {
+  const { client } = useRouteContext({ from: "__root__" });
+  const name = client?.name.trim().split(/\s+/)[0] || "Cliente";
+  return (
+    <div className="platform-home">
+      <header className="platform-home-heading">
+        <div>
+          <span className="eyebrow">SEU ESPAÇO / ASTROS MAIS</span>
+          <h1>Olá, {name}.</h1>
+          <p>O que vamos fazer hoje?</p>
+        </div>
+        <Link to="/suporte" className="home-support-link">
+          <Headphones size={17} />
+          Precisa de ajuda?
+        </Link>
+      </header>
+      <BalanceSummary />
+      <section aria-labelledby="platform-services">
+        <div className="platform-section-heading">
+          <h2 id="platform-services">Tudo para o seu próximo passo</h2>
+          <p>Escolha uma área e continue de onde precisa.</p>
+        </div>
+        <div className="platform-home-grid">
+          {services.map((service) => (
+            <ServiceShortcut key={service.area} service={service} />
+          ))}
+        </div>
+      </section>
+      <RecentActivity />
+      <div className="home-utility-grid">
+        <Link to="/afiliacao" className="home-utility-card">
+          <span className="home-utility-icon">
+            <Gift size={22} />
+          </span>
+          <div>
+            <strong>Indique e ganhe saldo</strong>
+            <p>Copie seu link e acompanhe suas comissões.</p>
+          </div>
+          <ArrowUpRight size={19} />
+        </Link>
+        <Link to="/suporte" className="home-utility-card">
+          <span className="home-utility-icon">
+            <Headphones size={22} />
+          </span>
+          <div>
+            <strong>Central de suporte</strong>
+            <p>Encontre ajuda para sua conta e seus pedidos.</p>
+          </div>
+          <ArrowUpRight size={19} />
+          <span className="sr-only">Abrir atendimento</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+export function AdminHome({
+  name,
+  onService,
+  onSms,
+  onSocial,
+  onProspect,
+  onSupport,
+  adminId,
+}: {
+  adminId?: string;
+  name: string;
+  onService: () => void;
+  onSms: () => void;
+  onSocial?: () => void;
+  onProspect?: () => void;
+  onSupport: () => void;
+}) {
+  return (
+    <div className="platform-home">
+      <section className="platform-home-welcome">
+        <span className="platform-home-symbol">
+          <Layers3 size={28} />
+        </span>
+        <div>
+          <h2>Bem-vindo, {name.trim().split(/\s+/)[0]}.</h2>
+          <p>Escolha a área que deseja administrar na Astros Mais.</p>
+        </div>
+      </section>
+      {adminId && (
+        <div className="sms-home-operation">
+          <SmsSupplierBalance adminId={adminId} />
+          <SmsOperations adminId={adminId} compact onOpen={onSms} />
+        </div>
+      )}
+      <div className="platform-home-grid">
+        <article className="platform-service-card" data-area="desbanimento">
+          <span className="platform-service-icon">
+            <ShieldCheck size={28} />
+          </span>
+          <span className="platform-service-label">ÁREA DE GESTÃO</span>
+          <h2>Desbanimento de números</h2>
+          <p>Acesse o dashboard, solicitações e configurações atuais deste serviço.</p>
+          <Button onClick={onService}>
+            Gerenciar desbanimento
+            <ArrowUpRight size={18} />
+          </Button>
+        </article>
+        <article className="platform-service-card" data-area="sms">
+          <span className="platform-service-icon">
+            <MessageSquare size={28} />
+          </span>
+          <span className="platform-service-label">ATIVAÇÕES SMS</span>
+          <h2>Ativações SMS</h2>
+          <p>Configure a integração, os preços e acompanhe os pedidos deste serviço.</p>
+          <Button onClick={onSms}>
+            Gerenciar ativações SMS
+            <ArrowUpRight size={18} />
+          </Button>
+        </article>
+        {onSocial && (
+          <article className="platform-service-card" data-area="social">
+            <span className="platform-service-icon">
+              <Share2 size={28} />
+            </span>
+            <span className="platform-service-label">REDES SOCIAIS</span>
+            <h2>Redes sociais</h2>
+            <p>Configure o fornecedor, escolha os serviços e acompanhe os pedidos desta área.</p>
+            <Button onClick={onSocial}>
+              Gerenciar redes sociais
+              <ArrowUpRight size={18} />
+            </Button>
+          </article>
+        )}
+        {onProspect && (
+          <article className="platform-service-card" data-area="prospecting">
+            <span className="platform-service-icon">
+              <Search size={28} />
+            </span>
+            <span className="platform-service-label">PROSPECÇÃO</span>
+            <h2>Prospecção de empresas</h2>
+            <p>Configure a pesquisa, o preço por lead e acompanhe as buscas dos clientes.</p>
+            <Button onClick={onProspect}>
+              Gerenciar prospecção
+              <ArrowUpRight size={18} />
+            </Button>
+          </article>
+        )}
+        <article className="platform-service-card platform-support-card">
+          <span className="platform-service-icon">
+            <Headphones size={28} />
+          </span>
+          <span className="platform-service-label">ATENDIMENTO GERAL</span>
+          <h2>Central de suporte</h2>
+          <p>Gerencie o atendimento compartilhado pelos serviços da Astros Mais.</p>
+          <Button variant="outline" onClick={onSupport}>
+            Gerenciar atendimento
+            <ArrowUpRight size={18} />
+          </Button>
+        </article>
+      </div>
+    </div>
+  );
 }
