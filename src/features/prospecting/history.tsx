@@ -1,3 +1,4 @@
+import {InstagramLead} from "./instagram";
 import {CnpjDetails,displayCnpj} from "./cnpj/details";
 import { ProspectDeliveriesAdmin, type DeliveryScope } from "./deliveries-admin";
 import { LeadContacts } from "./contacts";
@@ -501,6 +502,7 @@ export function ProspectHistory({ userId, initialView = "cards", initialSource =
                   </details>
                 )}
                 <LeadContacts snapshot={lead.snapshot} />
+                <InstagramLead key={userId+lead.id} userId={userId} lead={lead}/>
                 <LeadOutreach key={lead.id} lead={lead} />
                 <label className="prospect-lead-stage">
                   Etapa do contato

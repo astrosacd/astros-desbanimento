@@ -1,3 +1,4 @@
+import {InstagramAdmin} from "./instagram";
 import {CnpjAudit} from "./cnpj/audit";
 import {CnpjCapacity} from "./cnpj/capacity";
 import {CnpjAdmin} from "./cnpj/ui";
@@ -101,16 +102,18 @@ export function ProspectingAdmin({ adminId }: { adminId: string }) {
         {[
           ["settings", "Configurações"],
           ["cnpj", "Empresas por CNPJ"],
+          ["instagram", "Instagram"],
           ["capacity", "Cotas e processamento"],
           ["base", "Base de empresas"],
           ["requests", "Histórico de consultas"],
         ].map(([id, label]) => (
           <button type="button" key={id} aria-label={label} aria-pressed={tab === id} onClick={() => setTab(id!)}>
             <span>{label}</span>
-            <small aria-hidden="true">{{settings:"Google Maps · acesso e preços",capacity:"Google Maps e CNPJ · fornecedores",requests:"Google Maps e CNPJ · atividade",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
+            <small aria-hidden="true">{{instagram:"Complemento · perfis publicados",settings:"Google Maps · acesso e preços",capacity:"Google Maps e CNPJ · fornecedores",requests:"Google Maps e CNPJ · atividade",base:"Google Maps · empresas e entregas",cnpj:"CNPJ · configuração e consultas"}[id!]}</small>
           </button>
         ))}
       </nav>
+      {tab === "instagram" && <InstagramAdmin adminId={adminId}/>}
       {tab === "cnpj" && <CnpjAdmin adminId={adminId} onHistory={()=>{setHistorySource("cnpj");setTab("requests");}}/>}
       <div hidden={tab !== "settings"}>
         <section className="prospect-card">
