@@ -17,6 +17,7 @@ import { getClientSession } from '@/features/auth/actions';
 
 import { ClientRouteFrame } from "@/features/panel/route-frame";
 import appCss from "../styles.css?url";
+import polishCss from "../features/panel/polish.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -109,6 +110,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "stylesheet", href: polishCss },
       { rel: "apple-touch-icon", href: "/pwa/apple-touch-icon.png" },
       { rel: "icon", href: "/brand/astros-symbol.png", type: "image/png" },
       { rel: "preload", href: "/fonts/manrope.woff", as: "font", type: "font/woff", crossOrigin: "anonymous" },

@@ -173,12 +173,11 @@ export function AffiliatePanel({ userId, admin = false }: { userId: string; admi
           </Button>
         )}
         {d.adjustmentCents > 0 && (
-          <p className="notice affiliate-adjustment">
+          <div className="notice notice-stack affiliate-adjustment" role="status">
             <strong>Ajuste de saldo pendente: {money(d.adjustmentCents)}</strong>
-            <br />
-            Os próximos créditos serão usados primeiro para compensar essa diferença. Consulte os
-            lançamentos abaixo para entender a origem.
-          </p>
+            <p>Os próximos créditos serão usados primeiro para compensar essa diferença. Consulte os
+            lançamentos abaixo para entender a origem.</p>
+          </div>
         )}
       </section>
       {d.pendingCount > 0 && (
