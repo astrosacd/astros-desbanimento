@@ -117,3 +117,9 @@ export const cnpjAdminAudit = createServerFn({method:"POST"}).inputValidator(z.o
  queryId:z.string().max(64),requestId:z.string().refine(v=>!v||z.string().uuid().safeParse(v).success,"Referência inválida."),
  page:z.number().int().min(0).max(10000)
 }).strict()).handler(async({data})=>(await import("./server")).prospectCall(data.view==="businesses"?"admin-cnpj-base":"admin-cnpj-deliveries",data,true));
+
+const instagramLead = z.object({leadId:z.string().uuid(),source:z.enum(["maps","cnpj"])});
+export const instagramRead = createServerFn({method:"POST"}).inputValidator(instagramLead.strict()).handler(async({data})=>(await import("./server")).prospectCall("instagram-read",data));
+export const instagramConsult = createServerFn({method:"POST"}).inputValidator(instagramLead.extend({requestId:z.string().uuid(),profileId:z.string().regex(/^[a-z0-9_][a-z0-9_.]{0,29}$/)}).strict()).handler(async({data})=>(await import("./server")).prospectCall("instagram-consult",data));
+export const instagramAdminConfig = createServerFn({method:"GET"}).handler(async()=>(await import("./server")).prospectCall("admin-instagram-config",{},true));
+export const instagramAdminSave = createServerFn({method:"POST"}).inputValidator(z.object({enabled:z.boolean(),dailyCalls:z.number().int().min(1).max(1000),userDaily:z.number().int().min(1).max(100),reserveCalls:z.number().int().min(1).max(1000000)}).strict()).handler(async({data})=>(await import("./server")).prospectCall("admin-instagram-save",data,true));

@@ -1,0 +1,41 @@
+// Runs the existing Maps queue/billing regression suite with the additive Instagram SQL installed.
+const fs=require('node:fs'),path=require('node:path');
+let source=fs.readFileSync(path.join(__dirname,'check-prospecting-queue-sql.cjs'),'utf8');
+source=source.replace("for(const file of [",`await db.exec(\`create table public.astros_cnpj_deliveries(id uuid primary key,user_id uuid,snapshot jsonb);create table public.astros_module_settings(module text primary key,enabled boolean);create table public.astros_module_clients(user_id uuid,module text,enabled boolean);\`);\nfor(const file of [`);
+source=source.replace("'20261019_prospecting_search_equivalence.sql']","'20261019_prospecting_search_equivalence.sql','20261025_prospect_instagram.sql','20261025_prospect_instagram.sql']");
+source=source.replace('console.log(JSON.stringify({checks,',`
+// Existing Maps regression checks above must pass even while enrichment is disabled.
+await db.exec("update public.astros_prospect_requests set state='failed' where state in ('processing','queued');update public.astros_prospect_dispatches set created_at=now()-interval '2 days'");
+await quota(100,100);const beforeBalance=await balance(A);const beforeMovements=(await db.query('select count(*) from public.astros_wallet_movements')).rows[0].count;
+const lead=(await db.query('select id from public.astros_prospect_deliveries where user_id=$1 limit 1',[A])).rows[0].id;
+await db.query('update public.astros_prospect_deliveries set snapshot=$2 where id=$1',[lead,{name:'Company',website:'https://www.instagram.com/acme/',contacts:[]}]);
+const original=(await db.query('select snapshot from public.astros_prospect_deliveries where id=$1',[lead])).rows[0].snapshot;
+const call=()=>rpc('astros_instagram_begin',[A,id(),lead,'maps','acme']);
+await assert.rejects(call,/desativada/);checks++;
+await assert.rejects(()=>rpc('astros_instagram_save',[A,true,20,5,10]),/Conta indisponível/);checks++;
+await rpc('astros_instagram_save',[ADMIN,true,20,5,10]);
+await assert.rejects(()=>rpc('astros_instagram_snapshot',[B,lead,'maps']),/Lead não encontrado/);checks++;
+await assert.rejects(()=>rpc('astros_instagram_begin',[A,id(),lead,'maps','invented']),/não consta/);checks++;
+await quota(10,100);await assert.rejects(call,/Cota reservada/);checks++;
+await quota(100,100);await db.exec("insert into public.astros_module_settings values('prospecting',false)");await assert.rejects(call,/indisponível para esta conta/);checks++;await db.exec("update public.astros_module_settings set enabled=true");
+const queued=await begin(B,id(),{...criteria,niche:'priority'});await assert.rejects(call,/prioridade/);checks++;await db.query("update public.astros_prospect_requests set state='failed' where id=$1",[queued.request]);
+await quota(100,1);const attempt=id(),instagramClaim=await rpc('astros_instagram_begin',[A,attempt,lead,'maps','acme']);assert.equal(instagramClaim.dispatch,true);assert.equal((await rpc('astros_instagram_begin',[A,attempt,lead,'maps','acme'])).dispatch,false);assert.equal((await call()).dispatch,false);checks+=3;
+await assert.rejects(()=>rpc('astros_instagram_begin',[B,attempt,lead,'maps','acme']),/Lead não encontrado/);checks++;
+const blockedMaps=await begin(B,id(),{...criteria,niche:'instagramhour'});assert.equal(await rpc('astros_prospect_claim',[blockedMaps.request]),null);assert.equal((await db.query('select queue_reason from public.astros_prospect_requests where id=$1',[blockedMaps.request])).rows[0].queue_reason,'hourly');checks+=2;
+const projection={username:'acme',name:'Company',biography:'Public',queriedAt:new Date().toISOString()};await rpc('astros_instagram_finish',[A,attempt,projection]);await rpc('astros_instagram_finish',[A,attempt,null]);assert.deepEqual((await rpc('astros_instagram_read',[A,lead,'maps'])).result,projection);checks++;
+await rpc('astros_instagram_save',[ADMIN,false,20,5,10]);assert.equal((await rpc('astros_instagram_read',[A,lead,'maps'])).state,'completed');assert.deepEqual((await db.query('select snapshot from public.astros_prospect_deliveries where id=$1',[lead])).rows[0].snapshot,original);assert.equal(await balance(A),beforeBalance);assert.equal((await db.query('select count(*) from public.astros_wallet_movements')).rows[0].count,beforeMovements);checks+=4;
+await db.query("update public.astros_prospect_requests set state='failed' where id=$1",[blockedMaps.request]);
+await quota(100,100);await rpc('astros_instagram_save',[ADMIN,true,20,1,10]);
+const cnpjLead=id();await db.query('insert into public.astros_cnpj_deliveries values($1,$2,$3)',[cnpjLead,A,{website:'https://instagram.com/second/'}]);
+await assert.rejects(()=>rpc('astros_instagram_snapshot',[B,cnpjLead,'cnpj']),/Lead não encontrado/);checks++;
+await assert.rejects(()=>rpc('astros_instagram_begin',[A,id(),cnpjLead,'cnpj','second']),/Limite diário/);checks++;
+await rpc('astros_instagram_save',[ADMIN,true,1,5,10]);await assert.rejects(()=>rpc('astros_instagram_begin',[A,id(),cnpjLead,'cnpj','second']),/Limite diário/);checks++;
+await rpc('astros_instagram_save',[ADMIN,true,20,5,10]);
+await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261025_prospect_instagram.sql'),'utf8'));assert.equal((await rpc('astros_instagram_config',[ADMIN,true])).enabled,true);checks++;
+const cnpjAttempt=id();assert.equal((await rpc('astros_instagram_begin',[A,cnpjAttempt,cnpjLead,'cnpj','second'])).dispatch,true);checks++;
+await rpc('astros_instagram_finish',[A,cnpjAttempt,null]);assert.equal((await rpc('astros_instagram_read',[A,cnpjLead,'cnpj'])).state,'failed');assert.equal((await rpc('astros_instagram_begin',[A,id(),cnpjLead,'cnpj','second'])).dispatch,false);checks+=2;
+await db.query("update public.astros_instagram_requests set created_at=now()-interval '25 hours' where id=$1",[cnpjAttempt]);
+const laterAttempt=id();assert.equal((await rpc('astros_instagram_begin',[A,laterAttempt,cnpjLead,'cnpj','second'])).dispatch,true);await rpc('astros_instagram_finish',[A,laterAttempt,null]);checks++;
+await db.exec('set role authenticated');await assert.rejects(()=>rpc('astros_instagram_read',[A,lead,'maps']),/permission denied/);await assert.rejects(()=>db.query('select * from public.astros_instagram_requests'),/permission denied/);checks+=2;await db.exec('reset role');
+console.log(JSON.stringify({checks,instagram:'passed',`);
+const Module=require('node:module');const runner=new Module(__filename,module);runner.filename=__filename;runner.paths=module.paths;runner._compile(source,__filename);

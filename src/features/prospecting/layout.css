@@ -445,3 +445,5 @@
 .prospect-cnpj-complement p { font-size:12px; line-height:1.8; margin-top:8px; }
 .prospect-cnpj-record .prospect-cnpj-enrich { margin-top:16px; min-width:0; overflow-wrap:anywhere; }
 @media(max-width:480px) { .prospect-cnpj-enrich>button { width:100%; white-space:normal; height:auto; min-height:40px; } }
+
+.prospect-instagram{display:grid;gap:12px;padding:16px;border:1px solid var(--border);border-radius:12px;min-width:0}.prospect-instagram p,.prospect-instagram a,.prospect-instagram small{overflow-wrap:anywhere}.prospect-instagram-result{display:grid;gap:10px;min-width:0}.prospect-instagram button{height:auto;min-height:44px;white-space:normal}.prospect-instagram select{width:100%;min-width:0}
