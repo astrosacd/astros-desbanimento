@@ -56,3 +56,6 @@ Ao solicitar um ajuste, o arquivo da branch main é a base de edição. Preserve
 
 ### Bloco de suporte separado — 18/10/2026
 O arquivo `lyra-agencia-suporte-astros-mais.txt` foi extraído sem alteração de conteúdo do prompt completo aprovado. Ele é a referência para futuras mudanças restritas ao suporte na agência. Ao atualizar esse bloco, mantenha o mesmo trecho sincronizado em `lyra-agencia.txt`, preservando integralmente o restante do prompt geral. O prompt completo arquivado é referência, não leitura automática do agente em produção.
+
+### Prospecção de Empresas — 25/10/2026
+Os dois atendimentos passam a reconhecer Google Maps e Empresas por CNPJ, Meus leads, histórico, etapas, exportação da página atual e enriquecimento opcional. As orientações preservam o encaminhamento humano, a separação comercial/suporte, a confirmação de condições e os limites dos contatos disponíveis, sem prometer decisor ou disparo automático. O bloco da agência permanece sincronizado no prompt geral. Para aplicar, siga os passos acima no n8n; esta alteração não exige SQL, funções, Lovable ou imagem da VPS.
