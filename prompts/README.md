@@ -59,3 +59,10 @@ O arquivo `lyra-agencia-suporte-astros-mais.txt` foi extraído sem alteração d
 
 ### Prospecção de Empresas — 25/10/2026
 Os dois atendimentos passam a reconhecer Google Maps e Empresas por CNPJ, Meus leads, histórico, etapas, exportação da página atual e enriquecimento opcional. As orientações preservam o encaminhamento humano, a separação comercial/suporte, a confirmação de condições e os limites dos contatos disponíveis, sem prometer decisor ou disparo automático. O bloco da agência permanece sincronizado no prompt geral. Para aplicar, siga os passos acima no n8n; esta alteração não exige SQL, funções, Lovable ou imagem da VPS.
+
+### Revisão dos quatro módulos e recursos compartilhados — 25/10/2026
+Os prompts de suporte do painel e da agência agora explicam Desbanimento, Ativações SMS, Redes sociais, Prospecção (Maps/CNPJ), carteira, afiliação, acesso, manutenção e status. Condições variáveis permanecem na tela, sem fixar preços, comissão ou prazos. Cancelamento solicitado não equivale a conclusão; status geral não comprova pedido individual. Afiliação é direta, sem saque, com estorno confirmado e compensação de ajustes; não atribuir todo déficit à afiliação.
+
+Validado o bloco sincronizado da agência, a preservação integral do restante do prompt geral e dos nomes dos subagentes. Não foi feita leitura nem publicação no n8n em produção. Para instalar, substituir o System Message completo apenas na Lyra exclusiva do painel e somente `<suporte_astros_mais>...</suporte_astros_mais>` na agência, conforme os passos deste guia. Não exige SQL, Edge Functions, publicação Lovable ou troca da imagem da VPS.
+
+Conferência após copiar, sem pagamentos ou compras: perguntar como acompanhar um desbanimento, um SMS expirado, cancelamento/reposição social, enriquecimento CNPJ, recarga já paga, comissão/ajuste pendente e status durante manutenção. Verificar respostas curtas e encaminhamento humano nos problemas reais, preservando exatamente a mensagem retornada. Pedidos comerciais no WhatsApp geral continuam com Produtos/Vendas; suporte do painel não aciona esses subagentes.
