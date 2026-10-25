@@ -32,3 +32,6 @@ Contingência: desmarcar **Liberar consulta adicional ao Instagram**, salvar e m
 `npx vitest run src/features/prospecting` cobre módulos atuais, adapter, rotas administrativas, privacidade da projeção, ausência de consultas automáticas e referências estáveis. `scripts/check-prospecting-instagram.cjs` executa as verificações existentes da fila/cobrança Maps com o patch instalado e reaplicado, mais propriedade, bloqueios, reserva, prioridade, não repetição, contagem compartilhada, preservação de snapshot/carteira e privilégios. Requer PGlite externo via `ASTROS_PGLITE_MODULE`.
 
 `python3 scripts/generate-prospecting-deploy.py` regenera a função única. Tipos e builds Lovable/VPS devem passar. Nenhum teste dispara consulta real ou modifica produção. Não se afirma validação em dispositivos reais nem disponibilidade do plano SerpApi com base nos testes sintéticos.
+
+## Mensagem de reserva — 25/10/2026
+A recusa por reserva de capacidade agora é apresentada como “A consulta ao Instagram está temporariamente indisponível. Tente novamente mais tarde.”. Apenas tradução da mensagem na Edge Function; SQL, reservas e limites permanecem iguais. Aplicação: atualizar somente `astros-prospecting` com o bundle completo regenerado. Não exige SQL, publicação Lovable ou imagem VPS.
