@@ -1,3 +1,4 @@
+import {QuickHelp} from "../workspace/help";
 import {ModuleNotice,useModuleAccess} from '../module-access/client';
 import { categoryLabel } from "./category";
 import { SocialNetworkIcon } from "./network-icon";
@@ -276,7 +277,7 @@ export function SocialPage() {
           </Button>
         </div>
       </header>
-      <ModuleNotice module="social"/><Tabs value={tab} onValueChange={setTab}>
+      <QuickHelp module="social"/><ModuleNotice module="social"/><Tabs value={tab} onValueChange={setTab}>
         <TabsList className="social-tabs" aria-label="Redes sociais">
           <TabsTrigger value="new">Novo pedido</TabsTrigger>
           <TabsTrigger value="orders">Meus pedidos</TabsTrigger>

@@ -1,0 +1,127 @@
+.workspace-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(16px, 3vw, 24px);
+  background: var(--card);
+  min-width: 0;
+  margin-block: 16px;
+}
+.workspace-card h2,
+.workspace-card h3 {
+  font-weight: 650;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.workspace-card p,
+.workspace-card label,
+.workspace-card time {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.workspace-muted {
+  color: var(--muted-foreground);
+}
+.workspace-top,
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.workspace-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.workspace-grid label {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.workspace-wide {
+  grid-column: 1/-1;
+}
+.workspace-card textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.workspace-check {
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+}
+.workspace-record {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.workspace-record[data-unread="true"] {
+  border-inline-start: 3px solid var(--primary);
+}
+.workspace-record summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.workspace-help {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-block: 16px;
+  background: var(--card);
+  font-size: 13px;
+}
+.workspace-help > summary {
+  cursor: pointer;
+  font-weight: 600;
+  display: list-item;
+}
+.workspace-help section {
+  margin-top: 14px;
+  max-width: 900px;
+}
+.workspace-help h3 {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.workspace-help p {
+  color: var(--muted-foreground);
+  line-height: 1.75;
+}
+.workspace-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 2px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+@media (max-width: 600px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-wide {
+    grid-column: auto;
+  }
+  .workspace-actions > button {
+    min-height: 44px;
+  }
+  .workspace-top {
+    align-items: flex-start;
+  }
+}

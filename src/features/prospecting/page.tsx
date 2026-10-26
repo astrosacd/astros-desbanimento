@@ -1,3 +1,5 @@
+import {FollowupAgenda} from "../workspace/followups";
+import {QuickHelp} from "../workspace/help";
 import {ModuleNotice,useModuleAccess} from '../module-access/client';
 import { SearchActivity } from "./search-activity";
 import {CnpjPanel} from "./cnpj/ui";
@@ -186,19 +188,21 @@ export function ProspectingPage() {
           </Button>
         </div>
       </header>
-      <ModuleNotice module="prospecting"/><nav className="prospect-tabs" aria-label="Prospecção">
+      <QuickHelp module="prospecting"/><ModuleNotice module="prospecting"/><nav className="prospect-tabs" aria-label="Prospecção">
         {[
           ["search", "Buscar empresas"],
           ["cnpj", "Empresas por CNPJ"],
           ["leads", "Meus leads"],
           ["history", "Histórico de buscas"],
+          ["followups", "Retornos"],
         ].map(([id, label]) => (
           <button key={id} type="button" aria-label={label} aria-pressed={tab === id} onClick={() => {if(id === "leads")setCnpjLeadEntry(false);setTab(id!);}}>
             <span>{label}</span>
-            <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Google Maps e CNPJ · consultas"}[id!]}</small>
+            <small aria-hidden="true">{{search:"Google Maps · nicho e região",cnpj:"Cadastro e filtros de empresas",leads:"Contatos e quadro de etapas",history:"Google Maps e CNPJ · consultas",followups:"Anotações e próximos contatos"}[id!]}</small>
           </button>
         ))}
       </nav>
+      {tab === "followups" && client?.id && <FollowupAgenda userId={client.id}/>}
       {tab === "cnpj" && <CnpjPanel blocked={moduleAccess.blocked} userId={client?.id || ""} onLeads={()=>{setCnpjLeadEntry(true);setTab("leads");}} onHistory={()=>{setHistorySource("cnpj");setTab("history");}}/>}
       {moduleAccess.blocked&&tab==="search"&&<p className="notice">Novas consultas estão indisponíveis. Acesse Meus leads ou Histórico de buscas.</p>}
       {tab === "search" && (!moduleAccess.blocked||!!pending) && (
