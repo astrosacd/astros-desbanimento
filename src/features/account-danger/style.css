@@ -1,0 +1,92 @@
+.account-danger {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid hsl(var(--destructive) / 0.5);
+  border-radius: 12px;
+  background: hsl(var(--destructive) / 0.035);
+  display: grid;
+  gap: 1rem;
+  overflow-wrap: anywhere;
+}
+.danger-heading {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.danger-heading > svg {
+  flex-shrink: 0;
+  color: hsl(var(--destructive));
+}
+.danger-heading h4 {
+  font-weight: 700;
+}
+.account-danger p,
+.danger-confirm {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.danger-preview {
+  display: grid;
+  gap: 1rem;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 1rem;
+}
+.danger-preview h5 {
+  font-weight: 700;
+}
+.danger-preview details ul {
+  max-height: 15rem;
+  overflow: auto;
+}
+.danger-preview details li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+}
+.danger-preview [role="alert"] ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.account-danger [role="alert"],
+.danger-confirm [role="alert"] {
+  color: hsl(var(--destructive));
+}
+.danger-confirm {
+  display: grid;
+  gap: 1rem;
+  overflow-wrap: anywhere;
+}
+.danger-confirm label:not(.danger-check) {
+  display: grid;
+  gap: 0.4rem;
+}
+.danger-check {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+.danger-check input {
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+.account-danger > button,
+.danger-preview > button {
+  justify-self: start;
+}
+@media (max-width: 600px) {
+  .account-danger {
+    padding: 1rem;
+  }
+  .account-danger button {
+    min-height: 44px;
+    width: 100%;
+    white-space: normal;
+  }
+  .danger-confirm button {
+    min-height: 44px;
+  }
+  .danger-check {
+    padding: 0.4rem 0;
+  }
+}
