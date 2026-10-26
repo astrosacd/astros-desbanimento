@@ -1,3 +1,4 @@
+import {LeadFollowup} from "../workspace/followups";
 import {LeadReviews} from "./reviews";
 import {InstagramLead} from "./instagram";
 import {CnpjDetails,displayCnpj} from "./cnpj/details";
@@ -503,6 +504,7 @@ export function ProspectHistory({ userId, initialView = "cards", initialSource =
                   </details>
                 )}
                 <LeadContacts snapshot={lead.snapshot} />
+                <LeadFollowup key={userId+(lead.snapshot.source||"maps")+lead.id} userId={userId} leadId={lead.id} source={lead.snapshot.source=== "cnpj"?"cnpj":"maps"} name={lead.snapshot.name}/>
                 <InstagramLead key={userId+lead.id} userId={userId} lead={lead}/>
                 <LeadReviews userId={userId} lead={lead}/>
                 <LeadOutreach key={lead.id} lead={lead} />
