@@ -1,0 +1,41 @@
+name: Verificar organização do administrador
+on:
+  pull_request:
+    paths:
+      - 'src/features/admin/**'
+      - 'src/features/affiliates/admin*'
+      - 'src/features/service-status/admin*'
+      - 'src/features/support/admin*'
+      - 'src/features/module-access/admin*'
+      - 'tests/admin-preview/**'
+      - '.github/workflows/admin-layout-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build:dev
+      - run: bunx tsc --noEmit
+      - run: bun run test -- src/features/admin src/features/affiliates src/features/module-access src/features/service-status/admin.test.tsx src/features/support src/features/sms/admin-layout.test.tsx src/features/social/admin.test.tsx src/features/notices/admin.test.tsx src/features/updates/admin.test.tsx
+      - run: ASTROS_DEPLOY_TARGET=vps bun run build
+      - run: bunx playwright@1.55.1 install chromium --with-deps
+      - name: Capturas do layout compartilhado com dados sintéticos
+        run: |
+          mkdir -p /tmp/admin-layout-shots
+          bunx vite --config tests/admin-preview/vite.config.ts --host 127.0.0.1 --port 4179 > /tmp/admin-layout-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4179/ >/dev/null && break || sleep 1; done
+          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '1440,1000' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 http://127.0.0.1:4179/ /tmp/admin-layout-shots/afiliacao-desktop.png
+          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '375,900' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 http://127.0.0.1:4179/ /tmp/admin-layout-shots/afiliacao-mobile.png
+          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '1440,1000' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 'http://127.0.0.1:4179/?section=modules' /tmp/admin-layout-shots/modulos-desktop.png
+          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '375,900' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 'http://127.0.0.1:4179/?section=modules' /tmp/admin-layout-shots/modulos-mobile.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-layout-preview
+          path: /tmp/admin-layout-shots

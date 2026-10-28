@@ -36,16 +36,17 @@ beforeEach(() => {
   mocks.save.mockResolvedValue({ saved: true });
 });
 afterEach(cleanup);
-function setup() {
+async function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <StatusAdmin adminId="admin" />
     </QueryClientProvider>,
   );
+  fireEvent.keyDown(await screen.findByRole('tab',{name:/Avisos públicos/}),{key:'Enter'});
 }
 it("publishes a notice for only the selected component with an expiry", async () => {
-  setup();
+  await setup();
   fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
   fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "maintenance" } });
   fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
@@ -67,7 +68,7 @@ it("publishes a notice for only the selected component with an expiry", async ()
   ).toBeInTheDocument();
 });
 it("returning to automatic clears only the public override", async () => {
-  setup();
+  await setup();
   await screen.findByLabelText("Serviço");
   fireEvent.click(screen.getByRole("button", { name: "Voltar ao automático" }));
   await waitFor(() =>
@@ -88,7 +89,7 @@ it("saves incident progress, impact and next update in Brasília time", async ()
       starts_at: null,
     })),
   });
-  setup();
+  await setup();
   fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
   fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "unavailable" } });
   fireEvent.change(screen.getByLabelText("Andamento do incidente"), {
@@ -123,7 +124,7 @@ it("validates the future maintenance window before saving", async () => {
       starts_at: null,
     })),
   });
-  setup();
+  await setup();
   fireEvent.change(await screen.findByLabelText("Serviço"), { target: { value: "sms" } });
   fireEvent.change(screen.getByLabelText("Mensagem para os clientes"), {
     target: { value: "Manutenção programada." },
@@ -154,7 +155,7 @@ it("never prefills an existing notice and clears every draft field after publish
       starts_at: "2099-01-01T14:00:00Z",
     })),
   });
-  setup();
+  await setup();
   const select = await screen.findByLabelText("Status público");
   expect(select).toHaveValue("");
   expect(screen.getByLabelText("Mensagem para os clientes")).toHaveValue("");
@@ -182,7 +183,7 @@ it("never prefills an existing notice and clears every draft field after publish
   expect(mocks.save).toHaveBeenCalledOnce();
 });
 it("clears a draft on service change but preserves it after a failed publication", async () => {
-  setup();
+  await setup();
   const select = await screen.findByLabelText("Serviço");
   const message = screen.getByLabelText("Mensagem para os clientes");
   fireEvent.change(screen.getByLabelText("Status público"), { target: { value: "operational" } });
