@@ -1,0 +1,10 @@
+.digital-preview {
+  padding: 40px;
+  max-width: 1320px;
+  margin: auto;
+}
+@media (max-width: 600px) {
+  .digital-preview {
+    padding: 20px;
+  }
+}

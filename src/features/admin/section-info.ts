@@ -1,4 +1,5 @@
 export const adminSectionInfo:Record<string,{group:string;description:string}>={
+ digital:{group:'Serviços',description:'Gerencie ferramentas de pesquisa digital, preços, execuções e limites da Apify.'},
  home:{group:'Início',description:'Escolha uma área para acompanhar e gerenciar a Astros Mais.'},
  clients:{group:'Clientes',description:'Encontre uma conta e gerencie saldo, acessos e permissões no mesmo lugar.'},
  affiliates:{group:'Clientes',description:'Organize as regras de comissão e acompanhe o processamento das indicações.'},

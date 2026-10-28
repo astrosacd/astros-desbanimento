@@ -20,7 +20,9 @@ import { Route as CarteiraRouteImport } from './routes/carteira'
 import { Route as DesbanimentoRouteImport } from './routes/desbanimento'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NovaSolicitacaoRouteImport } from './routes/nova-solicitacao'
+import { Route as NovidadesRouteImport } from './routes/novidades'
 import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as PesquisaDigitalRouteImport } from './routes/pesquisa-digital'
 import { Route as ProspeccaoRouteImport } from './routes/prospeccao'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedesSociaisRouteImport } from './routes/redes-sociais'
@@ -86,9 +88,19 @@ const NovaSolicitacaoRoute = NovaSolicitacaoRouteImport.update({
   path: '/nova-solicitacao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NovidadesRoute = NovidadesRouteImport.update({
+  id: '/novidades',
+  path: '/novidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerfilRoute = PerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PesquisaDigitalRoute = PesquisaDigitalRouteImport.update({
+  id: '/pesquisa-digital',
+  path: '/pesquisa-digital',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProspeccaoRoute = ProspeccaoRouteImport.update({
@@ -149,7 +161,9 @@ export interface FileRoutesByFullPath {
   '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
+  '/novidades': typeof NovidadesRoute
   '/perfil': typeof PerfilRoute
+  '/pesquisa-digital': typeof PesquisaDigitalRoute
   '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
@@ -172,7 +186,9 @@ export interface FileRoutesByTo {
   '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
+  '/novidades': typeof NovidadesRoute
   '/perfil': typeof PerfilRoute
+  '/pesquisa-digital': typeof PesquisaDigitalRoute
   '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
@@ -196,7 +212,9 @@ export interface FileRoutesById {
   '/desbanimento': typeof DesbanimentoRoute
   '/login': typeof LoginRoute
   '/nova-solicitacao': typeof NovaSolicitacaoRoute
+  '/novidades': typeof NovidadesRoute
   '/perfil': typeof PerfilRoute
+  '/pesquisa-digital': typeof PesquisaDigitalRoute
   '/prospeccao': typeof ProspeccaoRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redes-sociais': typeof RedesSociaisRoute
@@ -221,7 +239,9 @@ export interface FileRouteTypes {
     | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
+    | '/novidades'
     | '/perfil'
+    | '/pesquisa-digital'
     | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
@@ -244,7 +264,9 @@ export interface FileRouteTypes {
     | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
+    | '/novidades'
     | '/perfil'
+    | '/pesquisa-digital'
     | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
@@ -267,7 +289,9 @@ export interface FileRouteTypes {
     | '/desbanimento'
     | '/login'
     | '/nova-solicitacao'
+    | '/novidades'
     | '/perfil'
+    | '/pesquisa-digital'
     | '/prospeccao'
     | '/recuperar-senha'
     | '/redes-sociais'
@@ -291,7 +315,9 @@ export interface RootRouteChildren {
   DesbanimentoRoute: typeof DesbanimentoRoute
   LoginRoute: typeof LoginRoute
   NovaSolicitacaoRoute: typeof NovaSolicitacaoRoute
+  NovidadesRoute: typeof NovidadesRoute
   PerfilRoute: typeof PerfilRoute
+  PesquisaDigitalRoute: typeof PesquisaDigitalRoute
   ProspeccaoRoute: typeof ProspeccaoRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedesSociaisRoute: typeof RedesSociaisRoute
@@ -382,11 +408,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NovaSolicitacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/novidades': {
+      id: '/novidades'
+      path: '/novidades'
+      fullPath: '/novidades'
+      preLoaderRoute: typeof NovidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/perfil': {
       id: '/perfil'
       path: '/perfil'
       fullPath: '/perfil'
       preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pesquisa-digital': {
+      id: '/pesquisa-digital'
+      path: '/pesquisa-digital'
+      fullPath: '/pesquisa-digital'
+      preLoaderRoute: typeof PesquisaDigitalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prospeccao': {
@@ -467,7 +507,9 @@ const rootRouteChildren: RootRouteChildren = {
   DesbanimentoRoute: DesbanimentoRoute,
   LoginRoute: LoginRoute,
   NovaSolicitacaoRoute: NovaSolicitacaoRoute,
+  NovidadesRoute: NovidadesRoute,
   PerfilRoute: PerfilRoute,
+  PesquisaDigitalRoute: PesquisaDigitalRoute,
   ProspeccaoRoute: ProspeccaoRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedesSociaisRoute: RedesSociaisRoute,

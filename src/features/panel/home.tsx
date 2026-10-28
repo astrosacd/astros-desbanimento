@@ -1,3 +1,4 @@
+import {Compass} from 'lucide-react';
 import { Search, Gift } from "lucide-react";
 import { RecentActivity } from "./recent-activity";
 import { useModuleAccess } from "../module-access/client";
@@ -105,6 +106,7 @@ export function ClientHome() {
           {services.map((service) => (
             <ServiceShortcut key={service.area} service={service} />
           ))}
+          <article className="platform-service-card" data-area="digital"><div className="platform-service-top"><span className="platform-service-icon"><Compass size={24}/></span><span className="platform-service-label">PESQUISA DIGITAL</span></div><h2>Explore perfis e organize descobertas</h2><p>Consulte as ferramentas disponíveis, acompanhe pesquisas e guarde perfis em coleções.</p><Button asChild variant="outline"><Link to="/pesquisa-digital">Explorar pesquisa digital<ArrowUpRight size={17}/></Link></Button></article>
         </div>
       </section>
       <RecentActivity />
