@@ -45,6 +45,7 @@ export function AdminArea({ session }: { session: AdminSession }) {
   const queryClient=useQueryClient();
   function warmSection(id:string){if((id!=='settings'&&id!=='gateway')||!session.admin)return;void queryClient.prefetchQuery({queryKey:['admin-payment-settings'],queryFn:()=>getPaymentSettings(),staleTime:15000});void queryClient.prefetchQuery({queryKey:['admin-prices'],queryFn:()=>getAdminPrices(),staleTime:15000});void queryClient.prefetchQuery({queryKey:['panel-address',session.admin.id],queryFn:()=>getPanelAddress(),staleTime:15000});}
 
+  const [digitalOpen,setDigitalOpen]=useState(false);
   const [prospectOpen,setProspectOpen]=useState(false);
   const [socialOpen,setSocialOpen]=useState(false);
   const [smsOpen,setSmsOpen]=useState(false);
@@ -77,7 +78,7 @@ export function AdminArea({ session }: { session: AdminSession }) {
       {adminLink('overview','Visão geral',LayoutDashboard)}{adminLink('history','Histórico de solicitações',ReceiptText)}{adminLink('submissions','Envios em conferência',ReceiptText)}{adminLink('settings','Configurações do desbanimento',Settings2)}{adminLink('countries','Países e DDIs',Globe2)}{adminLink('apiLogs','Logs da API',ReceiptText)}
     </ServiceNavGroup>
     <ServiceNavGroup label="Ativações SMS" Icon={MessageSquare} open={smsOpen} active={section==='sms'} onToggle={()=>setSmsOpen(!smsOpen)}><button type="button" className="nav-link admin-nav-button" data-status={section==='sms'?'active':undefined} onClick={()=>{setSection('sms');setMobileMenu(false);}}><MessageSquare size={18}/>Gestão de ativações</button></ServiceNavGroup><ServiceNavGroup label="Redes sociais" Icon={Share2} open={socialOpen} active={section==='social'} onToggle={()=>setSocialOpen(!socialOpen)}><button type="button" className="nav-link admin-nav-button" data-status={section==='social'?'active':undefined} onClick={()=>{setSection('social');setMobileMenu(false);}}><Share2 size={18}/>Gestão de serviços</button></ServiceNavGroup><ServiceNavGroup label="Prospecção" Icon={Search} open={prospectOpen} active={section==='prospect'} onToggle={()=>setProspectOpen(!prospectOpen)}><button type="button" className="nav-link admin-nav-button" data-status={section==='prospect'?'active':undefined} onClick={()=>{setSection('prospect');setMobileMenu(false);}}><Search size={18}/>Gestão de prospecção</button></ServiceNavGroup>
-    {adminLink('digital','Pesquisa digital',Compass)}
+    <ServiceNavGroup label="Pesquisa digital" Icon={Compass} open={digitalOpen} active={section==='digital'} onToggle={()=>setDigitalOpen(!digitalOpen)}>{adminLink('digital','Gestão de pesquisas',Compass)}</ServiceNavGroup>
     <div className="nav-section-label">Financeiro</div>
     <ServiceNavGroup label="Pagamentos" Icon={CreditCard} open={paymentsOpen} active={['gateway','payments','finance'].includes(section)} onToggle={()=>setPaymentsOpen(!paymentsOpen)}>
       {adminLink('finance','Dashboard financeiro',LayoutDashboard)}{adminLink('gateway','Gateway e recargas',CreditCard)}{adminLink('payments','Histórico de pagamentos',ReceiptText)}

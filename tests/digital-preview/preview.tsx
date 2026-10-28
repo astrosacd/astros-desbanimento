@@ -2,7 +2,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DigitalResearchPage, ResearchDetails } from "../../src/features/digital-research/page";
-import "../../src/styles.css";
 import "../../src/features/panel/polish.css";
 import "./preview.css";
 const profile = {
