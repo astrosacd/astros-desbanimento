@@ -18,3 +18,12 @@ Não precisa de Edge Function, JWT, segredo, cron, DNS ou outro servidor.
 Leituras usam o token do usuário, RLS e identidade confirmada; rascunhos/arquivados são somente admin. Escritas exigem `requireAdmin` no servidor e permissão administrativa ao vivo na RPC. Sem permissões diretas de INSERT/UPDATE/DELETE para clientes. Versão otimista impede sobrescrever outra edição; UUID persistente durante a edição impede criar uma segunda publicação após falha de resposta. Em resultado incerto, recarregar a lista antes de editar novamente. Nenhum vínculo de usuário é inserido nas publicações globais; não altera exclusão de contas.
 
 Para desfazer a interface, voltar à imagem anterior. As tabelas adicionais podem permanecer sem interferir nos serviços.
+
+
+## Melhoria do administrador e exclusão
+
+Executar somente a migração adicional `supabase/migrations/20261028_updates_delete.sql` antes de publicar esta melhoria. Não reinstalar a migração inicial, não recriar tabelas e não apagar publicações por SQL para testar.
+
+Salvar com sucesso fecha e limpa o editor, mantendo a confirmação visível. Erros preservam o conteúdo. Busca e categoria abrangem a lista completa com paginação. Excluir abre confirmação com o título e apaga somente a publicação escolhida; arquivar continua disponível como alternativa. A RPC exige admin ao vivo e a mesma versão vista na lista, utiliza a mesma trava de edição e aceita repetição de exclusão já concluída. Clientes não recebem permissão direta de DELETE. Não apaga automaticamente dados de teste.
+
+Depois do SQL, publicar Lovable e atualizar a imagem VPS do commit correspondente após workflow de imagem verde. Sem Edge/JWT/cron novo.

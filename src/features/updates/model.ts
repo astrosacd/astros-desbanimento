@@ -5,3 +5,4 @@ export const updateSchema = z.object({ id: z.string().uuid(), version: z.number(
 export type Update = Omit<z.infer<typeof updateSchema>,'version'> & { version:number; published_at:string|null; created_at:string };
 export type UpdateList = { rows:Update[]; total:number; page:number };
 export const dateLabel = (value:string) => new Date(value).toLocaleDateString('pt-BR',{timeZone:'America/Fortaleza',day:'2-digit',month:'long',year:'numeric'});
+export const deleteSchema=z.object({id:z.string().uuid(),version:z.number().int().min(1)}).strict();
