@@ -168,6 +168,10 @@ assert.equal(await balance(admin), 99.9);
 // Pilot off, individual block, definite pre-dispatch rejection, and no duplicate refunds.
 settings.version = cfg.version;
 settings.pilot = false;
+await rejection(()=>call(admin,'admin-save',settings),/complemento da exclusão/);
+await db.exec(
+  "create function public.astros_digital_deletion_ready() returns boolean language sql as $$select true$$",
+);
 settings.apiKey = "";
 await call(admin, "admin-save", settings);
 cfg = await call(admin, "admin-config");
