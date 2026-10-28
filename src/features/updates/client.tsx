@@ -1,0 +1,24 @@
+import {useEffect,useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {Link} from '@tanstack/react-router';
+import {Megaphone,ArrowUpRight} from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
+import {Button} from '@/components/ui/button';
+import {clientUpdates} from './actions';
+import {categories,dateLabel,type Update} from './model';
+import './style.css';
+function Entry({row}:{row:Update}){return <article className="update-entry"><div className="update-meta"><span className={'update-tag update-'+row.category}>{categories[row.category]}</span>{row.published_at&&<time dateTime={row.published_at}>{dateLabel(row.published_at)}</time>}</div><h2>{row.title}</h2><p className="update-summary">{row.summary}</p><details><summary>Ver detalhes</summary><div className="update-body">{row.body}</div></details></article>;}
+export function UpdatesButton({userId}:{userId:string}){
+ const [open,setOpen]=useState(false),[seen,setSeen]=useState<string|null>(null);
+ const q=useQuery({queryKey:['updates',userId,'recent'],queryFn:()=>clientUpdates({data:{page:1,search:'',category:'all'}}),staleTime:300000,retry:false});
+ const key='astros-updates-seen:'+userId;
+ const latest=q.data?.rows[0];const signature=latest?`${latest.id}:${latest.version}`:'';
+ useEffect(()=>{setOpen(false);setSeen(null);try{setSeen(localStorage.getItem(key)||'');}catch{setSeen('');}},[key]);
+ useEffect(()=>{if(open&&signature){setSeen(signature);try{localStorage.setItem(key,signature);}catch{/* Reading remains available without storage. */}}},[open,signature,key]);
+ return <Dialog.Root open={open} onOpenChange={setOpen}><Dialog.Trigger asChild><Button variant="ghost" size="icon" className="update-trigger" aria-label="Novidades da Astros Mais" title="Novidades"><Megaphone size={20}/>{seen!==null&&signature&&seen!==signature&&<span className="update-dot" aria-label="Há novidades não lidas"/>}</Button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="update-overlay"/><Dialog.Content className="update-dialog"><header><div><Dialog.Title>Novidades da Astros Mais</Dialog.Title><Dialog.Description>Veja o que mudou na plataforma.</Dialog.Description></div><Dialog.Close asChild><Button variant="ghost" aria-label="Fechar novidades">✕</Button></Dialog.Close></header><div className="update-scroll">{q.isPending?<p role="status">Carregando novidades…</p>:q.isError?<div role="alert"><p>{q.error.message}</p><Button variant="outline" onClick={()=>q.refetch()}>Tentar novamente</Button></div>:q.data?.rows.length?q.data.rows.slice(0,5).map(row=><Entry key={row.id} row={row}/>):<p>As próximas novidades aparecerão aqui.</p>}</div><footer><Dialog.Close asChild><Link to="/novidades" className="text-primary inline-flex items-center gap-2">Ver todas as atualizações <ArrowUpRight size={16}/></Link></Dialog.Close></footer></Dialog.Content></Dialog.Portal></Dialog.Root>;
+}
+export function UpdatesPage({userId}:{userId:string}){
+ const [page,setPage]=useState(1),[search,setSearch]=useState(''),[term,setTerm]=useState(''),[category,setCategory]=useState<'all'|keyof typeof categories>('all');
+ const q=useQuery({queryKey:['updates',userId,page,term,category],queryFn:()=>clientUpdates({data:{page,search:term,category}}),retry:false});
+ return <section className="updates-page"><span className="eyebrow">ASTROS MAIS / NOVIDADES</span><h1>Uma plataforma em evolução</h1><p className="text-muted-foreground">Acompanhe novidades, melhorias e correções da Astros Mais.</p><div className="updates-layout"><aside className="updates-filters"><form onSubmit={e=>{e.preventDefault();setPage(1);setTerm(search.trim());}}><label htmlFor="updates-search">Pesquisar pelo título</label><input id="updates-search" className="field" value={search} maxLength={100} onChange={e=>setSearch(e.target.value)} placeholder="Buscar atualização…"/><Button variant="outline" type="submit">Pesquisar</Button></form><nav aria-label="Categorias de novidades">{(['all','new','improvement','fix'] as const).map(c=><button key={c} type="button" aria-pressed={category===c} onClick={()=>{setCategory(c);setPage(1);}}>{c==='all'?'Todas as atualizações':categories[c]}</button>)}</nav></aside><div aria-busy={q.isFetching}>{q.isPending?<p role="status">Carregando histórico…</p>:q.isError?<div role="alert"><p>{q.error.message}</p><Button variant="outline" onClick={()=>q.refetch()}>Tentar novamente</Button></div>:<>{q.data.rows.length?q.data.rows.map(row=><Entry key={row.id} row={row}/>):<p>Nenhuma atualização encontrada.</p>}<div className="list-pagination"><Button variant="outline" disabled={page===1||q.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page}</span><Button variant="outline" disabled={page*10>=q.data.total||q.isFetching} onClick={()=>setPage(p=>p+1)}>Próxima</Button></div></>}</div></div></section>;
+}
