@@ -1,0 +1,41 @@
+name: Verificar Novidades
+on:
+  pull_request:
+    paths:
+      - 'src/features/updates/**'
+      - 'src/routes/novidades.tsx'
+      - 'supabase/migrations/20261028_updates.sql'
+      - 'tests/updates/**'
+      - '.github/workflows/updates-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: updates_test_only
+          POSTGRES_DB: updates_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: updates_test_only
+      PGDATABASE: updates_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build:dev
+      - run: bunx tsc --noEmit
+      - run: bun run test -- src/features/updates src/components/navigation/service-nav-group.test.tsx
+      - run: ASTROS_DEPLOY_TARGET=vps bun run build
+      - run: psql -v ON_ERROR_STOP=1 -f tests/updates/setup.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/updates/permissions.sql
