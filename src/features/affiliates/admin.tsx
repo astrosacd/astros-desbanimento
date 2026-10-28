@@ -1,3 +1,4 @@
+import {AdminPanels} from '../admin/panels';
 import { useState, useEffect, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,18 @@ export function AffiliateAdmin({ adminId }: { adminId: string }) {
   }
   return (
     <div className="affiliate-page">
-      <section className="form-section">
+        {message && (
+          <p role="status" className="notice">
+            {message}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="error-text">
+            {error}
+          </p>
+        )}
+      <AdminPanels label="Áreas da afiliação" items={[
+        {id:'rules',label:'Regras de comissão',description:'Comissão global e elegibilidade',content:(<section className="form-section">
         <h2>Programa de afiliação</h2>
         <p className="affiliate-muted">
           Comissões de indicação direta, creditadas na carteira. Sem saque. A porcentagem individual
@@ -135,18 +147,8 @@ export function AffiliateAdmin({ adminId }: { adminId: string }) {
             </fieldset>
           </form>
         )}
-        {message && (
-          <p role="status" className="notice">
-            {message}
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="error-text">
-            {error}
-          </p>
-        )}
-      </section>
-      <section className="form-section">
+      </section>)},
+        {id:'processing',label:'Conferência',description:'Rotina e registros pendentes',content:(<section className="form-section">
         <h2>Conferência automática</h2>
         <p className="affiliate-muted">
           A recarga usa o fluxo atual. A rotina confere o crédito real e processa a comissão
@@ -184,7 +186,8 @@ export function AffiliateAdmin({ adminId }: { adminId: string }) {
         >
           Atualizar
         </Button>
-      </section>
+      </section>)},
+      ]}/>
     </div>
   );
 }

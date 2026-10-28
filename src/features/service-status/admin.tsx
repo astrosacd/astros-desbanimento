@@ -1,3 +1,4 @@
+import {AdminPanels} from '../admin/panels';
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
@@ -162,7 +163,8 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
         <p>Consultando monitoramento…</p>
       ) : (
         <>
-          <section className="status-admin-diagnostic" aria-label="Integração com Better Stack">
+          <AdminPanels label="Áreas do status dos serviços" items={[
+            {id:'monitoring',label:'Monitoramento',description:'Situação e sincronização',content:<><section className="status-admin-diagnostic" aria-label="Integração com Better Stack">
             <h3 className="font-semibold">Página pública no Better Stack</h3>
             {query.data.bridge ? (
               <>
@@ -207,8 +209,11 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
               minutos. Sem confirmação técnica é enviado como instabilidade, com explicação no
               histórico.
             </p>
-          </section>
-          <form
+          </section><div className="status-admin-preview">
+            <h3>Prévia local do monitoramento</h3>
+            <StatusBoard snapshot={query.data.public} />
+          </div></>},
+            {id:'notices',label:'Avisos públicos',description:'Mensagens e agendamentos',content:(<form
             className="status-admin-form"
             onSubmit={(e) => {
               e.preventDefault();
@@ -419,8 +424,8 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
                 minutos perdem a confirmação.
               </small>
             </div>
-          </form>
-          <section className="status-admin-diagnostic" aria-label="Proteção do monitoramento">
+          </form>)},
+            {id:'protection',label:'Proteção do monitor',description:'Verificação externa',content:(<section className="status-admin-diagnostic" aria-label="Proteção do monitoramento">
             <h3>Alerta se o monitoramento parar</h3>
             <p>
               Cadastre no Better Stack um monitor HTTP externo que espere código 200 neste endereço.
@@ -433,11 +438,9 @@ export function StatusAdmin({ adminId }: { adminId: string }) {
               O alerta só fica ativo após cadastrar o monitor e configurar os destinatários no
               Better Stack. Não depende da VPS do painel.
             </p>
-          </section>
-          <div className="status-admin-preview">
-            <h3>Prévia local do monitoramento</h3>
-            <StatusBoard snapshot={query.data.public} />
-          </div>
+          </section>)},
+          ]}/>
+
         </>
       )}
     </div>
