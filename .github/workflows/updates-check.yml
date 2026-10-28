@@ -4,7 +4,7 @@ on:
     paths:
       - 'src/features/updates/**'
       - 'src/routes/novidades.tsx'
-      - 'supabase/migrations/20261028_updates.sql'
+      - 'supabase/migrations/20261028_updates*.sql'
       - 'tests/updates/**'
       - '.github/workflows/updates-check.yml'
   workflow_dispatch:
@@ -38,4 +38,6 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f tests/updates/setup.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates_delete.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028_updates_delete.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/updates/permissions.sql

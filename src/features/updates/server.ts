@@ -1,6 +1,6 @@
 import {getCookie,setResponseHeader} from '@tanstack/react-start/server';
 import {requireAdmin,request} from '../admin/auth.server';
-import {listSchema,updateSchema,type UpdateList} from './model';
+import {listSchema,updateSchema,deleteSchema,type UpdateList} from './model';
 async function session(admin:boolean){
  setResponseHeader('Cache-Control','private, no-store');
  if(admin)await requireAdmin();
@@ -26,4 +26,12 @@ export async function writeUpdate(input:unknown){
  const r=await request('/rest/v1/rpc/astros_update_save',token,{method:'POST',body:JSON.stringify({payload:data})});
  if(!r.ok)throw Error('Não foi possível salvar. Se houve outra edição, recarregue a lista e abra a publicação novamente.');
  return await r.json() as {id:string;version:number};
+}
+
+export async function removeUpdate(input:unknown){
+ const token=await session(true),data=deleteSchema.parse(input);
+ const r=await request('/rest/v1/rpc/astros_update_delete',token,{method:'POST',body:JSON.stringify({update_id:data.id,expected_version:data.version})});
+ if(!r.ok)throw Error('Não foi possível excluir. Confira o SQL de exclusão de Novidades e recarregue a lista se a publicação foi editada.');
+ if(await r.json()!==true)throw Error('A exclusão não foi confirmada.');
+ return {success:true};
 }

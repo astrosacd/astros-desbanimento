@@ -35,4 +35,21 @@ select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111'
 select public.astros_update_save('{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","version":2,"title":"Texto seguro","summary":"Um resumo","body":"Corpo completo","category":"new","status":"archived"}');
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
 do $$begin if (select count(*) from public.astros_updates)<>0 then raise exception 'Archive leak';end if;end$$;
+do $$begin
+ begin
+  perform public.astros_update_delete('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',3);
+  raise exception 'Client delete accepted';
+ exception when raise_exception then if sqlerrm='Client delete accepted' then raise;end if;end;
+end$$;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
+do $$begin
+ begin
+  perform public.astros_update_delete('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',2);
+  raise exception 'Stale delete accepted';
+ exception when raise_exception then if sqlerrm='Stale delete accepted' then raise;end if;end;
+ if not exists(select 1 from public.astros_updates) then raise exception 'Stale delete removed row';end if;
+end$$;
+select public.astros_update_delete('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',3);
+select public.astros_update_delete('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',3);
+do $$begin if exists(select 1 from public.astros_updates) then raise exception 'Delete failed';end if;end$$;
 rollback;
