@@ -34,6 +34,7 @@ jobs:
         run: |
           npm install --no-save --ignore-scripts --no-package-lock @electric-sql/pglite@0.5.13
           node scripts/check-digital-research.mjs
+          node scripts/check-digital-deletion.cjs
       - name: Verificar arquivo de deploy
         run: |
           python3 scripts/generate-digital-deploy.py

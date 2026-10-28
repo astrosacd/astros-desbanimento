@@ -45,7 +45,7 @@ begin
  if input is null or jsonb_typeof(input)<>'object' or octet_length(input::text)>1000000 then raise exception 'Pesquisa inválida.';end if;
  if operation in ('config','admin-config') then
   select * into s from public.astros_digital_settings where id;
-  return jsonb_build_object('installed',true,'enabled',s.enabled and (admin or not s.pilot) and coalesce((select enabled from public.astros_digital_access where user_id=actor),true),'pilot',s.pilot,'version',s.version,'tools',s.tools)||case when admin and operation='admin-config' then jsonb_build_object('dailyRequests',s.daily_requests,'dailyUsdCents',s.daily_usd_cents,'concurrency',s.concurrency,'hasKey',exists(select 1 from public.astros_digital_private where id and api_key<>'')) else '{}'::jsonb end;
+  return jsonb_build_object('installed',true,'enabled',case when operation='admin-config' then s.enabled else s.enabled and (admin or not s.pilot and to_regprocedure('public.astros_digital_deletion_ready()') is not null) and coalesce((select enabled from public.astros_digital_access where user_id=actor),true) end,'pilot',s.pilot,'version',s.version,'tools',s.tools)||case when admin and operation='admin-config' then jsonb_build_object('dailyRequests',s.daily_requests,'dailyUsdCents',s.daily_usd_cents,'concurrency',s.concurrency,'hasKey',exists(select 1 from public.astros_digital_private where id and api_key<>'')) else '{}'::jsonb end;
  end if;
  if operation='admin-save' then
   select * into s from public.astros_digital_settings where id for update;
@@ -57,6 +57,7 @@ begin
   end loop;
   if key<>'' and exists(select 1 from public.astros_digital_requests where state in ('dispatching','running','review')) then raise exception 'Confira as pesquisas pendentes antes de trocar a chave.';end if;
   if key<>'' then update public.astros_digital_private set api_key=key where id;end if;
+  if (input->>'enabled')::boolean and not (input->>'pilot')::boolean and to_regprocedure('public.astros_digital_deletion_ready()') is null then raise exception 'Instale o complemento da exclusão de contas antes de liberar clientes.';end if;
   if (input->>'enabled')::boolean and to_regprocedure('public.astros_digital_finance_ready()') is null then raise exception 'Instale o complemento financeiro antes de ativar.';end if;
   if (input->>'enabled')::boolean and not exists(select 1 from public.astros_digital_private where id and api_key<>'') then raise exception 'Configure a chave Apify antes de ativar.';end if;
   update public.astros_digital_settings set enabled=(input->>'enabled')::boolean,pilot=(input->>'pilot')::boolean,tools=t,daily_requests=(input->>'dailyRequests')::integer,daily_usd_cents=(input->>'dailyUsdCents')::integer,concurrency=(input->>'concurrency')::integer,version=version+1,updated_at=now() where id;
@@ -89,7 +90,7 @@ begin
    return jsonb_build_object('execute',false,'request',public.astros_digital_view(r,true));
   end if;
   t:=s.tools->v_tool;
-  if not s.enabled or s.pilot and not admin or not coalesce((t->>'enabled')::boolean,false) or exists(select 1 from public.astros_digital_access where user_id=actor and not enabled) then raise exception 'Novas pesquisas estão indisponíveis para esta conta.';end if;
+  if not s.enabled or s.pilot and not admin or not admin and to_regprocedure('public.astros_digital_deletion_ready()') is null or not coalesce((t->>'enabled')::boolean,false) or exists(select 1 from public.astros_digital_access where user_id=actor and not enabled) then raise exception 'Novas pesquisas estão indisponíveis para esta conta.';end if;
   if (input->>'version')::integer is distinct from s.version or price is distinct from (t->>'unitCents')::integer or price<1 then raise exception 'Confira o preço novamente.';end if;
   if n not between 1 and least((t->>'maxQuantity')::integer,100) then raise exception 'Quantidade inválida.';end if;
   if exists(select 1 from public.astros_digital_requests where user_id=actor and state in ('dispatching','running','review')) then raise exception 'Confira a pesquisa anterior antes de iniciar outra.';end if;

@@ -206,6 +206,7 @@ declare const Deno: {
 };
 type Obj = Record<string, any>;
 const messages = new Set([
+  "Instale o complemento da exclusão de contas antes de liberar clientes.",
   "Instale o complemento financeiro antes de ativar.",
   "Conta indisponível",
   "Acesso administrativo necessário",
