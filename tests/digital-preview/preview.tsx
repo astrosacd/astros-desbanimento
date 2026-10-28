@@ -23,7 +23,7 @@ const profile = {
 const detail = new URLSearchParams(location.search).has("results");
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={new QueryClient()}>
-    <main className="digital-preview" data-preview-ready>
+    <main className="digital-preview content" data-preview-ready>
       <DigitalResearchPage userId="synthetic-account" />
       {detail && (
         <ResearchDetails

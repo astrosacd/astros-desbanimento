@@ -89,5 +89,7 @@ describe("Digital research provider boundary", () => {
     expect(text).toContain('"\'=HYPERLINK(""evil"")"');
     expect(text).toContain('"hello;world"');
     expect(text.startsWith("\uFEFF")).toBe(true);
+    row.name = "  =SUM(1,1)";
+    expect(csv([row])).toContain('"\'  =SUM(1,1)"');
   });
 });

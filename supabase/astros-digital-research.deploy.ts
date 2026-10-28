@@ -168,7 +168,7 @@ export function csv(rows: Profile[]) {
   const cell = (v: unknown) =>
     '"' +
     String(v ?? "")
-      .replace(/^[=+\-@\t\r]/, "'$&")
+      .replace(/^\s*[=+\-@]/, "'$&")
       .replaceAll('"', '""') +
     '"';
   return (

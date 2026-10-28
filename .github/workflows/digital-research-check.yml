@@ -39,7 +39,8 @@ jobs:
           python3 scripts/generate-digital-deploy.py
           git diff --exit-code -- supabase/astros-digital-research.deploy.ts
       - run: ASTROS_DEPLOY_TARGET=vps bun run build
-      - run: bunx playwright@1.55.1 install chromium --with-deps
+      - run: npm install --no-save --ignore-scripts --no-package-lock playwright@1.55.1
+      - run: npx playwright install chromium --with-deps
       - name: Verificar layout real com dados sintéticos
         run: |
           mkdir -p /tmp/digital-shots
@@ -47,9 +48,7 @@ jobs:
           preview_pid=$!
           trap 'kill "$preview_pid"' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4187/ >/dev/null && break || sleep 1; done
-          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '1440,1000' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 http://127.0.0.1:4187/ /tmp/digital-shots/ferramentas-desktop.png
-          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '375,900' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 http://127.0.0.1:4187/ /tmp/digital-shots/ferramentas-mobile.png
-          bunx playwright@1.55.1 screenshot --browser chromium --viewport-size '375,900' --full-page --wait-for-selector '[data-preview-ready]' --wait-for-timeout 1000 'http://127.0.0.1:4187/?results' /tmp/digital-shots/resultados-mobile.png
+          node scripts/check-digital-layout.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: digital-research-preview
