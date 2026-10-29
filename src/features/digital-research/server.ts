@@ -1,3 +1,4 @@
+import { digitalTransport } from "./transport";
 import { getCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { requireAdmin, request } from "../admin/auth.server";
 export async function digitalCall(action: string, data: unknown = {}, admin = false) {
@@ -5,29 +6,12 @@ export async function digitalCall(action: string, data: unknown = {}, admin = fa
   if (admin) await requireAdmin();
   const token = getCookie(admin ? "astros_admin_session" : "astros_client_session");
   if (!token) throw Error("Entre novamente para continuar.");
-  try {
-    const r = await request("/functions/v1/astros-digital-research", token, {
-      method: "POST",
-      body: JSON.stringify({ action, data }),
-      redirect: "error",
-      signal: AbortSignal.timeout(45000),
-    });
-    const v = await r.json().catch(() => null);
-    if (r.status === 404 && (action === "config" || action === "admin-config"))
-      return { installed: false, enabled: false, tools: {}, version: 1 };
-    if (!r.ok || !v)
-      throw Error(
-        typeof v?.error === "string"
-          ? v.error
-          : "Não foi possível confirmar a operação. Confira a mesma pesquisa.",
-      );
-    return v;
-  } catch (e) {
-    if (e instanceof Error && e.name === "Error") throw e;
-    throw Error(
-      "Não foi possível confirmar a conexão. Consulte Minhas pesquisas antes de iniciar outra.",
-    );
+  // Edge repeats live identity/role checks; keep the existing client password gate here too.
+  if (!admin) {
+    const auth = await request("/auth/v1/user", token);
+    if (!auth.ok) throw Error("Entre novamente para continuar.");
   }
+  return digitalTransport(action, data, token);
 }
 export async function accessByEmail(data: { email: string; enabled: boolean }) {
   await requireAdmin();

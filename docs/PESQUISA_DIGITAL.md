@@ -38,3 +38,7 @@ Sem cron, webhook ou alteração de função operacional existente. Nesta versã
 A prévia `tests/digital-preview` usa o componente real com dados sintéticos e módulos mockados apenas no Vite de testes. Não faz parte das rotas da aplicação. Capturas desktop/mobile e checagem de transbordamento devem ser repetidas na CI. Gerar arquivo standalone com `python3 scripts/generate-digital-deploy.py` após mudanças na Edge.
 
 Referências de implementação consultadas em 28/10/2026: https://docs.apify.com/api/v2/actors-runs-post e páginas Input/Output dos três Actors no catálogo Apify. Sem credencial/execução real, a compatibilidade com o plano contratado e a qualidade dos contatos continuam pendentes do piloto controlado.
+
+### Comunicação entre hospedagem e Edge
+
+A ponte usa `fetch` com `redirect: manual`, na origem fixa do projeto, preservando compatibilidade com runtimes Worker. Só leituras podem seguir até dois redirecionamentos canônicos para a mesma origem, caminho e query. Início de pesquisa, conferência com atualização financeira, configuração e coleções nunca são reenviados após erro ou redirecionamento. Nenhum Bearer é encaminhado para outro host. Diagnósticos registram somente ação e classificação D01 (transporte), D02 (redirecionamento recusado), D03 (tempo esgotado) ou D04 (resposta inesperada), sem token, corpo ou erro bruto. A tela administrativa apresenta a mensagem segura para facilitar a validação após publicação. Esta correção de ponte exige publicação da aplicação; não muda SQL ou Edge nem ativa consultas.
