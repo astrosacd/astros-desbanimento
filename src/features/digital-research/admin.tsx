@@ -48,7 +48,9 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
   if (config.isError)
     return (
       <p role="alert">
-        Não foi possível carregar a configuração.{" "}
+        {config.error instanceof Error
+          ? config.error.message
+          : "Não foi possível carregar a configuração."}{" "}
         <Button variant="outline" onClick={() => void config.refetch()}>
           Tentar novamente
         </Button>
