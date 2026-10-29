@@ -154,6 +154,13 @@ export function ResearchDetails({
               </Button>
             )}
           </div>
+          {row.state === "running" && (
+            <p className="digital-notice">
+              Este é o último andamento registrado. Clique em Conferir andamento para consultar a
+              execução original e carregar os resultados, se já estiver concluída. Isso não inicia
+              outra pesquisa nem faz uma nova reserva.
+            </p>
+          )}
           {["review", "dispatching"].includes(row.state) && (
             <p className="digital-notice">
               Estamos conferindo esta tentativa. Não inicie outra para repetir o envio. A reserva
@@ -306,6 +313,13 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
         await invalidate();
       }
     });
+  async function check(row: Research) {
+    await run(async () => {
+      setDetail(row);
+      setDetail(await digitalRefresh({ data: { id: row.id } }));
+      await invalidate();
+    });
+  }
   async function open(row: Research) {
     await run(async () => {
       setDetail(await digitalStatus({ data: { id: row.id } }));
@@ -493,7 +507,10 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
           <div className="digital-section-heading">
             <div>
               <h2>Minhas pesquisas</h2>
-              <p>Consulte o andamento e abra os resultados das suas consultas.</p>
+              <p>
+                Abra os resultados ou confira a execução original. Atualizar lista lê somente o
+                histórico salvo.
+              </p>
             </div>
             <Button
               variant="outline"
@@ -513,30 +530,39 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
           ) : (
             <div className="digital-history">
               {history.data.rows.slice(0, 20).map((row) => (
-                <button
-                  className="digital-history-row"
-                  key={row.id}
-                  disabled={busy}
-                  onClick={() => void open(row)}
-                >
-                  <div>
-                    <strong>{catalog.find((t) => t.id === row.tool)?.title}</strong>
-                    <span>{row.query}</span>
-                    <small>{date(row.created_at)}</small>
-                  </div>
-                  <div>
-                    <span className="digital-state" data-state={row.state}>
-                      {states[row.state]}
-                    </span>
-                    <small>{row.delivered} resultado(s)</small>
-                    <strong>
-                      {["completed", "rejected"].includes(row.state)
-                        ? money(row.charged_cents)
-                        : `Reserva ${money(row.reserved_cents)}`}
-                    </strong>
-                  </div>
-                  <ArrowRight size={18} />
-                </button>
+                <div className="digital-history-entry" key={row.id}>
+                  <button
+                    className="digital-history-row"
+                    disabled={busy}
+                    onClick={() => void open(row)}
+                  >
+                    <div>
+                      <strong>{catalog.find((t) => t.id === row.tool)?.title}</strong>
+                      <span>{row.query}</span>
+                      <small>{date(row.created_at)}</small>
+                    </div>
+                    <div>
+                      <span className="digital-state" data-state={row.state}>
+                        {states[row.state]}
+                      </span>
+                      <small>{row.delivered} resultado(s)</small>
+                      <strong>
+                        {["completed", "rejected"].includes(row.state)
+                          ? money(row.charged_cents)
+                          : `Reserva ${money(row.reserved_cents)}`}
+                      </strong>
+                    </div>
+                    <ArrowRight size={18} />
+                  </button>
+                  {!["completed", "rejected"].includes(row.state) && (
+                    <div className="digital-history-check">
+                      <span>Último estado registrado. Confira para buscar o resultado.</span>
+                      <Button variant="outline" disabled={busy} onClick={() => void check(row)}>
+                        <RefreshCw size={16} /> Conferir andamento
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

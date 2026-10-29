@@ -90,6 +90,8 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
                 key={config.data.version}
                 config={config.data}
                 busy={busy}
+                saveError={error}
+                message={message}
                 onSave={(data) =>
                   void act(async () => {
                     await digitalAdminSave({ data });
@@ -108,6 +110,13 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
               <Runs
                 adminId={adminId}
                 busy={busy}
+                check={(row) =>
+                  void act(async () => {
+                    setDetail(row);
+                    setDetail(await digitalAdminRefresh({ data: { id: row.id } }));
+                    await refresh();
+                  })
+                }
                 open={(row) =>
                   void act(async () =>
                     setDetail(await digitalAdminStatus({ data: { id: row.id } })),
@@ -157,13 +166,17 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
     </div>
   );
 }
-function Settings({
+export function Settings({
   config,
   busy,
   onSave,
+  saveError,
+  message,
 }: {
   config: Config;
   busy: boolean;
+  saveError: string;
+  message: string;
   onSave: (v: ReturnType<typeof configSchema.parse>) => void;
 }) {
   const [form, setForm] = useState(() => ({
@@ -202,11 +215,6 @@ function Settings({
         Instalação inicial desativada. Use o modo piloto para validar com uma conta administradora
         antes de liberar aos clientes. Uma execução pode gerar custos na Apify.
       </p>
-      {error && (
-        <p role="alert" className="digital-error">
-          {error}
-        </p>
-      )}
       <label>
         <span>
           <input
@@ -342,9 +350,21 @@ function Settings({
           </fieldset>
         );
       })}
-      <Button type="submit" disabled={busy}>
-        Salvar configuração
-      </Button>
+      <div className="digital-save-feedback" aria-busy={busy}>
+        {(error || saveError) && (
+          <p role="alert" className="digital-error">
+            {error || saveError}
+          </p>
+        )}
+        {!error && !saveError && message && (
+          <p role="status" className="digital-success">
+            {message}
+          </p>
+        )}
+        <Button type="submit" disabled={busy}>
+          {busy ? "Salvando…" : "Salvar configuração"}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -352,10 +372,12 @@ function Runs({
   adminId,
   busy,
   open,
+  check,
 }: {
   adminId: string;
   busy: boolean;
   open: (v: Research) => void;
+  check: (v: Research) => void;
 }) {
   const [page, setPage] = useState(0);
   const q = useQuery({
@@ -386,23 +408,28 @@ function Runs({
       ) : (
         <div className="digital-history">
           {q.data.rows.slice(0, 20).map((r) => (
-            <button
-              key={r.id}
-              className="digital-history-row"
-              disabled={busy}
-              onClick={() => open(r)}
-            >
-              <div>
-                <strong>{catalog.find((t) => t.id === r.tool)?.title}</strong>
-                <span>{r.query}</span>
-                <small>
-                  {r.id} · {date(r.created_at)}
-                </small>
-              </div>
-              <span className="digital-state" data-state={r.state}>
-                {states[r.state]}
-              </span>
-            </button>
+            <div className="digital-history-entry" key={r.id}>
+              <button className="digital-history-row" disabled={busy} onClick={() => open(r)}>
+                <div>
+                  <strong>{catalog.find((t) => t.id === r.tool)?.title}</strong>
+                  <span>{r.query}</span>
+                  <small>
+                    {r.id} · {date(r.created_at)}
+                  </small>
+                </div>
+                <span className="digital-state" data-state={r.state}>
+                  {states[r.state]}
+                </span>
+              </button>
+              {!["completed", "rejected"].includes(r.state) && (
+                <div className="digital-history-check">
+                  <span>Último estado registrado. Confira a execução original.</span>
+                  <Button variant="outline" disabled={busy} onClick={() => check(r)}>
+                    Conferir andamento
+                  </Button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

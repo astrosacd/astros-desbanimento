@@ -42,3 +42,10 @@ Referências de implementação consultadas em 28/10/2026: https://docs.apify.co
 ### Comunicação entre hospedagem e Edge
 
 A ponte usa `fetch` com `redirect: manual`, na origem fixa do projeto, preservando compatibilidade com runtimes Worker. Só leituras podem seguir até dois redirecionamentos canônicos para a mesma origem, caminho e query. Início de pesquisa, conferência com atualização financeira, configuração e coleções nunca são reenviados após erro ou redirecionamento. Nenhum Bearer é encaminhado para outro host. Diagnósticos registram somente ação e classificação D01 (transporte), D02 (redirecionamento recusado), D03 (tempo esgotado) ou D04 (resposta inesperada), sem token, corpo ou erro bruto. A tela administrativa apresenta a mensagem segura para facilitar a validação após publicação. Esta correção de ponte exige publicação da aplicação; não muda SQL ou Edge nem ativa consultas.
+
+
+### Conferência de resultados e salvamento
+
+O formulário administrativo mantém validação, erro do servidor e confirmação junto ao botão de salvar em uma área fixa durante a rolagem. Preço de ferramenta habilitada deve ser maior que zero; preço é em centavos de reais.
+
+“Atualizar lista” lê o histórico salvo, sem chamar a Apify. “Conferir andamento”, agora também disponível em cada pesquisa pendente da lista do cliente e do administrador, consulta a execução original sob a mesma autorização e lease. Não cria pesquisa, não repete o POST e não faz nova reserva. Não há atualização automática em segundo plano. Se continuar em andamento após a conferência explícita, investigar a execução original no fornecedor; estado salvo sozinho não comprova o motivo da demora.
