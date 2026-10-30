@@ -13,6 +13,7 @@ import {
   digitalAdminUsage,
 } from "./actions";
 import { date, money, Pager, ResearchDetails, states } from "./page";
+import { useAutoProgress } from "./use-auto-progress";
 import "./style.css";
 export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
   const [error, setError] = useState(""),
@@ -32,6 +33,20 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
       qc.invalidateQueries({ queryKey: ["digital-admin-usage", adminId] }),
     ]);
   };
+  const automatic = useAutoProgress({
+    scope: `admin:${adminId}`,
+    row: detail,
+    enabled: !!detail,
+    blocked: busy,
+    check: (id) => digitalAdminRefresh({ data: { id } }),
+    receive: async (row) => {
+      setDetail((current) => (current?.id === row.id ? row : current));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["digital-admin-history", adminId] }),
+        qc.invalidateQueries({ queryKey: ["digital-admin-usage", adminId] }),
+      ]);
+    },
+  });
   async function act(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -154,6 +169,7 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
       {detail && (
         <ResearchDetails
           row={detail}
+          autoProgress={automatic}
           busy={busy}
           error={error}
           onClose={() => setDetail(null)}
@@ -507,7 +523,7 @@ function Runs({
     </section>
   );
 }
-function Usage({
+export function Usage({
   adminId,
   busy,
   onAccess,
@@ -521,7 +537,7 @@ function Usage({
   onAccess: (email: string, enabled: boolean) => void;
 }) {
   const [email, setEmail] = useState(""),
-    [enabled, setEnabled] = useState(false);
+    [accessAction, setAccessAction] = useState<"" | "allow" | "block">("");
   const q = useQuery({
     queryKey: ["digital-admin-usage", adminId],
     queryFn: () => digitalAdminUsage(),
@@ -574,50 +590,58 @@ function Usage({
         className="digital-form"
         onSubmit={(e) => {
           e.preventDefault();
-          onAccess(email, enabled);
+          if (accessAction) onAccess(email, accessAction === "allow");
         }}
       >
-        <h2>Acesso por conta</h2>
+        <h2>Bloquear ou reabilitar um cliente</h2>
         <p>
-          Use para bloquear ou reabilitar novas pesquisas de uma conta específica. Não é necessário
-          cadastrar todos os clientes aqui: sem restrição individual salva, a conta segue as regras
-          gerais.
+          Esta opção é uma exceção individual. Use quando quiser impedir apenas um cliente de fazer
+          novas pesquisas digitais, sem afetar os demais.
         </p>
         <p className="digital-notice">
-          A pausa geral, o modo piloto e os limites continuam valendo. Liberar um e-mail aqui não
-          ignora essas regras. Histórico, resultados e perfis salvos permanecem acessíveis. Maps,
-          CNPJ e outros serviços não são alterados.
+          Exemplo: para bloquear o cliente joao@exemplo.com, informe esse e-mail, escolha Bloquear
+          novas pesquisas e salve. Para desfazer o bloqueio, informe o mesmo e-mail e escolha
+          Reabilitar novas pesquisas.
+        </p>
+        <p>
+          Não precisa cadastrar todos os clientes aqui. Quem não tem bloqueio segue as regras
+          gerais. Reabilitar não ignora a pausa do módulo, o modo piloto nem os limites. Histórico e
+          pesquisas já iniciadas permanecem acessíveis; outros módulos não são afetados.
         </p>
         <label>
-          E-mail exato da conta
+          E-mail do cliente cadastrado
           <input
             className="field"
             type="email"
             maxLength={254}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setAccessAction("");
+            }}
             required
             disabled={busy}
           />
           <small className="digital-field-help">
-            Informe o e-mail completo já cadastrado no painel. A alteração vale somente para a conta
-            identificada por esse endereço.
+            Digite o e-mail completo usado pelo cliente para entrar no painel.
           </small>
         </label>
         <label>
-          <span>
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              disabled={busy}
-            />
-            Permitir novas pesquisas para esta conta
-          </span>
+          O que deseja fazer com este cliente?
+          <select
+            className="field"
+            required
+            disabled={busy}
+            value={accessAction}
+            onChange={(e) => setAccessAction(e.target.value as "" | "allow" | "block")}
+          >
+            <option value="">Selecione uma ação</option>
+            <option value="block">Bloquear novas pesquisas</option>
+            <option value="allow">Reabilitar novas pesquisas</option>
+          </select>
           <small className="digital-field-help">
-            Marcado: reabilita a conta, respeitando as regras gerais. Desmarcado: bloqueia novos
-            pedidos desta conta. Clique em Salvar para aplicar; este formulário não consulta o
-            acesso atual do e-mail digitado.
+            Nenhuma alteração acontece até você escolher a ação e salvar. Este formulário não
+            consulta a situação atual do e-mail.
           </small>
         </label>
         {feedbackError && (
@@ -630,7 +654,9 @@ function Usage({
             {feedbackMessage}
           </p>
         )}
-        <Button disabled={busy}>{busy ? "Salvando…" : "Salvar acesso individual"}</Button>
+        <Button disabled={busy || !accessAction || !email.trim()}>
+          {busy ? "Salvando…" : "Aplicar ao cliente"}
+        </Button>
       </form>
     </section>
   );

@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within, cleanup, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, within, cleanup, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const api = vi.hoisted(() => ({
   config: vi.fn(),
@@ -204,4 +204,40 @@ it("renders a basic follower without empty detail fields, and preserves real zer
   rerender(<ProfileCard row={{ ...row, followers: 0, posts: 0 }} />);
   expect(screen.getByText("Seguidores")).toBeTruthy();
   expect(screen.getAllByText("0")).toHaveLength(2);
+});
+
+it("automatically completes the displayed existing research without a second start", async () => {
+  await prepare();
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Confirmar e pesquisar" }),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Conferir andamento" }),
+    ).not.toBeDisabled(),
+  );
+  const started = await api.start.mock.results[0].value;
+  api.refresh.mockResolvedValue({
+    ...started,
+    state: "completed",
+    charged_cents: 100,
+    delivered: 1,
+  });
+  vi.useFakeTimers();
+  try {
+    // Switch visibility to reschedule using the fake clock.
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+    expect(api.refresh).toHaveBeenCalledExactlyOnceWith({ data: { id } });
+    expect(screen.getByRole("dialog")).toHaveTextContent("Concluída");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
+    expect(api.refresh).toHaveBeenCalledTimes(1);
+    expect(api.start).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
 });
