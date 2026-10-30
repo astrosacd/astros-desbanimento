@@ -16,7 +16,7 @@ import {
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { BalanceSummary } from "../payments/balance-summary";
-import { catalog, type Profile, type Research, type Tool } from "./model";
+import { catalog, clientMessage, type Profile, type Research, type Tool } from "./model";
 import {
   digitalCollections,
   digitalConfig,
@@ -67,16 +67,22 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
         </div>
       </div>
       {row.biography && <p className="digital-bio">{row.biography}</p>}
-      <dl className="digital-metrics">
-        <div>
-          <dt>Seguidores</dt>
-          <dd>{row.followers?.toLocaleString("pt-BR") ?? "Não informado"}</dd>
-        </div>
-        <div>
-          <dt>Publicações</dt>
-          <dd>{row.posts?.toLocaleString("pt-BR") ?? "Não informado"}</dd>
-        </div>
-      </dl>
+      {(row.followers != null || row.posts != null) && (
+        <dl className="digital-metrics">
+          {row.followers != null && (
+            <div>
+              <dt>Seguidores</dt>
+              <dd>{row.followers.toLocaleString("pt-BR")}</dd>
+            </div>
+          )}
+          {row.posts != null && (
+            <div>
+              <dt>Publicações</dt>
+              <dd>{row.posts.toLocaleString("pt-BR")}</dd>
+            </div>
+          )}
+        </dl>
+      )}
       <div className="digital-contact">
         {row.website && (
           <a href={row.website} target="_blank" rel="noreferrer">
@@ -85,7 +91,7 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
         )}
         {row.email && <p>E-mail público: {row.email}</p>}
         {row.phone && <p>Telefone público: {row.phone}</p>}
-        {!row.email && !row.phone && <p>Contato não informado neste resultado.</p>}
+
         {row.private && <span>Perfil privado · informações limitadas</span>}
       </div>
       {action}
@@ -134,6 +140,15 @@ export function ResearchDetails({
             </p>
           )}
           <p className="digital-help">Referência: {row.id}</p>
+          {row.rows && row.rows.length > 0 && (
+            <p className="digital-notice">
+              {row.tool === "instagram_followers"
+                ? "Esta lista mostra quem segue o perfil pesquisado. Dados de contato e métricas de cada pessoa não são consultados automaticamente."
+                : "Os resultados mostram os dados disponíveis nesta consulta. Telefone e e-mail podem não estar publicados."}{" "}
+              Você pode exportar todos os resultados em CSV ou guardar apenas os perfis escolhidos
+              em Perfis salvos, organizados em coleções.
+            </p>
+          )}
           <div className="digital-actions">
             <span>
               Reserva: {money(row.reserved_cents)} · Cobrança final:{" "}
@@ -255,7 +270,9 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Não foi possível confirmar a operação.");
+      setError(
+        clientMessage(e instanceof Error ? e.message : "Não foi possível confirmar a operação."),
+      );
     } finally {
       lock.current = false;
       setBusy(false);
@@ -349,7 +366,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
         {[
           { id: "tools" as const, title: "Ferramentas", Icon: Search },
           { id: "history" as const, title: "Minhas pesquisas", Icon: History },
-          { id: "collections" as const, title: "Coleções", Icon: FolderHeart },
+          { id: "collections" as const, title: "Perfis salvos", Icon: FolderHeart },
         ].map((t) => (
           <button
             key={t.id}
@@ -365,7 +382,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
           </button>
         ))}
       </nav>
-      {error && (
+      {error && (tab !== "tools" || !selected) && (
         <p role="alert" className="digital-error">
           {error}
         </p>
@@ -445,7 +462,9 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                 </div>
               </div>
               <label>
-                {selected.input}
+                {tool === "instagram_profile"
+                  ? `Perfis do Instagram (até ${settings?.maxQuantity ?? 10})`
+                  : selected.input}
                 <textarea
                   className="field"
                   value={query}
@@ -480,6 +499,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                 cobrança final considera os perfis entregues nesta pesquisa; contatos podem estar
                 ausentes. O restante da reserva é devolvido após a conclusão confirmada.
               </p>
+              {error && (
+                <p role="alert" className="digital-error">
+                  {error}
+                </p>
+              )}
               <Button
                 disabled={
                   !ready || busy || !!attempt || amount < 1 || amount > (settings?.maxQuantity ?? 0)
@@ -573,10 +597,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
         <section>
           <div className="digital-section-heading">
             <div>
-              <h2>Coleções</h2>
+              <h2>Perfis salvos</h2>
               <p>
-                Seus perfis selecionados, organizados pelo nome da coleção. Salvar não gera uma nova
-                consulta.
+                Guarde aqui os perfis que quer acompanhar. Coleções são pastas com nomes escolhidos
+                por você, como “Possíveis clientes”. Salvar não faz outra pesquisa nem gera
+                cobrança.
               </p>
             </div>
           </div>
@@ -589,7 +614,9 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
             </p>
           ) : !saved.data.rows.length ? (
             <p className="digital-empty">
-              Salve perfis dos resultados para criar sua primeira coleção.
+              Abra uma pesquisa concluída e clique em Salvar em coleção nos perfis que quiser
+              guardar. Para exportar todos os resultados, use Exportar CSV na própria pesquisa; não
+              precisa salvar antes.
             </p>
           ) : (
             <div className="digital-results">
@@ -699,10 +726,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                 </p>
               )}
               <Dialog.Description>
-                Escolha uma coleção para organizar este perfil.
+                Coleção é uma pasta para organizar seus perfis salvos. Escolha um nome, por exemplo
+                “Possíveis clientes”. Esta ação não inicia uma pesquisa nem gera cobrança.
               </Dialog.Description>
               <label>
-                Nome da coleção
+                Nome da coleção (pasta)
                 <input
                   className="field"
                   maxLength={80}

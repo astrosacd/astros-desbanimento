@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DigitalResearchPage, ResearchDetails } from "../../src/features/digital-research/page";
 import "../../src/features/panel/polish.css";
 import "./preview.css";
+import { Settings } from "../../src/features/digital-research/admin";
 const profile = {
   username: "clinica.exemplo",
   name: "Clínica Exemplo",
@@ -20,10 +21,51 @@ const profile = {
   verified: false,
 };
 const detail = new URLSearchParams(location.search).has("results");
+const admin = new URLSearchParams(location.search).has("admin");
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={new QueryClient()}>
     <main className="digital-preview content" data-preview-ready>
-      <DigitalResearchPage userId="synthetic-account" />
+      {admin ? (
+        <div className="digital-research">
+          <Settings
+            config={{
+              installed: true,
+              enabled: false,
+              pilot: true,
+              version: 1,
+              dailyRequests: 3,
+              dailyUsdCents: 100,
+              concurrency: 1,
+              tools: {
+                instagram_search: {
+                  enabled: false,
+                  unitCents: 0,
+                  maxQuantity: 20,
+                  maxUsdCents: 20,
+                },
+                instagram_profile: {
+                  enabled: false,
+                  unitCents: 0,
+                  maxQuantity: 10,
+                  maxUsdCents: 20,
+                },
+                instagram_followers: {
+                  enabled: false,
+                  unitCents: 0,
+                  maxQuantity: 50,
+                  maxUsdCents: 30,
+                },
+              },
+            }}
+            busy={false}
+            saveError=""
+            message=""
+            onSave={() => {}}
+          />
+        </div>
+      ) : (
+        <DigitalResearchPage userId="synthetic-account" />
+      )}
       {detail && (
         <ResearchDetails
           row={{

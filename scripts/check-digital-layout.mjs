@@ -8,6 +8,7 @@ try{
  for(const [label,width,height] of [['desktop',1440,1000],['mobile',375,900]]){
   await page.setViewportSize({width,height});await page.goto('http://127.0.0.1:4187/');await page.getByRole('button',{name:/Usar ferramenta/}).first().waitFor();await check();await page.screenshot({path:`${folder}/ferramentas-${label}.png`,fullPage:true});
   await page.getByRole('button',{name:/Usar ferramenta/}).first().click();await page.getByLabel('Palavra-chave').fill('odontologia Fortaleza');await check();await page.getByRole('button',{name:'Conferir e continuar'}).click();await page.getByRole('dialog').waitFor();await check();await page.screenshot({path:`${folder}/confirmacao-${label}.png`,fullPage:true});
+  await page.goto('http://127.0.0.1:4187/?admin');await page.getByRole('button',{name:'Salvar configuração'}).waitFor();await check();await page.screenshot({path:`${folder}/admin-${label}.png`,fullPage:true});
   await page.goto('http://127.0.0.1:4187/?results');await page.getByRole('dialog').waitFor();await check();await page.screenshot({path:`${folder}/resultados-${label}.png`,fullPage:true});
  }
  if(errors.length)throw Error(errors.join('\n'));

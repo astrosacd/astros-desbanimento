@@ -133,6 +133,8 @@ export function DigitalResearchAdmin({ adminId }: { adminId: string }) {
               <Usage
                 adminId={adminId}
                 busy={busy}
+                feedbackError={error}
+                feedbackMessage={message}
                 onAccess={(email, enabled) =>
                   void act(async () => {
                     await digitalAdminAccessByEmail({ data: { email, enabled } });
@@ -202,8 +204,13 @@ export function Settings({
       !parsed.success ||
       catalog.some((t) => form.tools[t.id].enabled && form.tools[t.id].unitCents < 1)
     ) {
+      const invalid = catalog.filter(
+        (t) => form.tools[t.id].enabled && form.tools[t.id].unitCents < 1,
+      );
       setError(
-        "Confira os preços e limites. Ferramentas ativas precisam ter preço maior que zero.",
+        invalid.length
+          ? `Defina preço maior que zero para: ${invalid.map((t) => t.title).join(", ")}. O valor é em centavos de reais.`
+          : "Confira os limites: use números inteiros dentro dos intervalos indicados em cada campo.",
       );
       return;
     }
@@ -212,92 +219,136 @@ export function Settings({
   return (
     <form className="digital-admin-form" onSubmit={submit}>
       <p className="digital-notice">
-        Instalação inicial desativada. Use o modo piloto para validar com uma conta administradora
-        antes de liberar aos clientes. Uma execução pode gerar custos na Apify.
+        Configure em três etapas: acesso e integração, limites da plataforma e ferramentas com seus
+        preços. O preço em reais é cobrado na carteira do cliente; os limites em dólares controlam a
+        integração com a Apify. Uma pesquisa pode consumir créditos da sua conta Apify.
       </p>
-      <label>
-        <span>
-          <input
-            type="checkbox"
-            checked={form.enabled}
-            disabled={busy}
-            onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-          />
-          Permitir novas pesquisas
-        </span>
-      </label>
-      <label>
-        <span>
-          <input
-            type="checkbox"
-            checked={form.pilot}
-            disabled={busy}
-            onChange={(e) => setForm({ ...form, pilot: e.target.checked })}
-          />
-          Modo piloto: somente administradores podem pesquisar
-        </span>
-      </label>
-      <label>
-        Chave Apify {config.hasKey ? "· já configurada" : ""}
-        <input
-          className="field"
-          type="password"
-          value={form.apiKey}
-          maxLength={200}
-          autoComplete="new-password"
-          disabled={busy}
-          onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-          placeholder="Deixe vazio para manter a chave atual"
-        />
-      </label>
-      <div className="digital-admin-grid">
+      <fieldset disabled={busy}>
+        <legend>1. Acesso e integração</legend>
         <label>
-          Pesquisas por conta/dia
-          <input
-            className="field"
-            type="number"
-            min={1}
-            max={50}
-            value={form.dailyRequests}
-            disabled={busy}
-            onChange={(e) => setForm({ ...form, dailyRequests: Number(e.target.value) })}
-          />
+          <span>
+            <input
+              type="checkbox"
+              checked={form.enabled}
+              disabled={busy}
+              onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+            />
+            Permitir novas pesquisas
+          </span>
+          <small className="digital-field-help">
+            Chave geral do módulo. Desmarcar pausa novos pedidos de todas as contas; histórico e
+            conferência das pesquisas existentes continuam disponíveis.
+          </small>
         </label>
         <label>
-          Orçamento diário reservado (centavos de US$)
-          <input
-            className="field"
-            type="number"
-            min={1}
-            max={5000}
-            value={form.dailyUsdCents}
-            disabled={busy}
-            onChange={(e) => setForm({ ...form, dailyUsdCents: Number(e.target.value) })}
-          />
+          <span>
+            <input
+              type="checkbox"
+              checked={form.pilot}
+              disabled={busy}
+              onChange={(e) => setForm({ ...form, pilot: e.target.checked })}
+            />
+            Modo piloto: somente administradores podem pesquisar
+          </span>
+          <small className="digital-field-help">
+            Mantenha marcado durante os testes. Mesmo uma conta liberada individualmente não
+            pesquisa se for cliente e o piloto estiver ativo.
+          </small>
         </label>
         <label>
-          Máximo de pesquisas simultâneas
+          Chave Apify {config.hasKey ? "· já configurada" : ""}
           <input
             className="field"
-            type="number"
-            min={1}
-            max={5}
-            value={form.concurrency}
+            type="password"
+            value={form.apiKey}
+            maxLength={200}
+            autoComplete="new-password"
             disabled={busy}
-            onChange={(e) => setForm({ ...form, concurrency: Number(e.target.value) })}
+            onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+            placeholder="Deixe vazio para manter a chave atual"
           />
+          <small className="digital-field-help">
+            Token privado da sua conta Apify. Deixe vazio para preservar a chave salva. Troca de
+            chave fica bloqueada enquanto houver pesquisas pendentes ou em conferência.
+          </small>
         </label>
+      </fieldset>
+      <fieldset disabled={busy}>
+        <legend>2. Limites da plataforma</legend>
+        <div className="digital-admin-grid">
+          <label>
+            Pesquisas por conta/dia
+            <input
+              className="field"
+              type="number"
+              min={1}
+              max={50}
+              value={form.dailyRequests}
+              disabled={busy}
+              onChange={(e) => setForm({ ...form, dailyRequests: Number(e.target.value) })}
+            />
+            <small className="digital-field-help">
+              De 1 a 50. Quantas novas pesquisas cada conta pode iniciar por dia, somando todas as
+              ferramentas. Ex.: 3 permite três pesquisas, não três perfis. Dia pelo horário de
+              Fortaleza.
+            </small>
+          </label>
+          <label>
+            Teto diário da plataforma (centavos de US$)
+            <input
+              className="field"
+              type="number"
+              min={1}
+              max={5000}
+              value={form.dailyUsdCents}
+              disabled={busy}
+              onChange={(e) => setForm({ ...form, dailyUsdCents: Number(e.target.value) })}
+            />
+            <small className="digital-field-help">
+              De 1 a 5.000. Valor atual: US$ {(form.dailyUsdCents / 100).toFixed(2)}. Compartilhado
+              por todas as contas e ferramentas; não é um teto por cliente nem o saldo da Apify.
+            </small>
+          </label>
+          <label>
+            Máximo de pesquisas simultâneas
+            <input
+              className="field"
+              type="number"
+              min={1}
+              max={5}
+              value={form.concurrency}
+              disabled={busy}
+              onChange={(e) => setForm({ ...form, concurrency: Number(e.target.value) })}
+            />
+            <small className="digital-field-help">
+              De 1 a 5. Quantas pesquisas podem ficar pendentes ao mesmo tempo em toda a plataforma.
+              Cada conta também precisa resolver sua pesquisa anterior antes de iniciar outra.
+            </small>
+          </label>
+        </div>
+        <p className="digital-help">
+          100 centavos de US$ = US$ 1,00. O orçamento considera a soma dos limites reservados pelas
+          pesquisas iniciadas no dia em Fortaleza; não é o saldo da Apify nem a fatura real. Ex.:
+          teto 100 e limite de 20 por execução permitem até cinco reservas de 20 no dia, mesmo que
+          as execuções custem menos. Conclusão ou devolução da carteira não libera esse teto diário.
+          Armazenamento e leituras da plataforma podem gerar consumo adicional.
+        </p>
+      </fieldset>
+      <div className="digital-section-heading">
+        <div>
+          <h2>3. Ferramentas e preços de venda</h2>
+          <p>
+            Configure cada ferramenta separadamente. Os valores não são convertidos automaticamente
+            entre real e dólar.
+          </p>
+        </div>
       </div>
-      <p className="digital-help">
-        100 centavos de US$ = US$ 1,00. O orçamento considera a soma dos limites reservados pelas
-        pesquisas iniciadas no dia em Fortaleza; não é o saldo da Apify nem a fatura real.
-        Armazenamento e leituras da plataforma podem gerar consumo adicional.
-      </p>
       {catalog.map((t) => {
         const v = form.tools[t.id];
         return (
           <fieldset key={t.id} disabled={busy}>
             <legend>{t.title}</legend>
+            <p className="digital-help">{t.description}</p>
             <label>
               <span>
                 <input
@@ -307,6 +358,10 @@ export function Settings({
                 />
                 Disponibilizar ferramenta
               </span>
+              <small className="digital-field-help">
+                Libera esta opção para contas elegíveis quando o módulo estiver ativo. Precisa de
+                preço maior que zero.
+              </small>
             </label>
             <div className="digital-admin-grid">
               <label>
@@ -319,6 +374,10 @@ export function Settings({
                   value={v.unitCents}
                   onChange={(e) => updateTool(t.id, { unitCents: Number(e.target.value) })}
                 />
+                <small className="digital-field-help">
+                  De 0 a 10.000; ferramenta ativa exige pelo menos 1. Ex.: 1 = R$ 0,01; 100 = R$
+                  1,00 por perfil entregue, mesmo sem contato. Preço atual: {money(v.unitCents)}.
+                </small>
               </label>
               <label>
                 Máximo de perfis por pesquisa
@@ -330,6 +389,10 @@ export function Settings({
                   value={v.maxQuantity}
                   onChange={(e) => updateTool(t.id, { maxQuantity: Number(e.target.value) })}
                 />
+                <small className="digital-field-help">
+                  De 1 a {t.max}. Máximo que o cliente pode pedir nesta ferramenta em uma pesquisa;
+                  não garante essa quantidade de resultados.
+                </small>
               </label>
               <label>
                 Limite por execução (centavos de US$)
@@ -341,11 +404,18 @@ export function Settings({
                   value={v.maxUsdCents}
                   onChange={(e) => updateTool(t.id, { maxUsdCents: Number(e.target.value) })}
                 />
+                <small className="digital-field-help">
+                  De 1 a 500. Ex.: 20 = US$ 0,20. Limite enviado à Apify para esta execução e valor
+                  somado ao teto diário. Não é preço de venda nem garantia do custo total da conta
+                  Apify.
+                </small>
               </label>
             </div>
             <p className="digital-help">
               Cobrança ao cliente: {money(v.unitCents)} por perfil entregue nesta pesquisa, mesmo
-              sem contato. Sem enriquecimentos pagos adicionais automáticos.
+              sem contato. Reserva máxima com {v.maxQuantity} perfis:{" "}
+              {money(v.unitCents * v.maxQuantity)}. O restante é devolvido quando a conclusão é
+              confirmada. Sem consultas extras automáticas.
             </p>
           </fieldset>
         );
@@ -441,9 +511,13 @@ function Usage({
   adminId,
   busy,
   onAccess,
+  feedbackError,
+  feedbackMessage,
 }: {
   adminId: string;
   busy: boolean;
+  feedbackError: string;
+  feedbackMessage: string;
   onAccess: (email: string, enabled: boolean) => void;
 }) {
   const [email, setEmail] = useState(""),
@@ -472,7 +546,7 @@ function Usage({
         <div className="digital-admin-stats">
           <div>
             <strong>US$ {(q.data.reservedUsdCents / 100).toFixed(2)}</strong>
-            <span>Limites reservados hoje · não é custo real</span>
+            <span>Limites acumulados hoje · não é gasto real</span>
           </div>
           <div>
             <strong>{q.data.pending}</strong>
@@ -505,8 +579,14 @@ function Usage({
       >
         <h2>Acesso por conta</h2>
         <p>
-          Esta restrição vale somente para novas pesquisas digitais. Não altera Maps, CNPJ ou outros
-          serviços.
+          Use para bloquear ou reabilitar novas pesquisas de uma conta específica. Não é necessário
+          cadastrar todos os clientes aqui: sem restrição individual salva, a conta segue as regras
+          gerais.
+        </p>
+        <p className="digital-notice">
+          A pausa geral, o modo piloto e os limites continuam valendo. Liberar um e-mail aqui não
+          ignora essas regras. Histórico, resultados e perfis salvos permanecem acessíveis. Maps,
+          CNPJ e outros serviços não são alterados.
         </p>
         <label>
           E-mail exato da conta
@@ -519,6 +599,10 @@ function Usage({
             required
             disabled={busy}
           />
+          <small className="digital-field-help">
+            Informe o e-mail completo já cadastrado no painel. A alteração vale somente para a conta
+            identificada por esse endereço.
+          </small>
         </label>
         <label>
           <span>
@@ -530,8 +614,23 @@ function Usage({
             />
             Permitir novas pesquisas para esta conta
           </span>
+          <small className="digital-field-help">
+            Marcado: reabilita a conta, respeitando as regras gerais. Desmarcado: bloqueia novos
+            pedidos desta conta. Clique em Salvar para aplicar; este formulário não consulta o
+            acesso atual do e-mail digitado.
+          </small>
         </label>
-        <Button disabled={busy}>Salvar acesso individual</Button>
+        {feedbackError && (
+          <p role="alert" className="digital-error">
+            {feedbackError}
+          </p>
+        )}
+        {!feedbackError && feedbackMessage && (
+          <p role="status" className="digital-success">
+            {feedbackMessage}
+          </p>
+        )}
+        <Button disabled={busy}>{busy ? "Salvando…" : "Salvar acesso individual"}</Button>
       </form>
     </section>
   );
