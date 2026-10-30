@@ -74,8 +74,15 @@ beforeEach(() => {
             status: scenario === "failed" ? "FAILED" : "SUCCEEDED",
           },
         });
-      if (path.includes("/datasets/"))
+      if (path.includes("/datasets/")) {
+        if (scenario === "empty") return response([]);
+        if (scenario === "error-row")
+          return response([
+            { error: "example-unavailable", errorDescription: "private upstream detail" },
+          ]);
+        if (scenario === "malformed-profile") return response([{ unexpected: true }]);
         return response([{ username: "example", fullName: "Example" }]);
+      }
       throw Error("unexpected fetch " + path);
     }),
   );
@@ -140,5 +147,25 @@ it("blocks admin actions, internal transitions and unconfirmed identity", async 
   expect(calls).toHaveLength(0);
   scenario = "unconfirmed";
   expect((await invoke("start", data)).status).toBe(400);
+  expect(runs).toBe(0);
+});
+
+it("moves a terminal run with error-only or malformed results to review instead of leaving it running", async () => {
+  for (const mode of ["error-row", "malformed-profile"]) {
+    scenario = mode;
+    calls = [];
+    const result = await invoke("refresh", { id });
+    expect(calls.some((c) => c.operation === "review")).toBe(true);
+    expect(calls.some((c) => c.operation === "finish" || c.operation === "reject")).toBe(false);
+    expect(calls.some((c) => c.operation === "check-release")).toBe(true);
+    expect(await result.text()).not.toContain("private upstream detail");
+    expect(runs).toBe(0);
+  }
+});
+it("settles a confirmed successful empty dataset with zero delivered profiles", async () => {
+  scenario = "empty";
+  await invoke("refresh", { id });
+  expect(calls.find((c) => c.operation === "finish").input.rows).toEqual([]);
+  expect(calls.some((c) => c.operation === "review")).toBe(false);
   expect(runs).toBe(0);
 });

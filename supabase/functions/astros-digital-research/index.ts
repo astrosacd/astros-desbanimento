@@ -183,7 +183,16 @@ async function refresh(actor: string, id: string) {
       });
       const items = await provider("datasets/" + claim.datasetId + "/items?" + p);
       if (!items.ok) throw Error("Resultados indisponíveis.");
-      const rows = profiles(await boundedJson(items), claim.quantity);
+      const raw = await boundedJson(items);
+      let rows;
+      try {
+        rows = profiles(raw, claim.quantity);
+      } catch {
+        // The original run is confirmed terminal, but its dataset is not a valid delivery.
+        // Never leave it appearing to run forever, accept error rows as profiles, or guess a refund.
+        await rpc(actor, "review", { id });
+        return rpc(actor, "status", { id });
+      }
       return await rpc(actor, "finish", { id, lease: claim.lease, rows });
     }
     if (["FAILED", "TIMED-OUT", "ABORTED"].includes(v.status)) await rpc(actor, "review", { id });

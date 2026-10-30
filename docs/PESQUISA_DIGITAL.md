@@ -70,3 +70,10 @@ A conferência manual foi complementada por atualização automática autorizada
 O mecanismo chama somente refresh/admin-refresh com o ID original, mantendo a lease SQL e liquidação idempotente. Nunca chama start, não cria reserva e não refaz despacho. Estados incertos dispatching/review continuam manuais. A leitura da lista continua separada da atualização de andamento; instruções anteriores de conferência exclusivamente manual são superadas por esta seção.
 
 O formulário de acesso individual agora se chama “Bloquear ou reabilitar um cliente”, mostra exemplo com e-mail fictício e exige escolher explicitamente bloquear/reabilitar antes de aplicar. Alterar o e-mail limpa a ação selecionada para evitar reaproveitar uma decisão para outra conta. A regra e RPC permanecem as mesmas.
+
+
+## Respostas sem perfis válidos (30/10/2026)
+
+Corrigido o caso em que uma execução SUCCEEDED retornava registros de erro ou perfis malformados e o catch preservava indevidamente o estado running. Com término confirmado e dataset recebido, erros de projeção agora levam a review sem fingir entrega, reenviar ou presumir devolução. Resultado válido e vazio segue finish com zero perfis, liquidação idempotente e devolução da reserva como já previsto em SQL. Falha de transporte/leitura não prova inexistência do perfil. A interface distingue resultado vazio de conferência pendente e não afirma “perfil inexistente” sem evidência específica. A sintaxe do @ pode ser validada antes, mas sua existência não é conhecida localmente.
+
+Aplicação: publicar painel e atualizar somente a Edge Function astros-digital-research com o standalone regenerado. Não repetir SQLs, trocar chave/JWT nem criar outra pesquisa como teste automático. Conferir o ID original depois do deploy; o estado real da tentativa depende da resposta do fornecedor.

@@ -180,13 +180,18 @@ export function ResearchDetails({
           )}
           {["review", "dispatching"].includes(row.state) && (
             <p className="digital-notice">
-              Estamos conferindo esta tentativa. Não inicie outra para repetir o envio. A reserva
-              permanece protegida até a confirmação.
+              Não foi possível confirmar o resultado desta pesquisa. Ela precisa de conferência; não
+              significa que a extração continua em execução. Use Conferir andamento ou fale com o
+              suporte informando a referência acima. Não inicie outra para repetir o envio. A
+              reserva aguarda confirmação.
             </p>
           )}
           {row.state === "completed" && !row.rows?.length && (
             <p className="digital-empty">
-              Pesquisa concluída sem resultados. A reserva foi devolvida.
+              {row.tool === "instagram_search"
+                ? "Nenhum perfil foi encontrado para esta busca."
+                : "Não foram encontrados resultados para o perfil informado. Confira o @; o perfil pode não existir, estar restrito ou não ter dados disponíveis nesta consulta."}{" "}
+              Pesquisa concluída sem perfis entregues. A reserva foi devolvida.
             </p>
           )}
           <div className="digital-results">
@@ -518,6 +523,12 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               ) : (
                 <p>
                   {amount} perfil(is) informado(s). Máximo: {settings?.maxQuantity ?? 10}.
+                </p>
+              )}
+              {tool !== "instagram_search" && (
+                <p className="digital-help">
+                  Confira o @ antes de continuar. O formato é validado aqui; a existência e a
+                  disponibilidade do perfil só podem ser confirmadas durante a consulta.
                 </p>
               )}
               <p className="digital-help">
