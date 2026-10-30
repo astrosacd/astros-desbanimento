@@ -61,3 +61,12 @@ O formulário administrativo mantém validação, erro do servidor e confirmaç�
 - Conferência permanece manual, da execução original. Não há worker/webhook de conclusão instalado. Falhas de leitura da Apify preservam o estado salvo; o estado sozinho não prova que o provedor ainda esteja executando. Se persistir após conferência explícita, verificar a execução original sem iniciar outra.
 
 Verificação desta revisão: testes de mensagens locais, recuperação de UUID, confirmação de preço e projeções; testes SQL de limites/financeiro e exclusão já existentes; builds e layout sintético desktop/mobile. Não representa auditoria de segurança independente nem teste de todas as respostas reais do Instagram/Apify. Nenhuma execução paga é iniciada pelos testes.
+
+
+## Atualização automática em tela (30/10/2026)
+
+A conferência manual foi complementada por atualização automática autorizada pelo proprietário. Cliente: detalhe aberto ou pesquisa em andamento na página atual de Minhas pesquisas; ADM: detalhe aberto. Somente IDs já existentes no estado running. Intervalo de 15 segundos, uma chamada em voo, até 20 conferências por ID na vida da tela. Pausa em aba oculta, não concorre com ação manual e ignora respostas após troca de conta/saída. Conclusão, revisão, recusa e erro encerram a conferência automática; botão manual permanece. Limite atingido/erro mostra pausa e orienta a conferência manual. Navegar para outro módulo ou fechar o navegador não mantém o processamento de conferência: não foi instalado cron, webhook ou worker.
+
+O mecanismo chama somente refresh/admin-refresh com o ID original, mantendo a lease SQL e liquidação idempotente. Nunca chama start, não cria reserva e não refaz despacho. Estados incertos dispatching/review continuam manuais. A leitura da lista continua separada da atualização de andamento; instruções anteriores de conferência exclusivamente manual são superadas por esta seção.
+
+O formulário de acesso individual agora se chama “Bloquear ou reabilitar um cliente”, mostra exemplo com e-mail fictício e exige escolher explicitamente bloquear/reabilitar antes de aplicar. Alterar o e-mail limpa a ação selecionada para evitar reaproveitar uma decisão para outra conta. A regra e RPC permanecem as mesmas.

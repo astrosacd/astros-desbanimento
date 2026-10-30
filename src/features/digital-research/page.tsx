@@ -28,6 +28,7 @@ import {
   digitalUnsave,
 } from "./actions";
 import { csv, criteria } from "../../../supabase/functions/astros-digital-research/core";
+import { useAutoProgress, autoProgressText, type AutoProgress } from "./use-auto-progress";
 import "./style.css";
 export const money = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n / 100);
@@ -105,6 +106,7 @@ export function ResearchDetails({
   onSave,
   busy,
   error,
+  autoProgress,
 }: {
   row: Research;
   onClose: () => void;
@@ -112,6 +114,7 @@ export function ResearchDetails({
   onSave?: (p: Profile) => void;
   busy: boolean;
   error?: string;
+  autoProgress?: AutoProgress;
 }) {
   return (
     <Dialog.Root
@@ -170,10 +173,9 @@ export function ResearchDetails({
             )}
           </div>
           {row.state === "running" && (
-            <p className="digital-notice">
-              Este é o último andamento registrado. Clique em Conferir andamento para consultar a
-              execução original e carregar os resultados, se já estiver concluída. Isso não inicia
-              outra pesquisa nem faz uma nova reserva.
+            <p className="digital-notice" role="status">
+              {autoProgressText(autoProgress ?? "waiting")} A conferência consulta a mesma pesquisa,
+              sem iniciar outra execução nem fazer uma nova reserva.
             </p>
           )}
           {["review", "dispatching"].includes(row.state) && (
@@ -241,6 +243,30 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
     queryFn: () => digitalCollections({ data: { page: savedPage } }),
     enabled: tab === "collections",
     retry: false,
+  });
+  const automaticRow =
+    detail ?? (tab === "history" ? history.data?.rows.find((r) => r.state === "running") : null);
+  const automatic = useAutoProgress({
+    scope: userId,
+    row: automaticRow,
+    enabled: !!detail || tab === "history",
+    blocked: busy,
+    check: (id) => digitalRefresh({ data: { id } }),
+    receive: async (row) => {
+      setDetail((current) => (current?.id === row.id ? row : current));
+      qc.setQueriesData<{ rows: Research[] }>(
+        { queryKey: ["digital-history", userId] },
+        (current) =>
+          current
+            ? {
+                ...current,
+                rows: current.rows.map((old) => (old.id === row.id ? { ...old, ...row } : old)),
+              }
+            : current,
+      );
+      if (row.state === "completed" || row.state === "rejected")
+        await qc.invalidateQueries({ queryKey: ["wallet", userId] });
+    },
   });
   const selected = catalog.find((t) => t.id === tool),
     settings = tool ? config.data?.tools[tool] : null;
@@ -580,7 +606,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                   </button>
                   {!["completed", "rejected"].includes(row.state) && (
                     <div className="digital-history-check">
-                      <span>Último estado registrado. Confira para buscar o resultado.</span>
+                      <span>
+                        {row.state === "running"
+                          ? autoProgressText(automatic)
+                          : "Abra a pesquisa para conferir esta tentativa."}
+                      </span>
                       <Button variant="outline" disabled={busy} onClick={() => void check(row)}>
                         <RefreshCw size={16} /> Conferir andamento
                       </Button>
@@ -699,6 +729,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
       {detail && (
         <ResearchDetails
           row={detail}
+          autoProgress={automatic}
           busy={busy}
           error={error}
           onClose={() => setDetail(null)}

@@ -1,7 +1,9 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-vi.mock("./actions", () => ({}));
-import { Settings } from "./admin";
+const api = vi.hoisted(() => ({ usage: vi.fn() }));
+vi.mock("./actions", () => ({ digitalAdminUsage: api.usage }));
+import { Settings, Usage } from "./admin";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const config = {
   installed: true,
   enabled: true,
@@ -56,4 +58,33 @@ it("explains shared budget, per-run limits, currency units and pilot rules next 
   expect(
     screen.getByRole("group", { name: "Consultar perfis e contatos públicos" }),
   ).toHaveTextContent("100 = R$ 1,00");
+});
+
+it("requires an explicit block/allow choice for the exact account and resets that choice when the email changes", () => {
+  api.usage.mockResolvedValue({
+    reservedUsdCents: 0,
+    pending: 0,
+    review: 0,
+    reservedCents: 0,
+    chargedCents: 0,
+    delivered: 0,
+  });
+  const apply = vi.fn();
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <Usage adminId="admin" busy={false} feedbackError="" feedbackMessage="" onAccess={apply} />
+    </QueryClientProvider>,
+  );
+  const button = screen.getByRole("button", { name: "Aplicar ao cliente" });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "cliente@example.com" } });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "block" } });
+  fireEvent.click(button);
+  expect(apply).toHaveBeenCalledExactlyOnceWith("cliente@example.com", false);
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "allow" } });
+  fireEvent.click(button);
+  expect(apply).toHaveBeenLastCalledWith("cliente@example.com", true);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "outro@example.com" } });
+  expect(button).toBeDisabled();
 });
