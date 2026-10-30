@@ -426,6 +426,19 @@ async function refresh(actor: string, id: string) {
           tool: toolKey(original.tool),
           query: original.query,
         });
+        if (
+          claim.tool === "instagram_followers" &&
+          Array.isArray(raw) &&
+          raw.length === 1 &&
+          rows.length === 0
+        ) {
+          // An item limit must not hide additional records beyond the observed no-result marker.
+          const metadata = await provider("datasets/" + claim.datasetId);
+          if (!metadata.ok) throw Error("Dataset não confirmado.");
+          const dataset = (await boundedJson(metadata, 150000))?.data;
+          if (dataset?.id !== claim.datasetId || dataset?.itemCount !== 1)
+            throw Error("Dataset divergente.");
+        }
       } catch {
         // The original run is confirmed terminal, but its dataset is not a valid delivery.
         // Never leave it appearing to run forever, accept error rows as profiles, or guess a refund.

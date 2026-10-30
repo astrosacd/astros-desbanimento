@@ -85,6 +85,10 @@ beforeEach(() => {
                   : "SUCCEEDED",
           },
         });
+      if (path.includes("/datasets/") && !path.includes("/items"))
+        return response({
+          data: { id: "DATA1234567890123", itemCount: scenario === "marker-extra-items" ? 2 : 1 },
+        });
       if (path.includes("/datasets/")) {
         if (scenario.startsWith("marker")) {
           expect(new URL(path).searchParams.has("fields")).toBe(false);
@@ -197,7 +201,13 @@ it("settles the verified source-only no-result marker without another dispatch",
   expect(runs).toBe(0);
 });
 it("does not settle a marker from a different source, with errors, or from a non-successful run", async () => {
-  for (const mode of ["marker-wrong", "marker-error", "marker-failed", "marker-running"]) {
+  for (const mode of [
+    "marker-wrong",
+    "marker-error",
+    "marker-failed",
+    "marker-running",
+    "marker-extra-items",
+  ]) {
     scenario = mode;
     calls = [];
     await invoke("refresh", { id });
