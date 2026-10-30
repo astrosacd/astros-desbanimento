@@ -3,6 +3,7 @@ import {
   actorInput,
   criteria,
   csv,
+  deliveredProfiles,
   profiles,
   toolKey,
   username,
@@ -92,4 +93,30 @@ describe("Digital research provider boundary", () => {
     row.name = "  =SUM(1,1)";
     expect(csv([row])).toContain('"\'  =SUM(1,1)"');
   });
+});
+
+it("recognizes only the exact source-only followers marker for the requested source", () => {
+  const context = { tool: "instagram_followers" as const, query: "synthetic.missing" };
+  expect(deliveredProfiles([{ sourceUsername: "synthetic.missing" }], 10, context)).toEqual([]);
+  for (const raw of [
+    [{ sourceUsername: "someone.else" }],
+    [{ sourceUsername: "synthetic.missing", error: "blocked" }],
+    [{ sourceUsername: "synthetic.missing", unknown: true }],
+    [{ sourceUsername: "synthetic.missing" }, { username: "real.profile" }],
+    [{}],
+  ])
+    expect(() => deliveredProfiles(raw, 10, context)).toThrow();
+  expect(() =>
+    deliveredProfiles([{ sourceUsername: "synthetic.missing" }], 10, {
+      ...context,
+      tool: "instagram_profile",
+    }),
+  ).toThrow();
+  expect(
+    deliveredProfiles(
+      [{ username: "valid.profile", sourceUsername: "synthetic.missing" }],
+      10,
+      context,
+    ),
+  ).toHaveLength(1);
 });

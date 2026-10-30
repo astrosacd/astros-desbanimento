@@ -1,4 +1,4 @@
-import { actorInput, criteria, integer, profiles, toolKey, tools, uuid } from "./core.ts";
+import { actorInput, criteria, integer, deliveredProfiles, toolKey, tools, uuid } from "./core.ts";
 declare const Deno: {
   env: { get: (name: string) => string | undefined };
   serve: (fn: (req: Request) => Promise<Response>) => void;
@@ -174,10 +174,15 @@ async function refresh(actor: string, id: string) {
       throw Error("Conferência divergente.");
     if (v.status === "SUCCEEDED") {
       const p = new URLSearchParams({
-        fields:
-          "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,error,errorDescription",
+        // Followers markers must be inspected unprojected: a fields filter could hide error flags.
+        ...(claim.tool === "instagram_followers"
+          ? {}
+          : {
+              fields:
+                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,error,errorDescription",
+            }),
         format: "json",
-        clean: "true",
+        clean: claim.tool === "instagram_followers" ? "false" : "true",
         limit: String(claim.quantity),
         offset: "0",
       });
@@ -186,7 +191,17 @@ async function refresh(actor: string, id: string) {
       const raw = await boundedJson(items);
       let rows;
       try {
-        rows = profiles(raw, claim.quantity);
+        const original = await rpc(actor, "status", { id });
+        if (
+          original.id !== id ||
+          original.tool !== claim.tool ||
+          typeof original.query !== "string"
+        )
+          throw Error("Pesquisa divergente.");
+        rows = deliveredProfiles(raw, claim.quantity, {
+          tool: toolKey(original.tool),
+          query: original.query,
+        });
       } catch {
         // The original run is confirmed terminal, but its dataset is not a valid delivery.
         // Never leave it appearing to run forever, accept error rows as profiles, or guess a refund.

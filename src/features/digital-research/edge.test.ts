@@ -50,8 +50,14 @@ beforeEach(() => {
             datasetId: "DATA1234567890123",
             lease: id,
             quantity: 10,
+            tool: scenario.startsWith("marker") ? "instagram_followers" : "instagram_search",
           });
-        return response({ id, state: b.operation === "reject" ? "rejected" : "running" });
+        return response({
+          id,
+          state: b.operation === "reject" ? "rejected" : "running",
+          tool: scenario.startsWith("marker") ? "instagram_followers" : "instagram_search",
+          query: "synthetic.missing",
+        });
       }
       if (path.startsWith("https://api.apify.com/v2/acts/")) {
         runs++;
@@ -71,10 +77,23 @@ beforeEach(() => {
           data: {
             id: "RUN12345678901234",
             defaultDatasetId: "DATA1234567890123",
-            status: scenario === "failed" ? "FAILED" : "SUCCEEDED",
+            status:
+              scenario === "failed" || scenario === "marker-failed"
+                ? "FAILED"
+                : scenario === "marker-running"
+                  ? "RUNNING"
+                  : "SUCCEEDED",
           },
         });
       if (path.includes("/datasets/")) {
+        if (scenario.startsWith("marker")) {
+          expect(new URL(path).searchParams.has("fields")).toBe(false);
+          expect(new URL(path).searchParams.get("clean")).toBe("false");
+          if (scenario === "marker-error")
+            return response([{ sourceUsername: "synthetic.missing", error: "blocked" }]);
+          if (scenario === "marker-wrong") return response([{ sourceUsername: "other.profile" }]);
+          return response([{ sourceUsername: "synthetic.missing" }]);
+        }
         if (scenario === "empty") return response([]);
         if (scenario === "error-row")
           return response([
@@ -168,4 +187,21 @@ it("settles a confirmed successful empty dataset with zero delivered profiles", 
   expect(calls.find((c) => c.operation === "finish").input.rows).toEqual([]);
   expect(calls.some((c) => c.operation === "review")).toBe(false);
   expect(runs).toBe(0);
+});
+
+it("settles the verified source-only no-result marker without another dispatch", async () => {
+  scenario = "marker";
+  await invoke("refresh", { id });
+  expect(calls.find((c) => c.operation === "finish").input.rows).toEqual([]);
+  expect(calls.some((c) => c.operation === "reject" || c.operation === "review")).toBe(false);
+  expect(runs).toBe(0);
+});
+it("does not settle a marker from a different source, with errors, or from a non-successful run", async () => {
+  for (const mode of ["marker-wrong", "marker-error", "marker-failed", "marker-running"]) {
+    scenario = mode;
+    calls = [];
+    await invoke("refresh", { id });
+    expect(calls.some((c) => c.operation === "finish" || c.operation === "reject")).toBe(false);
+    expect(runs).toBe(0);
+  }
 });

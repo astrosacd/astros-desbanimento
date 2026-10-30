@@ -164,6 +164,29 @@ export function profiles(raw: unknown, limit: number): Profile[] {
     })
     .slice(0, limit);
 }
+/** A confirmed successful followers run can emit a source-only no-result marker.
+ * Match the complete observed shape and immutable source; never turn arbitrary errors into refunds.
+ */
+export function deliveredProfiles(
+  raw: unknown,
+  limit: number,
+  context: { tool: Tool; query: string },
+): Profile[] {
+  if (context.tool === "instagram_followers" && Array.isArray(raw) && raw.length === 1) {
+    const marker = raw[0];
+    if (
+      marker &&
+      typeof marker === "object" &&
+      !Array.isArray(marker) &&
+      Object.keys(marker).length === 1 &&
+      Object.hasOwn(marker, "sourceUsername") &&
+      typeof marker.sourceUsername === "string" &&
+      marker.sourceUsername === context.query
+    )
+      return [];
+  }
+  return profiles(raw, limit);
+}
 export function csv(rows: Profile[]) {
   const cell = (v: unknown) =>
     '"' +
@@ -375,10 +398,15 @@ async function refresh(actor: string, id: string) {
       throw Error("Conferência divergente.");
     if (v.status === "SUCCEEDED") {
       const p = new URLSearchParams({
-        fields:
-          "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,error,errorDescription",
+        // Followers markers must be inspected unprojected: a fields filter could hide error flags.
+        ...(claim.tool === "instagram_followers"
+          ? {}
+          : {
+              fields:
+                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,error,errorDescription",
+            }),
         format: "json",
-        clean: "true",
+        clean: claim.tool === "instagram_followers" ? "false" : "true",
         limit: String(claim.quantity),
         offset: "0",
       });
@@ -387,7 +415,17 @@ async function refresh(actor: string, id: string) {
       const raw = await boundedJson(items);
       let rows;
       try {
-        rows = profiles(raw, claim.quantity);
+        const original = await rpc(actor, "status", { id });
+        if (
+          original.id !== id ||
+          original.tool !== claim.tool ||
+          typeof original.query !== "string"
+        )
+          throw Error("Pesquisa divergente.");
+        rows = deliveredProfiles(raw, claim.quantity, {
+          tool: toolKey(original.tool),
+          query: original.query,
+        });
       } catch {
         // The original run is confirmed terminal, but its dataset is not a valid delivery.
         // Never leave it appearing to run forever, accept error rows as profiles, or guess a refund.
