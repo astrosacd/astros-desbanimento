@@ -251,6 +251,31 @@ assert.equal(after.unclassifiedCount, 0);
 assert.equal(after.daily[0].consumedCents, before.daily[0].consumedCents + 300);
 assert.equal(after.daily[0].returnedCents, before.daily[0].returnedCents + 190);
 assert.equal(await value("select count(*)::int v from astros_prospect_requests"), 0);
+// Recover a reviewed, confirmed no-delivery run: return its reservation once, without replay.
+settings.version = cfg.version;
+settings.dailyUsdCents = 1000;
+await call(admin, "admin-save", settings);
+cfg = await call(admin, "admin-config");
+const zero = job("instagram_followers", 10);
+const priorBalance = await balance(admin);
+await call(admin, "start", zero);
+assert.equal(await balance(admin), priorBalance - 1);
+await call(admin, "record-run", { id: zero.requestId, runId: "EMPTYRUN123456789", datasetId: "EMPTYDATA12345678" });
+await call(admin, "review", { id: zero.requestId });
+await db.query("update astros_digital_requests set check_after=now()-interval '1 second' where id=$1", [zero.requestId]);
+const zeroLease = await call(admin, "check-claim", { id: zero.requestId });
+assert.ok(zeroLease.lease);
+const zeroResult = await call(admin, "finish", { id: zero.requestId, lease: zeroLease.lease, rows: [] });
+assert.equal(zeroResult.state, "completed");
+assert.equal(zeroResult.delivered, 0);
+assert.equal(zeroResult.charged_cents, 0);
+assert.equal(await balance(admin), priorBalance);
+await call(admin, "finish", { id: zero.requestId, lease: zeroLease.lease, rows: [] });
+const recovered = await call(admin, "start", zero);
+assert.equal(recovered.execute, false);
+assert.equal(await balance(admin), priorBalance);
+assert.equal(await value("select count(*)::int v from astros_wallet_movements where reference=$1", ["digital-refund:" + zero.requestId]), 1);
+assert.equal(await value("select amount_cents v from astros_wallet_movements where reference=$1", ["digital-refund:" + zero.requestId]), 100);
 console.log(
   "PASS: isolated install/reapply, auth/role/ownership, pilot/access, stable UUID, budget/capacity guards, polling lease, exact settlement/refund, collections, finance compatibility.",
 );
