@@ -24,3 +24,11 @@ export const digitalStatus = digitalStart,
   digitalRefresh = digitalStart,
   digitalSave = digitalStart,
   digitalUnsave = digitalStart;
+
+export const digitalAdminAccessByEmail = digitalStart,
+  digitalAdminConfig = digitalStart,
+  digitalAdminHistory = digitalStart,
+  digitalAdminRefresh = digitalStart,
+  digitalAdminSave = digitalStart,
+  digitalAdminStatus = digitalStart,
+  digitalAdminUsage = digitalStart;

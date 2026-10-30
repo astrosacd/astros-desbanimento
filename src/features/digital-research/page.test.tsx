@@ -24,7 +24,7 @@ vi.mock("./actions", () => ({
 vi.mock("../payments/balance-summary", () => ({
   BalanceSummary: () => <div>Carteira compartilhada</div>,
 }));
-import { DigitalResearchPage } from "./page";
+import { DigitalResearchPage, ProfileCard } from "./page";
 const id = "22222222-2222-4222-8222-222222222222";
 const defaults = {
   installed: true,
@@ -162,4 +162,46 @@ it("history refresh stays read-only; explicit check retrieves the original run o
   expect(api.refresh).toHaveBeenCalledWith({ data: { id } });
   expect(api.start).not.toHaveBeenCalled();
   expect(await screen.findByRole("dialog")).toHaveTextContent("Concluída");
+});
+it("shows a daily platform limit beside the research action without exposing supplier wording", async () => {
+  api.start.mockRejectedValueOnce(Error("Limite diário do fornecedor atingido."));
+  await prepare();
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Confirmar e pesquisar" }),
+  );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  const form = screen.getByRole("button", { name: "Conferir e continuar" }).closest("form")!;
+  await waitFor(() =>
+    expect(within(form).getByRole("alert")).toHaveTextContent(
+      "limite de novas pesquisas da plataforma",
+    ),
+  );
+  expect(screen.queryByText("Limite diário do fornecedor atingido.")).toBeNull();
+  expect(screen.queryByText(/Uma tentativa aguarda confirmação/)).toBeNull();
+  expect(api.start).toHaveBeenCalledTimes(1);
+});
+
+it("renders a basic follower without empty detail fields, and preserves real zero metrics", () => {
+  const row = {
+    username: "example",
+    name: "Example",
+    url: "https://www.instagram.com/example/",
+    biography: "",
+    website: "",
+    email: "",
+    phone: "",
+    followers: null,
+    following: null,
+    posts: null,
+    private: true,
+    verified: false,
+  };
+  const { rerender } = render(<ProfileCard row={row} />);
+  expect(screen.getByRole("link", { name: /@example/ })).toBeTruthy();
+  expect(screen.queryByText("Não informado")).toBeNull();
+  expect(screen.queryByText("Seguidores")).toBeNull();
+  expect(screen.getByText(/Perfil privado/)).toBeTruthy();
+  rerender(<ProfileCard row={{ ...row, followers: 0, posts: 0 }} />);
+  expect(screen.getByText("Seguidores")).toBeTruthy();
+  expect(screen.getAllByText("0")).toHaveLength(2);
 });

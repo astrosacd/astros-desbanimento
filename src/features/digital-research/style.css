@@ -432,3 +432,21 @@
   color: var(--muted-foreground);
   font-size: 0.85rem;
 }
+
+.digital-field-help {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.digital-admin-form > fieldset {
+  background: var(--card);
+}
+.digital-profile .digital-contact:empty {
+  display: none;
+}
+.digital-form > [role="alert"] {
+  margin: 0;
+}

@@ -122,3 +122,18 @@ export const configSchema = z
   })
   .strict();
 export const accessSchema = z.object({ userId: z.string().uuid(), enabled: z.boolean() }).strict();
+
+// Translate presentation only; keep the original error for refusal/recovery decisions.
+export function clientMessage(message: string): string {
+  const messages: Record<string, string> = {
+    "Limite diário do fornecedor atingido.":
+      "O limite de novas pesquisas da plataforma para hoje foi atingido. Tente em outro dia ou fale com o suporte.",
+    "Limite diário de pesquisas atingido.":
+      "Você atingiu seu limite de pesquisas de hoje. Tente em outro dia.",
+    "Capacidade ocupada. Tente mais tarde.":
+      "Há pesquisas em andamento. Aguarde e tente novamente mais tarde.",
+    "Confira a pesquisa anterior antes de iniciar outra.":
+      "Você tem uma pesquisa aguardando conclusão. Abra Minhas pesquisas e confira o andamento antes de iniciar outra.",
+  };
+  return messages[message] ?? message;
+}

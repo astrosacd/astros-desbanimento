@@ -44,3 +44,16 @@ it("keeps remote errors and confirmed success beside save; blocks while saving",
   rerender(<Settings {...props} saveError="" busy />);
   expect(screen.getByRole("button", { name: "Salvando…" })).toBeDisabled();
 });
+
+it("explains shared budget, per-run limits, currency units and pilot rules next to inputs", () => {
+  render(<Settings config={config} busy={false} saveError="" message="" onSave={vi.fn()} />);
+  expect(screen.getByRole("group", { name: "2. Limites da plataforma" })).toHaveTextContent(
+    "mesmo que as execuções custem menos",
+  );
+  expect(screen.getByRole("group", { name: "1. Acesso e integração" })).toHaveTextContent(
+    "o piloto estiver ativo",
+  );
+  expect(
+    screen.getByRole("group", { name: "Consultar perfis e contatos públicos" }),
+  ).toHaveTextContent("100 = R$ 1,00");
+});
