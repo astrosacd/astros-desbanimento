@@ -68,19 +68,31 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
         </div>
       </div>
       {row.biography && <p className="digital-bio">{row.biography}</p>}
-      {(row.followers != null || row.posts != null) && (
+      <div className="digital-profile-labels">
+        {row.verified && <span>Verificado</span>}
+        {row.business && <span>Conta comercial</span>}
+        {row.category && <span>{row.category}</span>}
+      </div>
+      {[row.followers, row.following, row.posts, row.highlights, row.videos].some(
+        (v) => v != null,
+      ) && (
         <dl className="digital-metrics">
-          {row.followers != null && (
-            <div>
-              <dt>Seguidores</dt>
-              <dd>{row.followers.toLocaleString("pt-BR")}</dd>
-            </div>
-          )}
-          {row.posts != null && (
-            <div>
-              <dt>Publicações</dt>
-              <dd>{row.posts.toLocaleString("pt-BR")}</dd>
-            </div>
+          {(
+            [
+              ["Seguidores", row.followers],
+              ["Seguindo", row.following],
+              ["Publicações", row.posts],
+              ["Destaques", row.highlights],
+              ["Vídeos IGTV", row.videos],
+            ] as const
+          ).map(
+            ([label, value]) =>
+              value != null && (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value.toLocaleString("pt-BR")}</dd>
+                </div>
+              ),
           )}
         </dl>
       )}
@@ -90,7 +102,20 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
             Visitar site <ExternalLink size={13} />
           </a>
         )}
-        {row.email && <p>E-mail público: {row.email}</p>}
+        {row.links
+          ?.filter((link) => link.url !== row.website)
+          .map((link) => (
+            <p key={link.url}>
+              <a href={link.url} target="_blank" rel="noreferrer">
+                {link.title} <ExternalLink size={13} />
+              </a>
+            </p>
+          ))}
+        {row.email && (
+          <p>
+            E-mail público: <a href={`mailto:${row.email}`}>{row.email}</a>
+          </p>
+        )}
         {row.phone && <p>Telefone público: {row.phone}</p>}
 
         {row.private && <span>Perfil privado · informações limitadas</span>}
@@ -147,7 +172,7 @@ export function ResearchDetails({
             <p className="digital-notice">
               {row.tool === "instagram_followers"
                 ? "Esta lista mostra quem segue o perfil pesquisado. Dados de contato e métricas de cada pessoa não são consultados automaticamente."
-                : "Os resultados mostram os dados disponíveis nesta consulta. Telefone e e-mail podem não estar publicados."}{" "}
+                : "Os resultados mostram os dados públicos disponíveis no momento da consulta. E-mail e telefone usados para cadastrar a conta não são públicos. Contatos divulgados na biografia podem aparecer; os botões E-mail/Ligar do Instagram não têm retorno garantido."}{" "}
               Você pode exportar todos os resultados em CSV ou guardar apenas os perfis escolhidos
               em Perfis salvos, organizados em coleções.
             </p>

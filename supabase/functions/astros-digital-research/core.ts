@@ -131,6 +131,11 @@ export type Profile = {
   posts: number | null;
   private: boolean;
   verified: boolean;
+  category?: string;
+  business?: boolean;
+  highlights?: number | null;
+  videos?: number | null;
+  links?: { title: string; url: string }[];
 };
 export function profiles(raw: unknown, limit: number): Profile[] {
   if (!Array.isArray(raw) || raw.length > 101) throw Error("Resultados não confirmados.");
@@ -144,21 +149,44 @@ export function profiles(raw: unknown, limit: number): Profile[] {
       seen.add(handle);
       const metric = (v: unknown) =>
         typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : null;
-      const mail = clean(r.businessEmail ?? r.publicEmail, 254);
+      const biography = clean(r.biography, 1200);
+      const validMail = (v: unknown) => {
+        const value = clean(v, 254);
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? value : "";
+      };
+      const mail =
+        validMail(r.businessEmail) ||
+        validMail(r.publicEmail) ||
+        validMail(biography.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0]);
+      const links: { title: string; url: string }[] = [];
+      for (const item of [
+        { url: r.externalUrl, title: "Site" },
+        ...(Array.isArray(r.externalUrls) ? r.externalUrls.slice(0, 8) : []),
+        ...(Array.isArray(r.bioLinks) ? r.bioLinks.slice(0, 8) : []),
+      ]) {
+        const url = safeUrl(typeof item === "string" ? item : item?.url);
+        if (url && !links.some((link) => link.url === url) && links.length < 3)
+          links.push({ title: clean(item?.title, 80) || "Link público", url: url.slice(0, 500) });
+      }
       return [
         {
           username: handle,
           name: clean(r.fullName ?? r.full_name, 150),
           url: `https://www.instagram.com/${handle}/`,
-          biography: clean(r.biography, 1200),
+          biography,
           website: safeUrl(r.externalUrl),
-          email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) ? mail : "",
+          email: mail,
           phone: clean(r.businessPhoneNumber ?? r.publicPhoneNumber, 50),
           followers: metric(r.followersCount),
           following: metric(r.followsCount ?? r.followingCount),
           posts: metric(r.postsCount),
-          private: r.isPrivate === true,
-          verified: r.isVerified === true,
+          private: r.isPrivate === true || r.private === true,
+          verified: r.isVerified === true || r.verified === true,
+          category: clean(r.businessCategoryName ?? r.categoryName, 120),
+          business: r.isBusinessAccount === true,
+          highlights: metric(r.highlightReelCount),
+          videos: metric(r.igtvVideoCount),
+          links,
         },
       ];
     })
@@ -211,6 +239,15 @@ export function csv(rows: Profile[]) {
         "E-mail público",
         "Telefone público",
         "Seguidores",
+        "Seguindo",
+        "Publicações",
+        "Categoria",
+        "Conta comercial",
+        "Verificado",
+        "Perfil privado",
+        "Destaques",
+        "Vídeos IGTV",
+        "Links públicos",
       ],
       ...rows.map((r) => [
         r.username,
@@ -221,6 +258,15 @@ export function csv(rows: Profile[]) {
         r.email,
         r.phone,
         r.followers,
+        r.following,
+        r.posts,
+        r.category,
+        r.business == null ? "" : r.business ? "Sim" : "Não",
+        r.verified ? "Sim" : "Não",
+        r.private ? "Sim" : "Não",
+        r.highlights,
+        r.videos,
+        r.links?.map((link) => link.url).join(" | "),
       ]),
     ]
       .map((row) => row.map(cell).join(";"))

@@ -241,3 +241,36 @@ it("automatically completes the displayed existing research without a second sta
     vi.useRealTimers();
   }
 });
+
+it("shows following and additional public details without requiring Instagram navigation", () => {
+  render(
+    <ProfileCard
+      row={{
+        username: "loja",
+        name: "Loja",
+        url: "https://www.instagram.com/loja/",
+        biography: "Bio pública",
+        website: "",
+        email: "contato@example.com",
+        phone: "",
+        followers: 100,
+        following: 42,
+        posts: 0,
+        private: false,
+        verified: true,
+        category: "Vestuário",
+        business: true,
+        highlights: 3,
+        videos: 2,
+        links: [{ title: "Catálogo", url: "https://example.com/catalogo" }],
+      }}
+    />,
+  );
+  expect(screen.getByText("Seguindo")).toBeTruthy();
+  expect(screen.getByText("42")).toBeTruthy();
+  expect(screen.getByText("Verificado")).toBeTruthy();
+  expect(screen.getByText("Vestuário")).toBeTruthy();
+  expect(screen.getByRole("link", { name: /Catálogo/ }).getAttribute("href")).toBe(
+    "https://example.com/catalogo",
+  );
+});
