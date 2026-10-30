@@ -135,3 +135,31 @@ it("validates a single keyword before creating any reservation", async () => {
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(api.start).not.toHaveBeenCalled();
 });
+
+it("history refresh stays read-only; explicit check retrieves the original run once", async () => {
+  const row = {
+    id,
+    tool: "instagram_profile",
+    query: "example",
+    quantity: 1,
+    state: "running",
+    reserved_cents: 1,
+    charged_cents: 0,
+    delivered: 0,
+    created_at: new Date().toISOString(),
+    rows: [],
+  };
+  api.history.mockResolvedValue({ rows: [row] });
+  api.refresh.mockResolvedValue({ ...row, state: "completed", delivered: 1, charged_cents: 1 });
+  show();
+  fireEvent.click(screen.getByRole("button", { name: "Minhas pesquisas" }));
+  await screen.findByText("example");
+  fireEvent.click(screen.getByRole("button", { name: "Atualizar lista" }));
+  await waitFor(() => expect(api.history).toHaveBeenCalledTimes(2));
+  expect(api.refresh).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Conferir andamento" }));
+  await waitFor(() => expect(api.refresh).toHaveBeenCalledTimes(1));
+  expect(api.refresh).toHaveBeenCalledWith({ data: { id } });
+  expect(api.start).not.toHaveBeenCalled();
+  expect(await screen.findByRole("dialog")).toHaveTextContent("Concluída");
+});
