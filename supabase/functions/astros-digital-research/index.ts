@@ -179,7 +179,7 @@ async function refresh(actor: string, id: string) {
           ? {}
           : {
               fields:
-                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,error,errorDescription",
+                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription",
             }),
         format: "json",
         clean: claim.tool === "instagram_followers" ? "false" : "true",

@@ -450,3 +450,24 @@
 .digital-form > [role="alert"] {
   margin: 0;
 }
+
+.digital-profile-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.digital-profile-labels:empty {
+  display: none;
+}
+.digital-profile-labels span {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #edf4f8;
+  color: #36546e;
+  overflow-wrap: anywhere;
+}
+.digital-profile-title > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

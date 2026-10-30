@@ -14,7 +14,7 @@ export const catalog = [
     id: "instagram_profile" as const,
     title: "Consultar perfis e contatos públicos",
     description:
-      "Consulte biografia, site, métricas e contatos quando publicados. Não garante e-mail ou telefone.",
+      "Consulte biografia, links e métricas disponíveis. Contatos públicos podem aparecer; e-mail e telefone de cadastro não são acessíveis.",
     input: "Perfis do Instagram (até 10)",
     placeholder: "@perfil ou URL do perfil; separe por espaço",
     max: 10,
@@ -80,6 +80,11 @@ export type Profile = {
   posts: number | null;
   private: boolean;
   verified: boolean;
+  category?: string;
+  business?: boolean;
+  highlights?: number | null;
+  videos?: number | null;
+  links?: { title: string; url: string }[];
 };
 export type Research = {
   id: string;

@@ -141,3 +141,48 @@ it("recognizes the complete observed not_found output only for its exact source 
   ).toThrow();
   expect(() => deliveredProfiles([marker, { username: "real.profile" }], 10, context)).toThrow();
 });
+
+it("preserves documented profile metrics, alternate flags and bounded public links", () => {
+  const [row] = profiles(
+    [
+      {
+        username: "example",
+        followersCount: 1234,
+        followsCount: 42,
+        postsCount: 0,
+        highlightReelCount: 5,
+        igtvVideoCount: 2,
+        private: true,
+        verified: true,
+        isBusinessAccount: true,
+        businessCategoryName: "Loja",
+        biography: "Contato: loja@example.com",
+        publicEmail: "",
+        externalUrls: [
+          { title: "Catálogo", url: "https://example.com/catalogo" },
+          { title: "Unsafe", url: "javascript:alert(1)" },
+        ],
+        latestPosts: [{ caption: "Do not persist full content" }],
+      },
+    ],
+    1,
+  );
+  expect(row).toMatchObject({
+    followers: 1234,
+    following: 42,
+    posts: 0,
+    highlights: 5,
+    videos: 2,
+    private: true,
+    verified: true,
+    business: true,
+    category: "Loja",
+    email: "loja@example.com",
+    links: [{ title: "Catálogo", url: "https://example.com/catalogo" }],
+  });
+  expect(row).not.toHaveProperty("latestPosts");
+  const exported = csv([row]);
+  expect(exported).toContain('"Seguindo"');
+  expect(exported).toContain('"42"');
+  expect(exported).toContain('"https://example.com/catalogo"');
+});

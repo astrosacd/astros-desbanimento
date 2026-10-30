@@ -89,3 +89,9 @@ Exige o run e dataset originais e SUCCEEDED antes da classificação. Para o mar
 ### Exportação integral com not_found (30/10/2026)
 
 O JSON exportado completo fornecido pelo proprietário inclui três campos: sourceUsername, error="not_found" e errorDescription="Profile does not exist". A visualização anterior omitira os dois últimos. Acrescentado reconhecimento restrito desse objeto de três campos, somente em seguidores, fonte exata igual à pesquisa imutável, run original SUCCEEDED e dataset original com exatamente um item. Erros temporários/diferentes, descrição divergente, campos extras ou mistura com perfis não são liquidados como vazio. Mantém a devolução única via finish(rows=[]); nenhum crédito manual, reenvio ou SQL novo. Testes usam perfil sintético com a mesma estrutura exportada.
+
+### Detalhes públicos do perfil
+
+A consulta de perfis preserva seguidores, seguindo, publicações, destaques e vídeos IGTV quando retornados, incluindo valores zero. Mostra categoria, verificação, indicação comercial, biografia, site e até três links públicos validados. Aceita também as flags `private`/`verified` documentadas no retorno atual. O CSV acompanha esses campos. E-mails explicitamente publicados na biografia são extraídos localmente, sem chamada extra; nenhum dado de cadastro privado é consultado e os botões de contato não têm retorno garantido.
+
+A extração de seguidores continua sendo uma lista básica: não executa enriquecimento automático nem promete métricas ausentes. Campos não retornados não são inventados. Dados existentes mantêm seus snapshots; não há reconsulta, cobrança ou migração automática. A seção About continua desativada por ser um adicional pago. Posts completos, imagens/vídeos e perfis relacionados não são persistidos como payload bruto. A atualização requer publicar o frontend e substituir a Edge Function pelo standalone regenerado; não requer SQL novo.
