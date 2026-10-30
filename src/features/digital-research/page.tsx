@@ -190,7 +190,9 @@ export function ResearchDetails({
             <p className="digital-empty">
               {row.tool === "instagram_search"
                 ? "Nenhum perfil foi encontrado para esta busca."
-                : "Não foram encontrados resultados para o perfil informado. Confira o @; o perfil pode não existir, estar restrito ou não ter dados disponíveis nesta consulta."}{" "}
+                : row.tool === "instagram_followers"
+                  ? "Nenhum seguidor foi encontrado para o perfil informado. Confira o @; o perfil pode não existir ou não ter seguidores disponíveis nesta consulta."
+                  : "Não foram encontrados resultados para o perfil informado. Confira o @; o perfil pode não existir, estar restrito ou não ter dados disponíveis nesta consulta."}{" "}
               Pesquisa concluída sem perfis entregues. A reserva foi devolvida.
             </p>
           )}

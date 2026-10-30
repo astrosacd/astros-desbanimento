@@ -164,6 +164,29 @@ export function profiles(raw: unknown, limit: number): Profile[] {
     })
     .slice(0, limit);
 }
+/** A confirmed successful followers run can emit a source-only no-result marker.
+ * Match the complete observed shape and immutable source; never turn arbitrary errors into refunds.
+ */
+export function deliveredProfiles(
+  raw: unknown,
+  limit: number,
+  context: { tool: Tool; query: string },
+): Profile[] {
+  if (context.tool === "instagram_followers" && Array.isArray(raw) && raw.length === 1) {
+    const marker = raw[0];
+    if (
+      marker &&
+      typeof marker === "object" &&
+      !Array.isArray(marker) &&
+      Object.keys(marker).length === 1 &&
+      Object.hasOwn(marker, "sourceUsername") &&
+      typeof marker.sourceUsername === "string" &&
+      marker.sourceUsername === context.query
+    )
+      return [];
+  }
+  return profiles(raw, limit);
+}
 export function csv(rows: Profile[]) {
   const cell = (v: unknown) =>
     '"' +
