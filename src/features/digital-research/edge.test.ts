@@ -93,6 +93,14 @@ beforeEach(() => {
         if (scenario.startsWith("marker")) {
           expect(new URL(path).searchParams.has("fields")).toBe(false);
           expect(new URL(path).searchParams.get("clean")).toBe("false");
+          if (scenario === "marker-not-found")
+            return response([
+              {
+                sourceUsername: "synthetic.missing",
+                error: "not_found",
+                errorDescription: "Profile does not exist",
+              },
+            ]);
           if (scenario === "marker-error")
             return response([{ sourceUsername: "synthetic.missing", error: "blocked" }]);
           if (scenario === "marker-wrong") return response([{ sourceUsername: "other.profile" }]);
@@ -214,4 +222,13 @@ it("does not settle a marker from a different source, with errors, or from a non
     expect(calls.some((c) => c.operation === "finish" || c.operation === "reject")).toBe(false);
     expect(runs).toBe(0);
   }
+});
+
+it("settles the exact exported not_found response as zero deliveries using the existing lease", async () => {
+  scenario = "marker-not-found";
+  await invoke("refresh", { id });
+  const finish = calls.find((c) => c.operation === "finish");
+  expect(finish.input).toEqual({ id, lease: id, rows: [] });
+  expect(calls.some((c) => c.operation === "review" || c.operation === "reject")).toBe(false);
+  expect(runs).toBe(0);
 });

@@ -164,7 +164,7 @@ export function profiles(raw: unknown, limit: number): Profile[] {
     })
     .slice(0, limit);
 }
-/** A confirmed successful followers run can emit a source-only no-result marker.
+/** A confirmed successful followers run can emit a source-only or explicit not_found marker.
  * Match the complete observed shape and immutable source; never turn arbitrary errors into refunds.
  */
 export function deliveredProfiles(
@@ -178,7 +178,12 @@ export function deliveredProfiles(
       marker &&
       typeof marker === "object" &&
       !Array.isArray(marker) &&
-      Object.keys(marker).length === 1 &&
+      (Object.keys(marker).length === 1 ||
+        (Object.keys(marker).length === 3 &&
+          Object.hasOwn(marker, "error") &&
+          Object.hasOwn(marker, "errorDescription") &&
+          marker.error === "not_found" &&
+          marker.errorDescription === "Profile does not exist")) &&
       Object.hasOwn(marker, "sourceUsername") &&
       typeof marker.sourceUsername === "string" &&
       marker.sourceUsername === context.query

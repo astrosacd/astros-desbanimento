@@ -120,3 +120,24 @@ it("recognizes only the exact source-only followers marker for the requested sou
     ),
   ).toHaveLength(1);
 });
+
+it("recognizes the complete observed not_found output only for its exact source and tool", () => {
+  const context = { tool: "instagram_followers" as const, query: "synthetic.missing" };
+  const marker = {
+    sourceUsername: "synthetic.missing",
+    error: "not_found",
+    errorDescription: "Profile does not exist",
+  };
+  expect(deliveredProfiles([marker], 10, context)).toEqual([]);
+  for (const item of [
+    { ...marker, error: "blocked" },
+    { ...marker, errorDescription: "Temporary unavailable" },
+    { ...marker, sourceUsername: "someone.else" },
+    { ...marker, unexpected: "extra" },
+  ])
+    expect(() => deliveredProfiles([item], 10, context)).toThrow();
+  expect(() =>
+    deliveredProfiles([marker], 10, { ...context, tool: "instagram_profile" }),
+  ).toThrow();
+  expect(() => deliveredProfiles([marker, { username: "real.profile" }], 10, context)).toThrow();
+});
