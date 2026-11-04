@@ -186,3 +186,60 @@ it("preserves documented profile metrics, alternate flags and bounded public lin
   expect(exported).toContain('"42"');
   expect(exported).toContain('"https://example.com/catalogo"');
 });
+
+it("uses the documented usernames input for numeric IDs without rounding", () => {
+  const id = "12345678901234567890";
+  expect(criteria("instagram_profile", `ID:${id} ${id}`, 1).query).toBe(id);
+  expect(actorInput("instagram_profile", id, 1)).toEqual({
+    usernames: [id],
+    includeAboutSection: false,
+  });
+  expect(() => criteria("instagram_profile", "id:abc", 1)).toThrow();
+  expect(() => criteria("instagram_followers", `id:${id}`, 1)).toThrow();
+});
+
+it("keeps public activity and related suggestions bounded and separate from delivered profiles", () => {
+  const id = "12345678901234567890";
+  const raw = [
+    {
+      id,
+      username: "example",
+      latestPosts: [
+        ...[1, 2, 3, 4].map((n) => ({
+          url: `https://www.instagram.com/p/Post${n}/?tracking=1`,
+          timestamp: `2026-10-0${n}T12:00:00Z`,
+          likesCount: 0,
+          commentsCount: -1,
+          caption: "x".repeat(500),
+          childPosts: [{ secret: "do not copy" }],
+        })),
+        { url: "https://evil.example/p/x/", timestamp: "2026-11-01T12:00:00Z" },
+      ],
+      relatedProfiles: [
+        { username: "example" },
+        { username: "not/a/profile" },
+        ...Array.from({ length: 9 }, (_, n) => ({
+          username: `related${n}`,
+          full_name: "Public name",
+        })),
+      ],
+    },
+  ];
+  const rows = deliveredProfiles(raw, 1, { tool: "instagram_profile", query: id });
+  expect(rows).toHaveLength(1);
+  expect(rows[0].instagramId).toBe(id);
+  expect(rows[0].recentPosts).toHaveLength(3);
+  expect(rows[0].recentPosts?.[0]).toEqual({
+    url: "https://www.instagram.com/p/Post4/",
+    publishedAt: "2026-10-04T12:00:00.000Z",
+    caption: "x".repeat(260),
+    likes: 0,
+    comments: null,
+  });
+  expect(rows[0].relatedProfiles).toHaveLength(5);
+  expect(rows[0].relatedProfiles?.[0].username).toBe("related0");
+  expect(csv(rows)).toContain(`"'${id}"`);
+  expect(
+    deliveredProfiles(raw, 1, { tool: "instagram_followers", query: "a" })[0],
+  ).not.toHaveProperty("recentPosts");
+});

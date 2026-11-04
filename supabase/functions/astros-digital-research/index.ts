@@ -39,6 +39,7 @@ const json = (v: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
   });
+class ResponseTooLarge extends Error {}
 export async function boundedJson(response: Response, max = 2_000_000) {
   const reader = response.body?.getReader();
   if (!reader) throw Error("Resposta indisponível.");
@@ -50,7 +51,7 @@ export async function boundedJson(response: Response, max = 2_000_000) {
     size += p.value.length;
     if (size > max) {
       await reader.cancel();
-      throw Error("Resposta muito grande.");
+      throw new ResponseTooLarge("Resposta muito grande.");
     }
     parts.push(p.value);
   }
@@ -179,16 +180,28 @@ async function refresh(actor: string, id: string) {
           ? {}
           : {
               fields:
-                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription",
+                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
+                (claim.tool === "instagram_profile" ? ",id,latestPosts,relatedProfiles" : ""),
             }),
         format: "json",
         clean: claim.tool === "instagram_followers" ? "false" : "true",
         limit: String(claim.quantity),
         offset: "0",
       });
-      const items = await provider("datasets/" + claim.datasetId + "/items?" + p);
-      if (!items.ok) throw Error("Resultados indisponíveis.");
-      const raw = await boundedJson(items);
+      const readItems = async () => {
+        const items = await provider("datasets/" + claim.datasetId + "/items?" + p);
+        if (!items.ok) throw Error("Resultados indisponíveis.");
+        return boundedJson(items);
+      };
+      let raw;
+      try {
+        raw = await readItems();
+      } catch (error) {
+        if (claim.tool !== "instagram_profile" || !(error instanceof ResponseTooLarge)) throw error;
+        // Read the same dataset with the original projection; never restart the Actor.
+        p.set("fields", p.get("fields")!.replace(",latestPosts,relatedProfiles", ""));
+        raw = await readItems();
+      }
       let rows;
       try {
         const original = await rpc(actor, "status", { id });

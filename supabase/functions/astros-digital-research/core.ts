@@ -77,7 +77,14 @@ export function criteria(tool: Tool, value: unknown, quantity: unknown) {
       value
         .split(/[\s,;]+/)
         .filter(Boolean)
-        .map(username),
+        .map((entry) => {
+          if (tool === "instagram_profile" && /^id:/i.test(entry)) {
+            const id = instagramId(entry.slice(3));
+            if (!id) throw Error("Informe um ID numérico válido do Instagram.");
+            return id;
+          }
+          return username(entry);
+        }),
     ),
   ];
   if (
@@ -118,6 +125,67 @@ export function safeUrl(v: unknown) {
     return "";
   }
 }
+function instagramId(value: unknown) {
+  const id = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  return typeof id === "string" && /^[1-9][0-9]{0,29}$/.test(id) ? id : "";
+}
+function countMetric(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+type RecentPost = {
+  url: string;
+  publishedAt: string;
+  caption: string;
+  likes: number | null;
+  comments: number | null;
+};
+type RelatedProfile = { username: string; name: string };
+function recentPosts(raw: unknown): RecentPost[] {
+  if (!Array.isArray(raw)) return [];
+  const posts = new Map<string, RecentPost>();
+  for (const item of raw.slice(0, 12)) {
+    const match =
+      typeof item?.url === "string" &&
+      /^https:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]{1,64})\/?(?:[?#].*)?$/.exec(
+        item.url,
+      );
+    const timestamp =
+      typeof item?.timestamp === "string" && /^\d{4}-\d{2}-\d{2}T/.test(item.timestamp)
+        ? Date.parse(item.timestamp)
+        : NaN;
+    if (!match || !Number.isFinite(timestamp)) continue;
+    const url = `https://www.instagram.com/${match[1]}/${match[2]}/`;
+    if (!posts.has(url))
+      posts.set(url, {
+        url,
+        publishedAt: new Date(timestamp).toISOString(),
+        caption: clean(item.caption, 260),
+        likes: countMetric(item.likesCount),
+        comments: countMetric(item.commentsCount),
+      });
+  }
+  return [...posts.values()].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3);
+}
+function relatedProfiles(raw: unknown, own: string): RelatedProfile[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set([own]);
+  const rows: RelatedProfile[] = [];
+  for (const item of raw.slice(0, 24)) {
+    if (typeof item?.username !== "string" || !/^[A-Za-z0-9._]{1,30}$/.test(item.username))
+      continue;
+    let handle: string;
+    try {
+      handle = username(item.username);
+    } catch {
+      continue;
+    }
+    if (seen.has(handle)) continue;
+    seen.add(handle);
+    rows.push({ username: handle, name: clean(item.full_name ?? item.fullName, 100) });
+    if (rows.length === 5) break;
+  }
+  return rows;
+}
 export type Profile = {
   username: string;
   name: string;
@@ -136,8 +204,11 @@ export type Profile = {
   highlights?: number | null;
   videos?: number | null;
   links?: { title: string; url: string }[];
+  instagramId?: string;
+  recentPosts?: RecentPost[];
+  relatedProfiles?: RelatedProfile[];
 };
-export function profiles(raw: unknown, limit: number): Profile[] {
+export function profiles(raw: unknown, limit: number, includeDetails = false): Profile[] {
   if (!Array.isArray(raw) || raw.length > 101) throw Error("Resultados não confirmados.");
   const seen = new Set<string>();
   return raw
@@ -147,8 +218,6 @@ export function profiles(raw: unknown, limit: number): Profile[] {
       const handle = username(r.username ?? r.userName);
       if (seen.has(handle)) return [];
       seen.add(handle);
-      const metric = (v: unknown) =>
-        typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : null;
       const biography = clean(r.biography, 1200);
       const validMail = (v: unknown) => {
         const value = clean(v, 254);
@@ -177,16 +246,23 @@ export function profiles(raw: unknown, limit: number): Profile[] {
           website: safeUrl(r.externalUrl),
           email: mail,
           phone: clean(r.businessPhoneNumber ?? r.publicPhoneNumber, 50),
-          followers: metric(r.followersCount),
-          following: metric(r.followsCount ?? r.followingCount),
-          posts: metric(r.postsCount),
+          followers: countMetric(r.followersCount),
+          following: countMetric(r.followsCount ?? r.followingCount),
+          posts: countMetric(r.postsCount),
           private: r.isPrivate === true || r.private === true,
           verified: r.isVerified === true || r.verified === true,
           category: clean(r.businessCategoryName ?? r.categoryName, 120),
           business: r.isBusinessAccount === true,
-          highlights: metric(r.highlightReelCount),
-          videos: metric(r.igtvVideoCount),
+          highlights: countMetric(r.highlightReelCount),
+          videos: countMetric(r.igtvVideoCount),
           links,
+          ...(includeDetails
+            ? {
+                instagramId: instagramId(r.id),
+                recentPosts: recentPosts(r.latestPosts),
+                relatedProfiles: relatedProfiles(r.relatedProfiles, handle),
+              }
+            : {}),
         },
       ];
     })
@@ -218,7 +294,7 @@ export function deliveredProfiles(
     )
       return [];
   }
-  return profiles(raw, limit);
+  return profiles(raw, limit, context.tool === "instagram_profile");
 }
 export function csv(rows: Profile[]) {
   const cell = (v: unknown) =>
@@ -248,6 +324,10 @@ export function csv(rows: Profile[]) {
         "Destaques",
         "Vídeos IGTV",
         "Links públicos",
+        "ID do Instagram",
+        "Publicação mais recente encontrada (UTC)",
+        "Links de publicações recentes",
+        "Perfis relacionados",
       ],
       ...rows.map((r) => [
         r.username,
@@ -267,6 +347,10 @@ export function csv(rows: Profile[]) {
         r.highlights,
         r.videos,
         r.links?.map((link) => link.url).join(" | "),
+        r.instagramId ? "'" + r.instagramId : "",
+        r.recentPosts?.[0]?.publishedAt,
+        r.recentPosts?.map((post) => post.url).join(" | "),
+        r.relatedProfiles?.map((profile) => profile.username).join(" | "),
       ]),
     ]
       .map((row) => row.map(cell).join(";"))

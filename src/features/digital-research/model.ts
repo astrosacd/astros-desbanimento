@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Profile } from "../../../supabase/functions/astros-digital-research/core";
 export const toolSchema = z.enum(["instagram_search", "instagram_profile", "instagram_followers"]);
 export type Tool = z.infer<typeof toolSchema>;
 export const catalog = [
@@ -16,7 +17,7 @@ export const catalog = [
     description:
       "Consulte biografia, links e métricas disponíveis. Contatos públicos podem aparecer; e-mail e telefone de cadastro não são acessíveis.",
     input: "Perfis do Instagram (até 10)",
-    placeholder: "@perfil ou URL do perfil; separe por espaço",
+    placeholder: "@perfil, URL ou ID numérico; separe por espaço",
     max: 10,
   },
   {
@@ -67,25 +68,7 @@ export type Config = {
   hasKey?: boolean;
   pilot?: boolean;
 };
-export type Profile = {
-  username: string;
-  name: string;
-  url: string;
-  biography: string;
-  website: string;
-  email: string;
-  phone: string;
-  followers: number | null;
-  following: number | null;
-  posts: number | null;
-  private: boolean;
-  verified: boolean;
-  category?: string;
-  business?: boolean;
-  highlights?: number | null;
-  videos?: number | null;
-  links?: { title: string; url: string }[];
-};
+export type { Profile };
 export type Research = {
   id: string;
   tool: Tool;
