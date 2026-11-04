@@ -55,6 +55,7 @@ export function download(rows: Profile[]) {
 }
 export function ProfileCard({ row, action }: { row: Profile; action?: React.ReactNode }) {
   const [copyStatus, setCopyStatus] = useState("");
+  const latestPost = row.recentPosts?.[0];
   async function copyId() {
     if (!row.instagramId) return;
     try {
@@ -141,14 +142,14 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
 
         {row.private && <span>Perfil privado · informações limitadas</span>}
       </div>
-      {!!row.recentPosts?.length && (
+      {latestPost && (
         <details className="digital-profile-extra">
           <summary>Atividade recente</summary>
           <p className="digital-help">
-            Última publicação encontrada: {date(row.recentPosts[0].publishedAt)}
+            Última publicação encontrada: {date(latestPost.publishedAt)}
           </p>
           <ul>
-            {row.recentPosts.map((post) => (
+            {row.recentPosts?.map((post) => (
               <li key={post.url}>
                 <a href={post.url} target="_blank" rel="noreferrer">
                   {date(post.publishedAt)} <ExternalLink size={13} />
@@ -208,7 +209,7 @@ export function ResearchDetails({
   onClose: () => void;
   onRefresh: () => void;
   onSave?: (p: Profile) => void;
-  onConsult?: (p: Profile) => void;
+  onConsult?: ((p: Profile) => void) | undefined;
   busy: boolean;
   error?: string;
   autoProgress?: AutoProgress;

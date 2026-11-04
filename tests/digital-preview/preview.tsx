@@ -19,6 +19,9 @@ const profile = {
   posts: 180,
   private: false,
   verified: false,
+  instagramId: "12345678901234567890",
+  recentPosts: [{ url: "https://www.instagram.com/p/Synthetic1/", publishedAt: "2026-10-27T12:00:00Z", caption: "Publicação sintética para conferir a atividade recente.", likes: 0, comments: 2 }],
+  relatedProfiles: [{ username: "clinica.relacionada", name: "Clínica relacionada" }],
 };
 const detail = new URLSearchParams(location.search).has("results");
 const admin = new URLSearchParams(location.search).has("admin");
