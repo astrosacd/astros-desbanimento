@@ -54,6 +54,16 @@ export function download(rows: Profile[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function ProfileCard({ row, action }: { row: Profile; action?: React.ReactNode }) {
+  const [copyStatus, setCopyStatus] = useState("");
+  async function copyId() {
+    if (!row.instagramId) return;
+    try {
+      await navigator.clipboard.writeText(row.instagramId);
+      setCopyStatus("ID copiado.");
+    } catch {
+      setCopyStatus("Selecione o ID para copiá-lo manualmente.");
+    }
+  }
   return (
     <article className="digital-profile">
       <div className="digital-profile-title">
@@ -67,6 +77,17 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
           </a>
         </div>
       </div>
+      {row.instagramId && (
+        <div className="digital-actions">
+          <span>
+            ID do Instagram: <code>{row.instagramId}</code>
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={() => void copyId()}>
+            Copiar ID
+          </Button>
+          <span role="status">{copyStatus}</span>
+        </div>
+      )}
       {row.biography && <p className="digital-bio">{row.biography}</p>}
       <div className="digital-profile-labels">
         {row.verified && <span>Verificado</span>}
@@ -120,6 +141,55 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
 
         {row.private && <span>Perfil privado · informações limitadas</span>}
       </div>
+      {!!row.recentPosts?.length && (
+        <details className="digital-profile-extra">
+          <summary>Atividade recente</summary>
+          <p className="digital-help">
+            Última publicação encontrada: {date(row.recentPosts[0].publishedAt)}
+          </p>
+          <ul>
+            {row.recentPosts.map((post) => (
+              <li key={post.url}>
+                <a href={post.url} target="_blank" rel="noreferrer">
+                  {date(post.publishedAt)} <ExternalLink size={13} />
+                </a>
+                {post.caption && <p className="digital-bio">{post.caption}</p>}
+                {(post.likes != null || post.comments != null) && (
+                  <p className="digital-help">
+                    {[
+                      post.likes == null ? "" : `${post.likes.toLocaleString("pt-BR")} curtidas`,
+                      post.comments == null
+                        ? ""
+                        : `${post.comments.toLocaleString("pt-BR")} comentários`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {!!row.relatedProfiles?.length && (
+        <details className="digital-profile-extra">
+          <summary>Perfis relacionados</summary>
+          <ul>
+            {row.relatedProfiles.map((profile) => (
+              <li key={profile.username}>
+                <a
+                  href={`https://www.instagram.com/${profile.username}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  @{profile.username} <ExternalLink size={13} />
+                </a>
+                {profile.name && <span className="digital-help"> · {profile.name}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {action}
     </article>
   );
@@ -129,6 +199,7 @@ export function ResearchDetails({
   onClose,
   onRefresh,
   onSave,
+  onConsult,
   busy,
   error,
   autoProgress,
@@ -137,6 +208,7 @@ export function ResearchDetails({
   onClose: () => void;
   onRefresh: () => void;
   onSave?: (p: Profile) => void;
+  onConsult?: (p: Profile) => void;
   busy: boolean;
   error?: string;
   autoProgress?: AutoProgress;
@@ -227,11 +299,20 @@ export function ResearchDetails({
                 key={p.username}
                 row={p}
                 action={
-                  onSave && (
-                    <Button variant="outline" disabled={busy} onClick={() => onSave(p)}>
-                      <Bookmark size={16} />
-                      Salvar em coleção
-                    </Button>
+                  (onSave || onConsult) && (
+                    <div className="digital-actions">
+                      {onConsult && row.tool === "instagram_followers" && (
+                        <Button variant="outline" disabled={busy} onClick={() => onConsult(p)}>
+                          Consultar perfil
+                        </Button>
+                      )}
+                      {onSave && (
+                        <Button variant="outline" disabled={busy} onClick={() => onSave(p)}>
+                          <Bookmark size={16} />
+                          Salvar em coleção
+                        </Button>
+                      )}
+                    </div>
                   )
                 }
               />
@@ -302,6 +383,15 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
   });
   const selected = catalog.find((t) => t.id === tool),
     settings = tool ? config.data?.tools[tool] : null;
+  const profileSettings = config.data?.tools.instagram_profile;
+  const canConsultFollower = !!(
+    config.data?.installed &&
+    config.data.enabled &&
+    profileSettings?.enabled &&
+    profileSettings.unitCents > 0 &&
+    profileSettings.maxQuantity >= 1 &&
+    !attempt
+  );
   const amount =
     tool === "instagram_profile"
       ? [
@@ -554,8 +644,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               )}
               {tool !== "instagram_search" && (
                 <p className="digital-help">
-                  Confira o @ antes de continuar. O formato é validado aqui; a existência e a
-                  disponibilidade do perfil só podem ser confirmadas durante a consulta.
+                  {tool === "instagram_profile"
+                    ? "Confira o @, o link ou o ID numérico antes de continuar."
+                    : "Confira o @ antes de continuar."}{" "}
+                  O formato é validado aqui; a existência e a disponibilidade do perfil só podem ser
+                  confirmadas durante a consulta.
                 </p>
               )}
               <p className="digital-help">
@@ -742,6 +835,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               <Dialog.Title>Confirmar pesquisa</Dialog.Title>
               <Dialog.Description>
                 {selected?.title} · até {amount} perfil(is).
+                {tool === "instagram_profile" && <> Perfis informados: {query}.</>}
               </Dialog.Description>
               <p>
                 Será reservado até <strong>{money(amount * (settings?.unitCents ?? 0))}</strong> da
@@ -772,6 +866,19 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
           error={error}
           onClose={() => setDetail(null)}
           onRefresh={refresh}
+          onConsult={
+            canConsultFollower
+              ? (p) => {
+                  if (lock.current) return;
+                  setDetail(null);
+                  setError("");
+                  setTool("instagram_profile");
+                  setQuery("@" + p.username);
+                  setTab("tools");
+                  setConfirm(true);
+                }
+              : undefined
+          }
           onSave={(p) => {
             setSaving(p);
             setCollection("Minha coleção");

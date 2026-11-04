@@ -471,3 +471,20 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.digital-profile-extra {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  overflow-wrap: anywhere;
+}
+.digital-profile-extra summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.digital-profile-extra ul {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}

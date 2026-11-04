@@ -274,3 +274,37 @@ it("shows following and additional public details without requiring Instagram na
     "https://example.com/catalogo",
   );
 });
+
+it("opens a priced confirmation from one follower without starting automatically", async () => {
+  const research = {
+    id,
+    tool: "instagram_followers",
+    query: "source",
+    quantity: 1,
+    delivered: 1,
+    state: "completed",
+    reserved_cents: 10,
+    charged_cents: 10,
+    created_at: new Date().toISOString(),
+    rows: [{ username: "lead", name: "Lead", url: "https://www.instagram.com/lead/" }],
+  };
+  api.history.mockResolvedValue({ rows: [research] });
+  api.status.mockResolvedValue(research);
+  show();
+  await screen.findByText("Buscar perfis");
+  fireEvent.click(screen.getByRole("button", { name: "Minhas pesquisas" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Extrair seguidores.*source/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Consultar perfil" }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getByText(/Perfis informados: @lead/)).toBeTruthy();
+  expect(within(dialog).getByText("R$ 0,10")).toBeTruthy();
+  expect(api.start).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar e pesquisar" }));
+  await waitFor(() => expect(api.start).toHaveBeenCalledTimes(1));
+  expect(api.start.mock.calls[0][0].data).toMatchObject({
+    tool: "instagram_profile",
+    query: "@lead",
+    quantity: 1,
+    unitCents: 10,
+  });
+});
