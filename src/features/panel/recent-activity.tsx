@@ -7,11 +7,13 @@ import { getSubmissionHistory } from "../submissions/actions";
 import { smsHistory } from "../sms/actions";
 import { socialHistory } from "../social/actions";
 import { prospectRequests, cnpjHistory } from "../prospecting/actions";
+import { digitalHistory } from "../digital-research/actions";
+import { catalog, type Research } from "../digital-research/model";
 import { getWallet } from "../payments/actions";
 import { smsStates } from "../sms/types";
 import { states as socialStates } from "../social/types";
 
-type Area = "desbanimento" | "sms" | "social" | "prospecting";
+type Area = "desbanimento" | "sms" | "social" | "prospecting" | "digital";
 export type RecentOrder = {
   id: string;
   area: Area;
@@ -19,13 +21,14 @@ export type RecentOrder = {
   state: string;
   label: string;
   date: string;
-  to: "/solicitacoes" | "/ativacoes-sms" | "/redes-sociais" | "/prospeccao";
+  to: "/solicitacoes" | "/ativacoes-sms" | "/redes-sociais" | "/prospeccao" | "/pesquisa-digital";
 };
 const names = {
   desbanimento: "Desbanimento",
   sms: "Ativações SMS",
   social: "Redes sociais",
   prospecting: "Prospecção",
+  digital: "Pesquisa Digital",
 };
 const submissionLabels: Record<string, string> = {
   completed: "Envio concluído",
@@ -39,6 +42,21 @@ const prospectLabels: Record<string, string> = {
   queued: "Na fila",
   failed: "Não concluída",
 };
+const digitalLabels: Record<Research["state"], string> = {
+  dispatching: "Confirmando envio",
+  running: "Em andamento",
+  completed: "Concluída",
+  review: "Em conferência",
+  rejected: "Não iniciada · saldo devolvido",
+};
+const sourceAreas: Area[] = [
+  "desbanimento",
+  "sms",
+  "social",
+  "prospecting",
+  "prospecting",
+  "digital",
+];
 const money = (c: number) =>
   (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export function recentOrders(groups: RecentOrder[][], area = "all") {
@@ -49,17 +67,15 @@ export function recentOrders(groups: RecentOrder[][], area = "all") {
     .slice(0, 8);
 }
 const requestRows = (result: any, source: string): RecentOrder[] =>
-  (result.requests ?? [])
-    .slice(0, 3)
-    .map((r: any) => ({
-      id: r.id,
-      area: "prospecting",
-      title: `${source} · ${r.criteria?.niche || (r.operation === "enrich" ? "Enriquecimento de empresa" : "Consulta de empresas")}`,
-      state: r.state,
-      label: prospectLabels[r.state] || "Situação em atualização",
-      date: r.created_at,
-      to: "/prospeccao",
-    }));
+  (result.requests ?? []).slice(0, 3).map((r: any) => ({
+    id: r.id,
+    area: "prospecting",
+    title: `${source} · ${r.criteria?.niche || (r.operation === "enrich" ? "Enriquecimento de empresa" : "Consulta de empresas")}`,
+    state: r.state,
+    label: prospectLabels[r.state] || "Situação em atualização",
+    date: r.created_at,
+    to: "/prospeccao",
+  }));
 export function RecentActivity() {
   const { client } = useRouteContext({ from: "__root__" });
   const [area, setArea] = useState("all");
@@ -68,17 +84,15 @@ export function RecentActivity() {
       {
         queryKey: ["home-orders", client?.id, "desbanimento"],
         queryFn: async (): Promise<RecentOrder[]> =>
-          (await getSubmissionHistory())
-            .slice(0, 3)
-            .map((r) => ({
-              id: r.id,
-              area: "desbanimento",
-              title: "Solicitação de desbanimento",
-              state: r.state,
-              label: submissionLabels[r.state] || "Situação em atualização",
-              date: r.created_at,
-              to: "/solicitacoes",
-            })),
+          (await getSubmissionHistory()).slice(0, 3).map((r) => ({
+            id: r.id,
+            area: "desbanimento",
+            title: "Solicitação de desbanimento",
+            state: r.state,
+            label: submissionLabels[r.state] || "Situação em atualização",
+            date: r.created_at,
+            to: "/solicitacoes",
+          })),
       },
       {
         queryKey: ["home-orders", client?.id, "sms"],
@@ -123,6 +137,19 @@ export function RecentActivity() {
         queryKey: ["home-orders", client?.id, "cnpj"],
         queryFn: async () => requestRows(await cnpjHistory({ data: { page: 0 } }), "CNPJ"),
       },
+      {
+        queryKey: ["home-orders", client?.id, "digital"],
+        queryFn: async (): Promise<RecentOrder[]> =>
+          (await digitalHistory({ data: { page: 0 } })).rows.slice(0, 3).map((r) => ({
+            id: r.id,
+            area: "digital",
+            title: catalog.find((tool) => tool.id === r.tool)?.title ?? "Pesquisa de perfis",
+            state: r.state,
+            label: digitalLabels[r.state] ?? "Situação em atualização",
+            date: r.created_at,
+            to: "/pesquisa-digital",
+          })),
+      },
     ].map((q) => ({
       ...q,
       enabled: !!client?.id,
@@ -143,10 +170,7 @@ export function RecentActivity() {
     sources.map((q) => q.data ?? []),
     area,
   );
-  const selected = sources.filter(
-    (_, i) =>
-      area === "all" || ["desbanimento", "sms", "social", "prospecting", "prospecting"][i] === area,
-  );
+  const selected = sources.filter((_, i) => area === "all" || sourceAreas[i] === area);
   const loading = selected.some((q) => q.isPending),
     errors = selected.filter((q) => q.isError).length;
   return (

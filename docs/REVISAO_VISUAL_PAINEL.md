@@ -4,8 +4,8 @@ Alteração de apresentação, sem SQL, Edge Functions, preços, saldos ou mudan
 
 ## Mudanças
 
-- Início com saudação curta, carteira, quatro atalhos de serviços e acesso a suporte/afiliação. Cards com texto mais curto e cor por área; quatro colunas em monitores largos, duas em telas intermediárias e uma no celular.
-- Pedidos recentes mostram até três registros de cada fonte (envios de desbanimento, SMS, redes sociais, Maps e CNPJ), ordenados por criação, com até oito no resumo. O filtro seleciona entre os registros recentes carregados; não é uma busca em todo o histórico. O link abre o módulo, onde continuam os filtros e detalhes completos.
+- Início com saudação curta, carteira, cinco atalhos de serviços e acesso a suporte/afiliação. Cards com texto mais curto e cor por área; quatro colunas em monitores largos, duas em telas intermediárias e uma no celular.
+- Pedidos recentes mostram até três registros de cada fonte (envios de desbanimento, SMS, redes sociais, Maps, CNPJ e Pesquisa Digital), ordenados por criação, com até oito no resumo. O filtro seleciona entre os registros recentes carregados; não é uma busca em todo o histórico. O link abre o módulo, onde continuam os filtros e detalhes completos.
 - As consultas reutilizam as ações autenticadas de leitura existentes, sem compras, buscas pagas, cancelamentos ou chamadas de conferência ao fornecedor. Retentativa automática desligada; atualização a cada minuto somente em primeiro plano. Chaves de cache incluem a conta. A carteira reutiliza o cache do resumo de saldo.
 - A projeção dos pedidos guarda apenas identificador, título, módulo, data e situação. Não guarda código SMS, telefone, credenciais ou dados de outro cliente. Falha de uma fonte não é apresentada como ausência de pedidos; as fontes que responderam continuam visíveis.
 - Atividade da carteira usa os movimentos existentes. Débito de saldo não é apresentado como pedido concluído. Comissão continua diferenciada de recarga e estorno.
@@ -21,3 +21,9 @@ Testes focados nos componentes e fluxos preservados: Início, navegação, limit
 Conferência visual local com componentes reais renderizados, ações e contas sintéticas, sem acessar dados reais ou movimentar dinheiro. O ambiente de captura inclui CSS compilado e Chromium. Capturas estáticas não substituem autenticação real, integrações, testes em aparelhos físicos ou interações completas de todos os módulos.
 
 Resultado desta revisão: **85 testes passaram em 21 arquivos**, tipos sem erro. A verificação final de layout passou em **99 combinações**, sem aumento da largura da página: 11 estados em 320×800, 375×812, 430×850, 667×375, 768×1024, 850×1000, 1024×768, 1440×1000 e 1920×1080. Estados: Início com registros e vazio, carteira com ajuste, afiliação com estorno, histórico de envios, SMS, detalhe SMS aberto, histórico social, aviso de manutenção, Início administrativo e gaveta de navegação aberta. Capturas de computador/celular conferidas visualmente; o Início administrativo usa a estrutura de shell e o componente real, sem consultar fornecedor/saldo administrativo. A gaveta foi capturada após aguardar a animação. Os valores das capturas são exclusivamente exemplos de teste.
+
+
+## Integração da Pesquisa Digital nos pedidos recentes
+A Pesquisa Digital participa do filtro de áreas e do resumo com até três pesquisas da primeira página de histórico autenticado. Os estados de envio, andamento, conclusão, conferência e recusa seguem o módulo. A projeção não guarda critérios da busca, perfis retornados, IDs de execução ou valores de reserva; o link abre o módulo. A atualização do resumo lê somente o histórico salvo, sem iniciar pesquisas ou conferir a Apify. Falhas de uma fonte ficam restritas à área selecionada e não impedem os demais históricos.
+
+Revisão de conexão no código: rota e menu cliente, atalho inicial, login, termos, menu administrativo, carteira, financeiro e complemento da exclusão já incluem o módulo. A falha corrigida foi a ausência da fonte de histórico e da opção de filtro no Início. Controles da Pesquisa Digital continuam no próprio ADM; esta alteração não amplia controles globais, monitoramento público ou notificações.
