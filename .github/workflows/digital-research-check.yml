@@ -5,7 +5,7 @@ on:
       - 'src/features/digital-research/**'
       - 'src/routes/pesquisa-digital.tsx'
       - 'src/features/demo/shell.tsx'
-      - 'src/features/panel/home.tsx'
+      - 'src/features/panel/**'
       - 'src/features/finance/**'
       - 'src/features/payments/wallet.tsx'
       - 'supabase/functions/astros-digital-research/**'

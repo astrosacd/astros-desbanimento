@@ -8,6 +8,9 @@ const api = vi.hoisted(() => ({
   maps: vi.fn(),
   cnpj: vi.fn(),
   wallet: vi.fn(),
+  digital: vi.fn(),
+  startDigital: vi.fn(),
+  refreshDigital: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
   useRouteContext: () => ({ client: { id: "own-account" } }),
@@ -21,6 +24,11 @@ vi.mock("../submissions/actions", () => ({ getSubmissionHistory: api.submissions
 vi.mock("../sms/actions", () => ({ smsHistory: api.sms }));
 vi.mock("../social/actions", () => ({ socialHistory: api.social }));
 vi.mock("../prospecting/actions", () => ({ prospectRequests: api.maps, cnpjHistory: api.cnpj }));
+vi.mock("../digital-research/actions", () => ({
+  digitalHistory: api.digital,
+  digitalStart: api.startDigital,
+  digitalRefresh: api.refreshDigital,
+}));
 vi.mock("../payments/actions", () => ({ getWallet: api.wallet }));
 import { RecentActivity } from "./recent-activity";
 function mount() {
@@ -40,6 +48,7 @@ beforeEach(() => {
   api.maps.mockResolvedValue({ requests: [] });
   api.cnpj.mockResolvedValue({ requests: [] });
   api.wallet.mockResolvedValue({ movements: [] });
+  api.digital.mockResolvedValue({ rows: [] });
 });
 afterEach(cleanup);
 it("shows real order states, filters by module and projects out SMS codes and phone numbers", async () => {
@@ -116,4 +125,59 @@ it("links each wallet activity to the wallet without presenting a debit as a com
     "href",
     "/carteira",
   );
+});
+
+it("includes digital research in recent orders and the area filter without exposing result payloads", async () => {
+  api.digital.mockResolvedValue({
+    rows: [
+      {
+        id: "research-1",
+        tool: "instagram_profile",
+        state: "review",
+        created_at: "2026-11-05T10:00:00Z",
+        query: "PRIVATE-QUERY",
+        rows: [{ username: "PRIVATE-PROFILE" }],
+        run_id: "PRIVATE-RUN",
+      },
+    ],
+  });
+  const client = mount();
+  expect(await screen.findByText("Consultar perfis e contatos públicos")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Filtrar por área"), { target: { value: "digital" } });
+  expect(screen.getByText("Em conferência")).toBeTruthy();
+  expect(
+    screen.getByRole("link", { name: "Acompanhar Consultar perfis e contatos públicos" }),
+  ).toHaveAttribute("href", "/pesquisa-digital");
+  const snapshot = JSON.stringify(client.getQueryData(["home-orders", "own-account", "digital"]));
+  for (const privateValue of ["PRIVATE-QUERY", "PRIVATE-PROFILE", "PRIVATE-RUN"])
+    expect(snapshot).not.toContain(privateValue);
+  expect(api.digital).toHaveBeenCalledWith({ data: { page: 0 } });
+  expect(api.startDigital).not.toHaveBeenCalled();
+  expect(api.refreshDigital).not.toHaveBeenCalled();
+});
+
+it("isolates digital history failure when selecting another area and keeps history refresh read-only", async () => {
+  api.digital.mockRejectedValue(Error("PRIVATE-ERROR"));
+  api.maps.mockResolvedValue({
+    requests: [
+      {
+        id: "maps-new",
+        state: "completed",
+        created_at: "2026-11-05T09:00:00Z",
+        criteria: { niche: "Lojas" },
+      },
+    ],
+  });
+  mount();
+  await screen.findByText("Maps · Lojas");
+  await screen.findByText(/Parte do histórico/);
+  fireEvent.change(screen.getByLabelText("Filtrar por área"), { target: { value: "prospecting" } });
+  expect(screen.queryByText(/Parte do histórico/)).toBeNull();
+  fireEvent.change(screen.getByLabelText("Filtrar por área"), { target: { value: "digital" } });
+  expect(screen.getByText("Histórico temporariamente indisponível")).toBeTruthy();
+  expect(screen.queryByText("PRIVATE-ERROR")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Atualizar pedidos recentes" }));
+  await waitFor(() => expect(api.digital.mock.calls.length).toBeGreaterThan(1));
+  expect(api.startDigital).not.toHaveBeenCalled();
+  expect(api.refreshDigital).not.toHaveBeenCalled();
 });
