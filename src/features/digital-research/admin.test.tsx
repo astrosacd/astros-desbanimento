@@ -88,3 +88,28 @@ it("requires an explicit block/allow choice for the exact account and resets tha
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "outro@example.com" } });
   expect(button).toBeDisabled();
 });
+
+it("keeps the paid About add-on opt-in and only saves it after the administrator confirms", () => {
+  const save = vi.fn();
+  render(
+    <Settings
+      config={{
+        ...config,
+        tools: {
+          ...config.tools,
+          instagram_profile: { ...config.tools.instagram_profile, unitCents: 10 },
+        },
+      }}
+      busy={false}
+      saveError=""
+      message=""
+      onSave={save}
+    />,
+  );
+  const toggle = screen.getByRole("checkbox", { name: /Sobre esta conta/ });
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  expect(save).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Salvar configuração" }));
+  expect(save.mock.calls[0][0].tools.instagram_profile.includeAboutSection).toBe(true);
+});

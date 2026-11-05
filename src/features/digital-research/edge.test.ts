@@ -39,6 +39,11 @@ beforeEach(() => {
       if (path.includes("/rpc/astros_digital_call")) {
         const b = JSON.parse(init.body);
         calls.push(b);
+        if (b.operation === "config")
+          return response({
+            version: scenario === "config-race" ? 2 : 1,
+            tools: { instagram_profile: { includeAboutSection: scenario === "about-on" } },
+          });
         if (b.operation === "start") {
           const execute = !executed;
           executed = true;
@@ -61,6 +66,8 @@ beforeEach(() => {
       }
       if (path.startsWith("https://api.apify.com/v2/acts/")) {
         runs++;
+        if (scenario === "about-on" || scenario === "about-off")
+          expect(JSON.parse(init.body).includeAboutSection).toBe(scenario === "about-on");
         expect(init.headers.Authorization).toBe("Bearer private-apify-key");
         expect(path).not.toContain("private-apify-key");
         expect(path).toContain("maxTotalChargeUsd=0.2");
@@ -231,4 +238,21 @@ it("settles the exact exported not_found response as zero deliveries using the e
   expect(finish.input).toEqual({ id, lease: id, rows: [] });
   expect(calls.some((c) => c.operation === "review" || c.operation === "reject")).toBe(false);
   expect(runs).toBe(0);
+});
+
+it("enables paid About only from the versioned saved config and never replays the accepted UUID", async () => {
+  for (const mode of ["about-on", "about-off"]) {
+    scenario = mode;
+    executed = false;
+    runs = 0;
+    await invoke("start", { ...data, tool: "instagram_profile", query: "example", quantity: 1 });
+    await invoke("start", { ...data, tool: "instagram_profile", query: "example", quantity: 1 });
+    expect(runs).toBe(1);
+  }
+  scenario = "config-race";
+  executed = false;
+  runs = 0;
+  await invoke("start", { ...data, tool: "instagram_profile", query: "example", quantity: 1 });
+  expect(runs).toBe(0);
+  expect(calls.some((call) => call.operation === "reject")).toBe(true);
 });

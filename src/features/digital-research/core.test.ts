@@ -228,18 +228,49 @@ it("keeps public activity and related suggestions bounded and separate from deli
   const rows = deliveredProfiles(raw, 1, { tool: "instagram_profile", query: id });
   expect(rows).toHaveLength(1);
   expect(rows[0].instagramId).toBe(id);
-  expect(rows[0].recentPosts).toHaveLength(3);
-  expect(rows[0].recentPosts?.[0]).toEqual({
+  expect(rows[0].recentPosts).toHaveLength(4);
+  expect(rows[0].recentPosts?.[0]).toMatchObject({
     url: "https://www.instagram.com/p/Post4/",
     publishedAt: "2026-10-04T12:00:00.000Z",
-    caption: "x".repeat(260),
+    caption: "x".repeat(500),
     likes: 0,
     comments: null,
   });
-  expect(rows[0].relatedProfiles).toHaveLength(5);
+  expect(rows[0].relatedProfiles).toHaveLength(9);
   expect(rows[0].relatedProfiles?.[0].username).toBe("related0");
   expect(csv(rows)).toContain(`"'${id}"`);
   expect(
     deliveredProfiles(raw, 1, { tool: "instagram_followers", query: "a" })[0],
   ).not.toHaveProperty("recentPosts");
+});
+
+it("projects available public about fields, approved media and larger lists without raw payloads", () => {
+  const [row] = deliveredProfiles(
+    [
+      {
+        username: "example",
+        profilePicUrlHD: "https://scontent.cdninstagram.com/avatar.jpg",
+        about: {
+          country: "Brasil",
+          date_joined: "May 2020",
+          former_usernames: 0,
+          secret: "private",
+        },
+        latestPosts: Array.from({ length: 12 }, (_, n) => ({
+          url: `https://www.instagram.com/p/Post${n}/`,
+          timestamp: "2026-11-01T10:00:00Z",
+          displayUrl: n ? "https://scontent.cdninstagram.com/photo.jpg" : "https://evil.example/x",
+          videoViewCount: 0,
+        })),
+      },
+    ],
+    1,
+    { tool: "instagram_profile", query: "example" },
+  );
+  expect(row.photo).toBe("https://scontent.cdninstagram.com/avatar.jpg");
+  expect(row.about).toEqual({ country: "Brasil", date_joined: "May 2020", former_usernames: 0 });
+  expect(row.recentPosts).toHaveLength(12);
+  expect(row.recentPosts?.[0].image).toBe("");
+  expect(row.recentPosts?.[0].views).toBe(0);
+  expect(actorInput("instagram_profile", "example", 1, true).includeAboutSection).toBe(true);
 });

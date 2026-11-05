@@ -67,7 +67,7 @@ const settings = {
   tools: Object.fromEntries(
     Object.entries(cfg.tools).map(([k, v]) => [
       k,
-      { ...v, enabled: true, unitCents: 10, maxUsdCents: 20 },
+      { ...v, enabled: true, unitCents: 10, maxUsdCents: 20, ...(k === "instagram_profile" ? { includeAboutSection: true } : {}) },
     ]),
   ),
 };
@@ -77,6 +77,7 @@ await rejection(() => call(admin, "admin-save", settings), /complemento financei
 await load("20261028_digital_finance.sql");
 await call(admin, "admin-save", settings);
 cfg = await call(admin, "admin-config");
+assert.equal(cfg.tools.instagram_profile.includeAboutSection, true);
 const job = (tool = "instagram_search", quantity = 10) => ({
   requestId: randomUUID(),
   tool,

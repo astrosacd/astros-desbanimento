@@ -379,6 +379,24 @@ export function Settings({
                 preço maior que zero.
               </small>
             </label>
+            {t.id === "instagram_profile" && (
+              <label>
+                <span>
+                  <input
+                    type="checkbox"
+                    checked={v.includeAboutSection === true}
+                    onChange={(e) => updateTool(t.id, { includeAboutSection: e.target.checked })}
+                  />
+                  Incluir “Sobre esta conta” nas novas consultas
+                </span>
+                <small className="digital-field-help">
+                  Adicional pago da Apify, disponível para planos pagos. Pode trazer país, data de
+                  entrada, verificação e alterações de nome quando disponíveis. Ative somente com
+                  plano compatível e ajuste o preço por perfil e o limite em US$. O preço exibido ao
+                  cliente continua sendo o preço total por perfil. Não altera consultas anteriores.
+                </small>
+              </label>
+            )}
             <div className="digital-admin-grid">
               <label>
                 Preço por perfil (centavos de R$)
