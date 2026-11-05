@@ -1,5 +1,19 @@
 import "./style.css";
 const help = {
+  digital: [
+    [
+      "Escolha a ferramenta",
+      "Busque perfis por palavra-chave, consulte um @, link ou ID, ou extraia seguidores de um perfil público.",
+    ],
+    [
+      "Confira antes de pesquisar",
+      "Veja o preço e a quantidade antes de confirmar. A cobrança considera os perfis entregues, mesmo sem contato. O restante da reserva é devolvido após a conclusão confirmada.",
+    ],
+    [
+      "Encontre seus resultados",
+      "Abra Minhas pesquisas para acompanhar e exportar. Em Perfis salvos, organize os perfis em coleções sem iniciar outra consulta.",
+    ],
+  ],
   prospecting: [
     [
       "Como começar",

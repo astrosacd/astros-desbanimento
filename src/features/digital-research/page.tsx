@@ -29,6 +29,7 @@ import {
 } from "./actions";
 import { csv, criteria } from "../../../supabase/functions/astros-digital-research/core";
 import { useAutoProgress, autoProgressText, type AutoProgress } from "./use-auto-progress";
+import { QuickHelp } from "../workspace/help";
 import "./style.css";
 export const money = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n / 100);
@@ -104,7 +105,10 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
       <div className="digital-profile-labels">
         {row.verified && <span>Verificado</span>}
         {row.business && <span>Conta comercial</span>}
-        {row.category && <span>{row.category}</span>}
+        {row.category &&
+          !["none", "null", "undefined"].includes(row.category.trim().toLowerCase()) && (
+            <span>{row.category}</span>
+          )}
       </div>
       {[row.followers, row.following, row.posts, row.highlights, row.videos].some(
         (v) => v != null,
@@ -216,7 +220,7 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
           <p className="digital-help">
             Última publicação encontrada: {date(latestPost.publishedAt)}
           </p>
-          <ul>
+          <ul className="digital-posts">
             {row.recentPosts?.map((post) => (
               <li key={post.url}>
                 <a href={post.url} target="_blank" rel="noreferrer">
@@ -236,10 +240,27 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
                 )}
                 {(post.type || post.location) && (
                   <p className="digital-help">
-                    {[post.type, post.location].filter(Boolean).join(" · ")}
+                    {[
+                      post.type
+                        ? ((
+                            { Video: "Vídeo", Image: "Imagem", Sidecar: "Carrossel" } as Record<
+                              string,
+                              string
+                            >
+                          )[post.type] ?? "Publicação")
+                        : "",
+                      post.location,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 )}
-                {post.caption && <p className="digital-bio">{post.caption}</p>}
+                {post.caption && (
+                  <details className="digital-caption">
+                    <summary>Ver legenda</summary>
+                    <p className="digital-bio">{post.caption}</p>
+                  </details>
+                )}
                 {(post.likes != null || post.comments != null || post.views != null) && (
                   <p className="digital-help">
                     {[
@@ -336,13 +357,22 @@ export function ResearchDetails({
           )}
           <p className="digital-help">Referência: {row.id}</p>
           {row.rows && row.rows.length > 0 && (
-            <p className="digital-notice">
-              {row.tool === "instagram_followers"
-                ? "Esta lista mostra quem segue o perfil pesquisado. Dados de contato e métricas de cada pessoa não são consultados automaticamente."
-                : "Os resultados mostram os dados públicos disponíveis no momento da consulta. E-mail e telefone usados para cadastrar a conta não são públicos. Contatos divulgados na biografia podem aparecer; os botões E-mail/Ligar do Instagram não têm retorno garantido."}{" "}
-              Você pode exportar todos os resultados em CSV ou guardar apenas os perfis escolhidos
-              em Perfis salvos, organizados em coleções.
-            </p>
+            <div className="digital-notice">
+              <p>
+                {row.tool === "instagram_followers"
+                  ? "Esta lista mostra seguidores. Para obter mais detalhes de uma pessoa, use Consultar perfil e confira o preço."
+                  : "Dados públicos disponíveis nesta consulta. E-mail e telefone podem não estar disponíveis."}
+              </p>
+              <details className="digital-data-help">
+                <summary>Sobre os dados e a exportação</summary>
+                <p>
+                  A consulta não acessa e-mail ou telefone privados de cadastro. Os botões
+                  E-mail/Ligar do Instagram não têm retorno garantido. Na lista de seguidores,
+                  métricas e contatos de cada pessoa não são consultados automaticamente. Use
+                  Exportar CSV para baixar os resultados ou salve os perfis escolhidos em coleções.
+                </p>
+              </details>
+            </div>
           )}
           <div className="digital-actions">
             <span>
@@ -372,10 +402,9 @@ export function ResearchDetails({
           )}
           {["review", "dispatching"].includes(row.state) && (
             <p className="digital-notice">
-              Não foi possível confirmar o resultado desta pesquisa. Ela precisa de conferência; não
-              significa que a extração continua em execução. Use Conferir andamento ou fale com o
-              suporte informando a referência acima. Não inicie outra para repetir o envio. A
-              reserva aguarda confirmação.
+              O resultado ainda precisa ser confirmado. Use Conferir andamento ou informe a
+              referência ao suporte. A reserva aguarda essa confirmação. Não inicie outra pesquisa
+              para repetir esta tentativa.
             </p>
           )}
           {row.state === "completed" && !row.rows?.length && (
@@ -601,10 +630,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
     <div className="digital-research">
       <header className="digital-heading">
         <span className="eyebrow">ASTROS / PESQUISA DIGITAL</span>
-        <h1>Encontre. Confira. Organize.</h1>
-        <p>Pesquise perfis e guarde as informações úteis para o seu trabalho.</p>
+        <h1>Pesquisa Digital</h1>
+        <p>Encontre perfis do Instagram, consulte os detalhes e salve o que interessa.</p>
       </header>
       <BalanceSummary />
+      <QuickHelp module="digital" />
       <nav className="digital-tabs" aria-label="Pesquisa digital">
         {[
           { id: "tools" as const, title: "Ferramentas", Icon: Search },
@@ -684,6 +714,9 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                       onClick={() => {
                         setTool(t.id);
                         setQuery("");
+                        requestAnimationFrame(() =>
+                          document.getElementById("digital-query")?.focus(),
+                        );
                         setQuantity(Math.min(10, s?.maxQuantity ?? 10));
                         setError("");
                       }}
@@ -709,6 +742,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                   ? `Perfis do Instagram (até ${settings?.maxQuantity ?? 10})`
                   : selected.input}
                 <textarea
+                  id="digital-query"
                   className="field"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -735,6 +769,18 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               ) : (
                 <p>
                   {amount} perfil(is) informado(s). Máximo: {settings?.maxQuantity ?? 10}.
+                </p>
+              )}
+              {amount > (settings?.maxQuantity ?? selected.max) && (
+                <p role="alert" className="digital-error">
+                  Escolha até {settings?.maxQuantity ?? selected.max}{" "}
+                  {tool === "instagram_profile" ? "perfis" : "resultados"} por pesquisa para
+                  continuar.
+                </p>
+              )}
+              {tool !== "instagram_profile" && amount < 1 && (
+                <p role="alert" className="digital-error">
+                  Informe pelo menos 1 resultado para continuar.
                 </p>
               )}
               {tool !== "instagram_search" && (

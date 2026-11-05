@@ -602,6 +602,7 @@ export function SocialPage() {
                 <div className="social-live-mobile">
                   {!unavailable && <LivePrice {...livePriceProps} />}
                 </div>
+                {error && !confirm && <p role="alert" className="error-text social-purchase-feedback">{error}</p>}
                 {unavailable ? (
                   <div className="social-blocked-purchase" role="alert">
                     <h3>Compra temporariamente indisponível</h3>
@@ -686,8 +687,7 @@ export function SocialPage() {
                       <span>Exemplo de total para 1.000 unidades</span>
                       <strong>{money(service.referencePriceCents)}</strong>
                       <small>
-                        Com os acréscimos. O total da quantidade escolhida será confirmado antes da
-                        compra.
+                        O valor final depende da quantidade e será mostrado antes de confirmar.
                       </small>
                     </div>
                   )}
@@ -774,7 +774,7 @@ export function SocialPage() {
                 <Link to="/suporte">Falar com o suporte</Link>
               </Button>
             </aside>
-            {error && (
+            {error && !service && !confirm && (
               <p role="alert" className="error-text social-client-error">
                 {error}
               </p>

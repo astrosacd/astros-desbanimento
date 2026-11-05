@@ -6,6 +6,10 @@ on:
       - 'src/routes/pesquisa-digital.tsx'
       - 'src/features/demo/shell.tsx'
       - 'src/features/panel/**'
+      - 'src/features/social/**'
+      - 'src/features/sms/**'
+      - 'src/features/submissions/**'
+      - 'src/features/workspace/**'
       - 'src/features/finance/**'
       - 'src/features/payments/wallet.tsx'
       - 'supabase/functions/astros-digital-research/**'
@@ -29,7 +33,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build:dev
       - run: bunx tsc --noEmit
-      - run: bun run test -- src/features/digital-research src/features/prospecting src/features/module-access src/features/finance src/features/payments src/features/panel src/features/admin src/features/updates
+      - run: bun run test -- src/features/digital-research src/features/prospecting src/features/module-access src/features/finance src/features/payments src/features/panel src/features/admin src/features/updates src/features/social src/features/sms src/features/submissions src/features/workspace --maxWorkers=2
       - name: Transações SQL e compatibilidade financeira
         run: |
           npm install --no-save --ignore-scripts --no-package-lock @electric-sql/pglite@0.5.13

@@ -174,7 +174,7 @@ export function ProspectingPage() {
       <header className="prospect-heading">
         <div>
           <span className="eyebrow">ASTROS MAIS / PROSPECÇÃO</span>
-          <h1>Encontre sua próxima oportunidade.</h1>
+          <h1>Prospecção de empresas</h1>
           <p>Escolha Google Maps ou CNPJ para pesquisar empresas e organizar seus contatos.</p>
         </div>
         <div className="prospect-wallet">
