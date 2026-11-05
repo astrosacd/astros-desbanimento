@@ -13,3 +13,19 @@ it('blocks below minimum and fractional quantities before consulting',()=>{rende
 it('closes the quote and countdown on confirmed unavailability until an explicit new consultation',async()=>{api.buy.mockRejectedValueOnce(Error('Redes sociais está temporariamente indisponível. Nenhum valor foi descontado nesta tentativa.'));await prepare();fireEvent.click(screen.getByRole('button',{name:/Confirmar por/}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(screen.getByText('Compra temporariamente indisponível')).toBeTruthy();expect(screen.queryByText(/Preço válido por/)).toBeNull();expect(screen.queryByRole('button',{name:'Continuar para confirmação'})).toBeNull();expect(api.quote).toHaveBeenCalledTimes(1);fireEvent.click(screen.getByRole('button',{name:'Consultar novamente'}));await screen.findByRole('button',{name:'Continuar para confirmação'});expect(api.quote).toHaveBeenCalledTimes(2);expect(api.buy).toHaveBeenCalledTimes(1);});
 
 it('shows dependent selection and searches all released services by name or reference',()=>{render(<SocialPage/>);expect(screen.queryByLabelText('Serviço')).toBeNull();expect(screen.getByLabelText('Tipo de serviço')).toBeDisabled();expect(screen.getByLabelText('Categoria / origem')).toBeDisabled();fireEvent.change(screen.getByLabelText('Rede social'),{target:{value:'instagram'}});expect(screen.getByLabelText('Tipo de serviço')).not.toBeDisabled();expect(screen.getByLabelText('Categoria / origem')).toBeDisabled();fireEvent.change(screen.getByLabelText('Tipo de serviço'),{target:{value:'views'}});fireEvent.change(screen.getByLabelText('Categoria / origem'),{target:{value:'Original'}});expect(screen.getByLabelText('Serviço')).toBeTruthy();expect(screen.getByRole('option',{name:/Example service · Ref. 1/})).toBeTruthy();fireEvent.change(screen.getByLabelText('Serviço'),{target:{value:'1'}});expect(screen.getByLabelText('Quantidade')).toBeTruthy();fireEvent.change(screen.getByLabelText('Rede social'),{target:{value:'all'}});expect(screen.queryByLabelText('Serviço')).toBeNull();expect(screen.queryByLabelText('Quantidade')).toBeNull();expect(screen.getByLabelText('Tipo de serviço')).toHaveValue('all');expect(screen.getByLabelText('Categoria / origem')).toHaveValue('all');fireEvent.change(screen.getByLabelText('Pesquisar serviço ou categoria'),{target:{value:'1'}});fireEvent.keyDown(screen.getByLabelText('Pesquisar serviço ou categoria'),{key:'Enter'});const key=api.queries.filter(k=>k[0]==='social-catalog').at(-1);expect(key.slice(2,7)).toEqual(['1','all','all','all',0]);expect(screen.getByLabelText('Serviço')).toBeTruthy();expect(screen.getByRole('option',{name:/Ref. 1 · Instagram/})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Limpar pesquisa e filtros'}));expect(screen.getByLabelText('Pesquisar serviço ou categoria')).toHaveValue('');expect(screen.queryByLabelText('Serviço')).toBeNull();});
+
+it('shows quote failure beside the purchase action instead of after the service details',async()=>{
+  api.quote.mockRejectedValueOnce(Error('Preço indisponível. Tente novamente.'));
+  render(<SocialPage/>);
+  fireEvent.change(screen.getByLabelText('Pesquisar serviço ou categoria'),{target:{value:'Example'}});
+  fireEvent.click(screen.getByRole('button',{name:'Buscar'}));
+  fireEvent.change(screen.getByLabelText('Serviço'),{target:{value:'1'}});
+  fireEvent.change(screen.getByLabelText(/^Link público do perfil ou conteúdo/),{target:{value:'https://instagram.com/example'}});
+  fireEvent.change(screen.getByLabelText('Quantidade'),{target:{value:'100'}});
+  const action=screen.getByRole('button',{name:'Consultar preço total'});
+  fireEvent.click(action);
+  const alert=await screen.findByRole('alert');
+  expect(action.closest('section')?.contains(alert)).toBe(true);
+  expect(alert).toHaveTextContent('Preço indisponível');
+  expect(api.buy).not.toHaveBeenCalled();
+});

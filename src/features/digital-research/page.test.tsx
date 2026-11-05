@@ -308,3 +308,15 @@ it("opens a priced confirmation from one follower without starting automatically
     unitCents: 10,
   });
 });
+
+it("explains an exceeded result limit beside the action without starting a search", async () => {
+  show();
+  const choices = await screen.findAllByRole("button", {name: /Usar ferramenta/});
+  await waitFor(() => expect(choices[0]).not.toBeDisabled());
+  fireEvent.click(choices[0]!);
+  fireEvent.change(screen.getByLabelText("Máximo de resultados"), {target: {value: "21"}});
+  const form = screen.getByRole("button", {name:"Conferir e continuar"}).closest("form")!;
+  expect(within(form).getByRole("alert")).toHaveTextContent("Escolha até 20 resultados");
+  expect(screen.getByRole("button", {name:"Conferir e continuar"})).toBeDisabled();
+  expect(api.start).not.toHaveBeenCalled();
+});
