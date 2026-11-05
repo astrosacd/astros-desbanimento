@@ -56,6 +56,7 @@ export function download(rows: Profile[]) {
 export function ProfileCard({ row, action }: { row: Profile; action?: React.ReactNode }) {
   const [copyStatus, setCopyStatus] = useState("");
   const latestPost = row.recentPosts?.[0];
+  const [photoFailed, setPhotoFailed] = useState(false);
   async function copyId() {
     if (!row.instagramId) return;
     try {
@@ -69,7 +70,17 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
     <article className="digital-profile">
       <div className="digital-profile-title">
         <span className="digital-avatar">
-          {(row.name || row.username).slice(0, 2).toUpperCase()}
+          {row.photo && !photoFailed ? (
+            <img
+              src={row.photo}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setPhotoFailed(true)}
+            />
+          ) : (
+            (row.name || row.username).slice(0, 2).toUpperCase()
+          )}
         </span>
         <div>
           <h3>{row.name || row.username}</h3>
@@ -142,6 +153,63 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
 
         {row.private && <span>Perfil privado · informações limitadas</span>}
       </div>
+      {(row.facebookId ||
+        row.address ||
+        row.joinedRecently != null ||
+        row.hasChannel != null ||
+        Object.keys(row.about ?? {}).length > 0) && (
+        <details className="digital-profile-extra">
+          <summary>Sobre o perfil</summary>
+          <dl className="digital-about">
+            {row.facebookId && (
+              <div>
+                <dt>ID Facebook</dt>
+                <dd>{row.facebookId}</dd>
+              </div>
+            )}
+            {row.address && (
+              <div>
+                <dt>Endereço público</dt>
+                <dd>{row.address}</dd>
+              </div>
+            )}
+            {row.joinedRecently != null && (
+              <div>
+                <dt>Conta criada recentemente</dt>
+                <dd>{row.joinedRecently ? "Sim" : "Não"}</dd>
+              </div>
+            )}
+            {row.hasChannel != null && (
+              <div>
+                <dt>Possui canal</dt>
+                <dd>{row.hasChannel ? "Sim" : "Não"}</dd>
+              </div>
+            )}
+            {Object.entries(row.about ?? {}).map(([key, value]) => (
+              <div key={key}>
+                <dt>
+                  {(
+                    {
+                      country: "País informado",
+                      date_joined: "Entrada no Instagram",
+                      date_verified: "Data de verificação",
+                      former_usernames: "Alterações anteriores de nome",
+                      is_verified: "Verificação da conta",
+                    } as Record<string, string>
+                  )[key] ?? key}
+                </dt>
+                <dd>{typeof value === "boolean" ? (value ? "Sim" : "Não") : value}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+      {row.projectionLimited && (
+        <p className="digital-help">
+          Este perfil trouxe muitos dados. Parte dos detalhes foi limitada para manter o resultado
+          acessível.
+        </p>
+      )}
       {latestPost && (
         <details className="digital-profile-extra">
           <summary>Atividade recente</summary>
@@ -154,10 +222,30 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
                 <a href={post.url} target="_blank" rel="noreferrer">
                   {date(post.publishedAt)} <ExternalLink size={13} />
                 </a>
+                {post.image && (
+                  <img
+                    className="digital-post-image"
+                    src={post.image}
+                    alt="Imagem pública da publicação"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.hidden = true;
+                    }}
+                  />
+                )}
+                {(post.type || post.location) && (
+                  <p className="digital-help">
+                    {[post.type, post.location].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 {post.caption && <p className="digital-bio">{post.caption}</p>}
-                {(post.likes != null || post.comments != null) && (
+                {(post.likes != null || post.comments != null || post.views != null) && (
                   <p className="digital-help">
                     {[
+                      post.views == null
+                        ? ""
+                        : `${post.views.toLocaleString("pt-BR")} visualizações`,
                       post.likes == null ? "" : `${post.likes.toLocaleString("pt-BR")} curtidas`,
                       post.comments == null
                         ? ""
@@ -166,6 +254,9 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
+                )}
+                {!!post.hashtags?.length && (
+                  <p className="digital-help">{post.hashtags.map((tag) => "#" + tag).join(" ")}</p>
                 )}
               </li>
             ))}
@@ -186,6 +277,9 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
                   @{profile.username} <ExternalLink size={13} />
                 </a>
                 {profile.name && <span className="digital-help"> · {profile.name}</span>}
+                {profile.id && <span className="digital-help"> · ID {profile.id}</span>}
+                {profile.verified && <span className="digital-help"> · Verificado</span>}
+                {profile.private && <span className="digital-help"> · Privado</span>}
               </li>
             ))}
           </ul>
@@ -843,6 +937,12 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                 sua carteira. O valor final será proporcional aos perfis entregues, mesmo quando não
                 houver telefone ou e-mail.
               </p>
+              {tool === "instagram_profile" && settings?.includeAboutSection && (
+                <p>
+                  Esta consulta inclui “Sobre esta conta”, quando disponível. O valor total é o
+                  mostrado acima.
+                </p>
+              )}
               <p>
                 O resultado pode conter menos perfis que o solicitado. Atualizar o andamento não
                 inicia uma nova pesquisa.

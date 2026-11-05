@@ -123,6 +123,8 @@ async function start(actor: string, data: Obj) {
   const id = uuid(data.requestId),
     tool = toolKey(data.tool),
     c = criteria(tool, data.query, data.quantity);
+  // Read the selected mode before reservation; the RPC validates that exact config version.
+  const config = tool === "instagram_profile" ? await rpc(actor, "config") : null;
   const begun = await rpc(actor, "start", {
     ...c,
     requestId: id,
@@ -131,6 +133,8 @@ async function start(actor: string, data: Obj) {
     version: integer(data.version, 1, 2147483647),
   });
   if (!begun.execute) return begun.request;
+  if (config && config.version !== data.version) return rpc(actor, "reject", { id });
+  const includeAbout = config?.tools?.instagram_profile?.includeAboutSection === true;
   // Reservation/dispatch intent is durable before POST. There is deliberately no POST retry.
   try {
     const params = new URLSearchParams({
@@ -143,7 +147,7 @@ async function start(actor: string, data: Obj) {
     });
     const r = await provider("acts/" + tools[tool].actor + "/runs?" + params, {
       method: "POST",
-      body: JSON.stringify(actorInput(tool, c.query, c.quantity)),
+      body: JSON.stringify(actorInput(tool, c.query, c.quantity, includeAbout)),
     });
     const v = await boundedJson(r, 150000);
     if (!r.ok) {
@@ -181,7 +185,9 @@ async function refresh(actor: string, id: string) {
           : {
               fields:
                 "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
-                (claim.tool === "instagram_profile" ? ",id,latestPosts,relatedProfiles" : ""),
+                (claim.tool === "instagram_profile"
+                  ? ",id,profilePicUrl,profilePicUrlHD,fbid,businessAddress,joinedRecently,hasChannel,about,latestPosts,relatedProfiles,latestIgtvVideos"
+                  : ""),
             }),
         format: "json",
         clean: claim.tool === "instagram_followers" ? "false" : "true",
@@ -194,12 +200,17 @@ async function refresh(actor: string, id: string) {
         return boundedJson(items);
       };
       let raw;
+      let limited = false;
       try {
         raw = await readItems();
       } catch (error) {
         if (claim.tool !== "instagram_profile" || !(error instanceof ResponseTooLarge)) throw error;
         // Read the same dataset with the original projection; never restart the Actor.
-        p.set("fields", p.get("fields")!.replace(",latestPosts,relatedProfiles", ""));
+        limited = true;
+        p.set(
+          "fields",
+          p.get("fields")!.replace(",latestPosts,relatedProfiles,latestIgtvVideos", ""),
+        );
         raw = await readItems();
       }
       let rows;
@@ -215,6 +226,7 @@ async function refresh(actor: string, id: string) {
           tool: toolKey(original.tool),
           query: original.query,
         });
+        if (limited) rows = rows.map((row) => ({ ...row, projectionLimited: true }));
         if (
           claim.tool === "instagram_followers" &&
           Array.isArray(raw) &&

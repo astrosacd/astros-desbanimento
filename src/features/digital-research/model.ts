@@ -56,6 +56,7 @@ export type ToolSettings = {
   unitCents: number;
   maxQuantity: number;
   maxUsdCents: number;
+  includeAboutSection?: boolean;
 };
 export type Config = {
   installed: boolean;
@@ -89,6 +90,7 @@ export const toolSettings = z
     unitCents: z.number().int().min(0).max(10000),
     maxQuantity: z.number().int().min(1).max(100),
     maxUsdCents: z.number().int().min(1).max(500),
+    includeAboutSection: z.boolean().optional(),
   })
   .strict();
 export const configSchema = z
