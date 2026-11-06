@@ -18,7 +18,7 @@ it("keeps complete contacts behind accessible compact cards and supports closing
  const dialog=screen.getByRole('dialog');
  expect(within(dialog).getByRole('link',{name:/Abrir endereço informado/})).toHaveAttribute('href','https://example.com');
  expect(within(dialog).getByText('Página acessível')).toBeTruthy();
- fireEvent.click(within(dialog).getByRole('button',{name:'Close'}));
+ fireEvent.click(within(dialog).getByRole('button',{name:'Fechar'}));
  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
 });
 it("saves the selected stage and refreshes card text and color from the server",async()=>{

@@ -75,3 +75,38 @@ Revisão exclusivamente de responsividade, incluindo os novos cartões CNPJ, cot
 Ajuste encontrado: no editor administrativo de comunicados, Salvar comunicado e Cancelar edição ultrapassavam 320 px. As ações agora se empilham em telas pequenas e voltam à linha com quebra permitida a partir de 640 px. Alteração limitada às classes de layout; textos, ações, dados, permissões e regras permanecem iguais. Os dois testes existentes de comunicados passaram após o ajuste e o build de produção concluiu. Não exige SQL ou atualização de Edge Functions.
 
 Limites: capturas de componentes e testes locais não substituem todos os dispositivos físicos/navegadores, integrações externas, gráficos interativos ou WebGL. Nenhum cliente real foi acessado, nenhuma mensagem foi enviada e nenhum pagamento ou chamada ao fornecedor foi realizado. Não foi usado overflow-x:hidden para mascarar problemas.
+
+### Revisão de 06/11/2026 — cliente, administrador e janela do PWA
+
+Revisão de apresentação, sem alterar autorização, carteira, preços, execução de serviços,
+reconciliação ou cache offline. O viewport permite `viewport-fit=cover`, mantendo zoom
+habilitado. A barra superior, conteúdo, entrada, menus, janelas e barra de salvar da
+Pesquisa Digital respeitam as áreas seguras; as janelas mantêm rolagem interna com `dvh`.
+Os controles de fechar têm alvo de 44 px e nome acessível em português. Controles de toque
+quebram rótulos extensos; o filtro da página inicial e a busca dos seletores mantêm fonte
+mínima de 16 px em telas pequenas/toque, evitando ampliação involuntária do formulário.
+
+Verificação reproduzível: `node scripts/check-responsive-layout.mjs` após instalar
+`playwright@1.55.1` e Chromium. A fixture `tests/responsive-preview` monta os componentes
+reais com um roteador e React Query, substitui os módulos de ações por dados sintéticos e
+recusa ações não configuradas. O navegador bloqueia requisições fora do servidor local.
+Ela não é importada por rotas da aplicação. Alguns diagnósticos externos são representados
+pelo estado de erro, sem consultar provedores. Isso valida apresentação, não a operação
+real das integrações.
+
+A matriz inclui 320×640, 375×812, 430×932, 667×375, 768×1024, 850×700, 851×700,
+1024×768, 1366×768, 1920×1080 e 390×500 (altura reduzida, sem simular um teclado nativo).
+São verificadas 19 rotas: início, visão geral, nova solicitação, histórico, carteira,
+SMS, redes sociais, prospecção, Pesquisa Digital, perfil, API, afiliação, suporte,
+termos, novidades, login, cadastro, recuperação e administrador. As 22 áreas internas
+administrativas e suas abas visíveis também são abertas em quatro tamanhos. Menus têm
+verificação de abertura, fechamento, retorno de foco e troca para desktop. Confirmação
+de preço, perfis com textos longos, legendas expandidas, fim dos resultados e seletor
+pesquisável são medidos com áreas seguras sintéticas em retrato e paisagem.
+
+O script falha em rolagem lateral da página, janela fora do viewport, erro de renderização
+ou campo móvel com fonte pequena. Salva relatório e capturas em `/tmp/responsive-shots`;
+o workflow `responsive-check.yml` preserva esses arquivos como evidência de CI. Não usa
+`overflow-x:hidden` para esconder problemas. A emulação de tamanhos e áreas seguras em
+Chromium não substitui conferir o PWA instalado em aparelhos Android/iOS reais após a
+publicação, sobretudo o comportamento do teclado e do navegador do aparelho.

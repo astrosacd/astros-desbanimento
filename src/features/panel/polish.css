@@ -578,3 +578,89 @@
 .wallet-page > .notice-stack {
   margin-bottom: 18px;
 }
+
+/* Installed PWA: expose safe areas without disabling zoom or hiding overflow. */
+:root {
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
+}
+.topbar {
+  padding-top: calc(12px + var(--app-safe-top));
+}
+.content,
+.admin-content {
+  padding-bottom: max(24px, calc(16px + var(--app-safe-bottom)));
+}
+:where([data-slot="dialog-close"], [data-slot="sheet-close"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  top: 4px;
+  right: 4px;
+}
+[data-slot="dialog-content"] {
+  top: calc((100% + var(--app-safe-top) - var(--app-safe-bottom)) / 2);
+  max-height: calc(100dvh - max(16px, var(--app-safe-top)) - max(16px, var(--app-safe-bottom)));
+  scroll-padding-block: 24px;
+}
+[data-slot="dialog-content"] > :first-child {
+  padding-right: 20px;
+}
+.client-menu-sheet,
+.admin-menu-sheet {
+  height: 100dvh;
+  max-height: 100dvh;
+  padding-top: var(--app-safe-top);
+  padding-bottom: var(--app-safe-bottom);
+}
+:where(.client-menu-sheet, .admin-menu-sheet) [data-slot="sheet-close"] {
+  top: max(4px, var(--app-safe-top));
+}
+@media (max-width: 850px), (pointer: coarse) {
+  .topbar {
+    padding-left: max(12px, calc(8px + var(--app-safe-left)));
+    padding-right: max(12px, calc(8px + var(--app-safe-right)));
+  }
+  :where(.content, .admin-content, .digital-dialog) :where(button, a[role="button"], summary) {
+    min-height: 44px;
+  }
+  :where(.content, .admin-content, .digital-dialog) button {
+    white-space: normal;
+    height: auto;
+    line-height: 1.45;
+    padding-block: 10px;
+  }
+  .content,
+  .admin-content {
+    padding-left: max(12px, calc(8px + var(--app-safe-left)));
+    padding-right: max(12px, calc(8px + var(--app-safe-right)));
+  }
+  .admin-content {
+    padding-top: max(20px, calc(12px + var(--app-safe-top)));
+  }
+  .client-entrance {
+    padding: max(24px, calc(16px + var(--app-safe-top)))
+      max(12px, calc(8px + var(--app-safe-right))) max(24px, calc(16px + var(--app-safe-bottom)))
+      max(12px, calc(8px + var(--app-safe-left)));
+  }
+}
+@media (max-width: 850px) {
+  .home-area-filter .field {
+    font-size: 16px;
+  }
+
+  [data-slot="dialog-content"] {
+    left: calc((100% + var(--app-safe-left) - var(--app-safe-right)) / 2);
+    width: calc(100vw - max(16px, var(--app-safe-left)) - max(16px, var(--app-safe-right)));
+  }
+}
+@media (max-width: 850px), (pointer: coarse) {
+  [cmdk-input] {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
