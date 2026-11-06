@@ -83,7 +83,7 @@ reconciliação ou cache offline. O viewport permite `viewport-fit=cover`, mante
 habilitado. A barra superior, conteúdo, entrada, menus, janelas e barra de salvar da
 Pesquisa Digital respeitam as áreas seguras; as janelas mantêm rolagem interna com `dvh`.
 Os controles de fechar têm alvo de 44 px e nome acessível em português. Controles de toque
-quebram rótulos extensos; o filtro da página inicial e a busca dos seletores mantêm fonte
+quebram rótulos extensos; o filtro da página inicial, a busca dos seletores e os campos dos avisos de status mantêm fonte
 mínima de 16 px em telas pequenas/toque, evitando ampliação involuntária do formulário.
 
 Verificação reproduzível: `node scripts/check-responsive-layout.mjs` após instalar

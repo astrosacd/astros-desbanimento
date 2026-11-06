@@ -207,6 +207,7 @@ try {
       while (await nav.locator('.service-nav-trigger[aria-expanded="false"]').count())
         await nav.locator('.service-nav-trigger[aria-expanded="false"]').first().click();
       await nav.getByRole("button", { name, exact: true }).click();
+      if (width <= 850) await page.getByRole("dialog").waitFor({ state: "hidden" });
       await page.waitForTimeout(150);
       await measure(`${width} admin ${name}`);
       console.log("Admin " + name);
