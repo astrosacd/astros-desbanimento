@@ -67,7 +67,13 @@ const settings = {
   tools: Object.fromEntries(
     Object.entries(cfg.tools).map(([k, v]) => [
       k,
-      { ...v, enabled: true, unitCents: 10, maxUsdCents: 20, ...(k === "instagram_profile" ? { includeAboutSection: true } : {}) },
+      {
+        ...v,
+        enabled: true,
+        unitCents: 10,
+        maxUsdCents: 20,
+        ...(k === "instagram_profile" ? { includeAboutSection: true } : {}),
+      },
     ]),
   ),
 };
@@ -169,7 +175,7 @@ assert.equal(await balance(admin), 99.9);
 // Pilot off, individual block, definite pre-dispatch rejection, and no duplicate refunds.
 settings.version = cfg.version;
 settings.pilot = false;
-await rejection(()=>call(admin,'admin-save',settings),/complemento da exclusão/);
+await rejection(() => call(admin, "admin-save", settings), /complemento da exclusão/);
 await db.exec(
   "create function public.astros_digital_deletion_ready() returns boolean language sql as $$select true$$",
 );
@@ -261,12 +267,23 @@ const zero = job("instagram_followers", 10);
 const priorBalance = await balance(admin);
 await call(admin, "start", zero);
 assert.equal(await balance(admin), priorBalance - 1);
-await call(admin, "record-run", { id: zero.requestId, runId: "EMPTYRUN123456789", datasetId: "EMPTYDATA12345678" });
+await call(admin, "record-run", {
+  id: zero.requestId,
+  runId: "EMPTYRUN123456789",
+  datasetId: "EMPTYDATA12345678",
+});
 await call(admin, "review", { id: zero.requestId });
-await db.query("update astros_digital_requests set check_after=now()-interval '1 second' where id=$1", [zero.requestId]);
+await db.query(
+  "update astros_digital_requests set check_after=now()-interval '1 second' where id=$1",
+  [zero.requestId],
+);
 const zeroLease = await call(admin, "check-claim", { id: zero.requestId });
 assert.ok(zeroLease.lease);
-const zeroResult = await call(admin, "finish", { id: zero.requestId, lease: zeroLease.lease, rows: [] });
+const zeroResult = await call(admin, "finish", {
+  id: zero.requestId,
+  lease: zeroLease.lease,
+  rows: [],
+});
 assert.equal(zeroResult.state, "completed");
 assert.equal(zeroResult.delivered, 0);
 assert.equal(zeroResult.charged_cents, 0);
@@ -275,8 +292,82 @@ await call(admin, "finish", { id: zero.requestId, lease: zeroLease.lease, rows: 
 const recovered = await call(admin, "start", zero);
 assert.equal(recovered.execute, false);
 assert.equal(await balance(admin), priorBalance);
-assert.equal(await value("select count(*)::int v from astros_wallet_movements where reference=$1", ["digital-refund:" + zero.requestId]), 1);
-assert.equal(await value("select amount_cents v from astros_wallet_movements where reference=$1", ["digital-refund:" + zero.requestId]), 100);
+assert.equal(
+  await value("select count(*)::int v from astros_wallet_movements where reference=$1", [
+    "digital-refund:" + zero.requestId,
+  ]),
+  1,
+);
+assert.equal(
+  await value("select amount_cents v from astros_wallet_movements where reference=$1", [
+    "digital-refund:" + zero.requestId,
+  ]),
+  100,
+);
+// Add LinkedIn to a populated installation, preserving Instagram prices and existing records.
+const installedConfig = await call(admin, "admin-config");
+await load("20261107_digital_linkedin.sql");
+cfg = await call(admin, "admin-config");
+assert.equal(cfg.enabled, installedConfig.enabled);
+assert.deepEqual(cfg.tools.instagram_search, installedConfig.tools.instagram_search);
+assert.equal(cfg.tools.linkedin_search.enabled, false);
+assert.equal(cfg.tools.linkedin_profile.enabled, false);
+assert.equal((await call(admin, "status", { id: a.requestId })).tool, "instagram_search");
+const linkedin = { ...job("linkedin_search", 2), query: "gerente comercial" };
+await rejection(() => call(admin, "start", linkedin), /indisponíveis/);
+await rejection(
+  () =>
+    call(admin, "admin-save", {
+      ...settings,
+      version: cfg.version,
+      tools: { ...cfg.tools, unsupported_tool: cfg.tools.linkedin_search },
+    }),
+  /Configuração inválida/,
+);
+await call(admin, "admin-save", {
+  ...settings,
+  version: cfg.version,
+  tools: {
+    ...cfg.tools,
+    linkedin_search: { ...cfg.tools.linkedin_search, enabled: true, unitCents: 10 },
+  },
+});
+cfg = await call(admin, "admin-config");
+await load("20261107_digital_linkedin.sql");
+assert.deepEqual(await call(admin, "admin-config"), cfg);
+// An older admin client still edits Instagram without erasing LinkedIn settings.
+await call(admin, "admin-save", { ...settings, version: cfg.version });
+cfg = await call(admin, "admin-config");
+assert.equal(cfg.tools.linkedin_search.enabled, true);
+linkedin.version = cfg.version;
+const beforeLinkedin = await balance(admin);
+assert.equal((await call(admin, "start", linkedin)).execute, true);
+assert.equal((await call(admin, "start", linkedin)).execute, false);
+await call(admin, "record-run", {
+  id: linkedin.requestId,
+  runId: "LINKEDINRUN12345",
+  datasetId: "LINKEDINDATA1234",
+});
+const linkedinLease = await call(admin, "check-claim", { id: linkedin.requestId });
+const professional = {
+  username: "linkedin:example",
+  name: "Pessoa de teste",
+  linkedin: { identifier: "example" },
+};
+const linkedinResult = await call(admin, "finish", {
+  id: linkedin.requestId,
+  lease: linkedinLease.lease,
+  rows: [professional],
+});
+assert.equal(linkedinResult.charged_cents, 10);
+assert.equal(Math.round((await balance(admin)) * 100), Math.round(beforeLinkedin * 100) - 10);
+await call(admin, "save", {
+  requestId: linkedin.requestId,
+  username: professional.username,
+  collection: "Ambas",
+});
+await call(admin, "save", { requestId: a.requestId, username: "example", collection: "Ambas" });
+assert.equal((await call(admin, "collections")).rows.length, 2);
 console.log(
   "PASS: isolated install/reapply, auth/role/ownership, pilot/access, stable UUID, budget/capacity guards, polling lease, exact settlement/refund, collections, finance compatibility.",
 );

@@ -4,12 +4,18 @@ export const digitalConfig = async () => ({
   enabled: true,
   version: 1,
   tools: Object.fromEntries(
-    ["instagram_search", "instagram_profile", "instagram_followers"].map((id) => [
+    [
+      "instagram_search",
+      "instagram_profile",
+      "instagram_followers",
+      "linkedin_search",
+      "linkedin_profile",
+    ].map((id) => [
       id,
       {
         enabled: true,
         unitCents: 10,
-        maxQuantity: id === "instagram_profile" ? 10 : 50,
+        maxQuantity: id.endsWith("_profile") ? 10 : id === "linkedin_search" ? 25 : 50,
         maxUsdCents: 20,
       },
     ]),

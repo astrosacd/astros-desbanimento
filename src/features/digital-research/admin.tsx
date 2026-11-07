@@ -210,18 +210,22 @@ export function Settings({
     [error, setError] = useState("");
   const updateTool = (
     id: (typeof catalog)[number]["id"],
-    patch: Partial<Config["tools"][typeof id]>,
-  ) => setForm((f) => ({ ...f, tools: { ...f.tools, [id]: { ...f.tools[id], ...patch } } }));
+    patch: Partial<NonNullable<Config["tools"][typeof id]>>,
+  ) =>
+    setForm((f) => {
+      const current = f.tools[id];
+      return current ? { ...f, tools: { ...f.tools, [id]: { ...current, ...patch } } } : f;
+    });
   function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
     const parsed = configSchema.safeParse(form);
     if (
       !parsed.success ||
-      catalog.some((t) => form.tools[t.id].enabled && form.tools[t.id].unitCents < 1)
+      catalog.some((t) => form.tools[t.id]?.enabled && (form.tools[t.id]?.unitCents ?? 0) < 1)
     ) {
       const invalid = catalog.filter(
-        (t) => form.tools[t.id].enabled && form.tools[t.id].unitCents < 1,
+        (t) => form.tools[t.id]?.enabled && (form.tools[t.id]?.unitCents ?? 0) < 1,
       );
       setError(
         invalid.length
@@ -361,6 +365,7 @@ export function Settings({
       </div>
       {catalog.map((t) => {
         const v = form.tools[t.id];
+        if (!v) return null;
         return (
           <fieldset key={t.id} disabled={busy}>
             <legend>{t.title}</legend>

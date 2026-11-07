@@ -311,12 +311,45 @@ it("opens a priced confirmation from one follower without starting automatically
 
 it("explains an exceeded result limit beside the action without starting a search", async () => {
   show();
-  const choices = await screen.findAllByRole("button", {name: /Usar ferramenta/});
+  const choices = await screen.findAllByRole("button", { name: /Usar ferramenta/ });
   await waitFor(() => expect(choices[0]).not.toBeDisabled());
   fireEvent.click(choices[0]!);
-  fireEvent.change(screen.getByLabelText("Máximo de resultados"), {target: {value: "21"}});
-  const form = screen.getByRole("button", {name:"Conferir e continuar"}).closest("form")!;
+  fireEvent.change(screen.getByLabelText("Máximo de resultados"), { target: { value: "21" } });
+  const form = screen.getByRole("button", { name: "Conferir e continuar" }).closest("form")!;
   expect(within(form).getByRole("alert")).toHaveTextContent("Escolha até 20 resultados");
-  expect(screen.getByRole("button", {name:"Conferir e continuar"})).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Conferir e continuar" })).toBeDisabled();
   expect(api.start).not.toHaveBeenCalled();
+});
+
+it("separates LinkedIn tools and confirms the price of one canonical profile before dispatch", async () => {
+  api.config.mockResolvedValue({
+    ...defaults,
+    tools: {
+      ...defaults.tools,
+      linkedin_profile: { enabled: true, unitCents: 25, maxQuantity: 10, maxUsdCents: 20 },
+    },
+  });
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "LinkedIn" }));
+  expect(screen.queryByText("Extrair seguidores")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Usar ferramenta" }));
+  fireEvent.change(screen.getByLabelText("Perfis do LinkedIn"), {
+    target: {
+      value: "https://www.linkedin.com/in/example/?trk=app example",
+    },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Conferir e continuar" }));
+  const modal = screen.getByRole("dialog");
+  expect(within(modal).getByText(/R\$\s*0,25/)).toBeTruthy();
+  expect(api.start).not.toHaveBeenCalled();
+  fireEvent.click(within(modal).getByRole("button", { name: "Confirmar e pesquisar" }));
+  await waitFor(() =>
+    expect(api.start).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tool: "linkedin_profile",
+        quantity: 1,
+        unitCents: 25,
+      }),
+    }),
+  );
 });

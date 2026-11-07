@@ -1,4 +1,13 @@
-import { actorInput, criteria, integer, deliveredProfiles, toolKey, tools, uuid } from "./core.ts";
+import {
+  actorInput,
+  criteria,
+  integer,
+  deliveredProfiles,
+  linkedinFields,
+  toolKey,
+  tools,
+  uuid,
+} from "./core.ts";
 declare const Deno: {
   env: { get: (name: string) => string | undefined };
   serve: (fn: (req: Request) => Promise<Response>) => void;
@@ -178,20 +187,23 @@ async function refresh(actor: string, id: string) {
     if (v?.id !== claim.runId || v?.defaultDatasetId !== claim.datasetId)
       throw Error("Conferência divergente.");
     if (v.status === "SUCCEEDED") {
+      const linkedin = claim.tool === "linkedin_search" || claim.tool === "linkedin_profile";
       const p = new URLSearchParams({
         // Followers markers must be inspected unprojected: a fields filter could hide error flags.
-        ...(claim.tool === "instagram_followers"
-          ? {}
-          : {
-              fields:
-                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
-                (claim.tool === "instagram_profile"
-                  ? ",id,profilePicUrl,profilePicUrlHD,fbid,businessAddress,joinedRecently,hasChannel,about,latestPosts,relatedProfiles,latestIgtvVideos"
-                  : ""),
-            }),
+        ...(linkedin
+          ? { fields: linkedinFields }
+          : claim.tool === "instagram_followers"
+            ? {}
+            : {
+                fields:
+                  "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
+                  (claim.tool === "instagram_profile"
+                    ? ",id,profilePicUrl,profilePicUrlHD,fbid,businessAddress,joinedRecently,hasChannel,about,latestPosts,relatedProfiles,latestIgtvVideos"
+                    : ""),
+              }),
         format: "json",
-        clean: claim.tool === "instagram_followers" ? "false" : "true",
-        limit: String(claim.quantity),
+        clean: linkedin || claim.tool === "instagram_followers" ? "false" : "true",
+        limit: String(claim.quantity + (linkedin ? 1 : 0)),
         offset: "0",
       });
       const readItems = async () => {
@@ -310,6 +322,7 @@ export async function handler(req: Request) {
       "Ferramenta inválida.",
       "Referência inválida.",
       "Informe um perfil válido do Instagram.",
+      "Informe um perfil válido do LinkedIn.",
       "Informe uma única palavra-chave ou expressão.",
       "Confira a quantidade de perfis.",
     ];

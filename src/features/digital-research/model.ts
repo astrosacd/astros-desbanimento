@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type { Profile } from "../../../supabase/functions/astros-digital-research/core";
-export const toolSchema = z.enum(["instagram_search", "instagram_profile", "instagram_followers"]);
+export const toolSchema = z.enum([
+  "instagram_search",
+  "instagram_profile",
+  "instagram_followers",
+  "linkedin_search",
+  "linkedin_profile",
+]);
 export type Tool = z.infer<typeof toolSchema>;
 export const catalog = [
   {
@@ -29,7 +35,26 @@ export const catalog = [
     placeholder: "@perfil ou URL do perfil",
     max: 100,
   },
+  {
+    id: "linkedin_search" as const,
+    title: "Buscar profissionais no LinkedIn",
+    description: "Encontre pessoas por nome, cargo ou palavra-chave.",
+    input: "Nome, cargo ou palavra-chave",
+    placeholder: "Ex.: gerente comercial Fortaleza",
+    max: 25,
+  },
+  {
+    id: "linkedin_profile" as const,
+    title: "Consultar perfis no LinkedIn",
+    description:
+      "Veja título profissional, localização, experiência e formação quando disponíveis.",
+    input: "Perfis do LinkedIn",
+    placeholder: "Ex.: https://www.linkedin.com/in/nome-do-perfil",
+    max: 10,
+  },
 ];
+export const networkOf = (tool: Tool) =>
+  tool === "linkedin_search" || tool === "linkedin_profile" ? "LinkedIn" : "Instagram";
 export const startSchema = z
   .object({
     requestId: z.string().uuid(),
@@ -47,7 +72,7 @@ export const pageSchema = z
 export const collectionSchema = z
   .object({
     requestId: z.string().uuid(),
-    username: z.string().min(1).max(30),
+    username: z.string().min(1).max(109),
     collection: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -62,7 +87,8 @@ export type Config = {
   installed: boolean;
   enabled: boolean;
   version: number;
-  tools: Record<Tool, ToolSettings>;
+  tools: Record<Exclude<Tool, "linkedin_search" | "linkedin_profile">, ToolSettings> &
+    Partial<Record<"linkedin_search" | "linkedin_profile", ToolSettings>>;
   dailyRequests?: number;
   dailyUsdCents?: number;
   concurrency?: number;
@@ -107,6 +133,8 @@ export const configSchema = z
         instagram_search: toolSettings,
         instagram_profile: toolSettings,
         instagram_followers: toolSettings,
+        linkedin_search: toolSettings.optional(),
+        linkedin_profile: toolSettings.optional(),
       })
       .strict(),
   })

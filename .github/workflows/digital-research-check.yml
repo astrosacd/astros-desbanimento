@@ -14,7 +14,7 @@ on:
       - 'src/features/payments/wallet.tsx'
       - 'supabase/functions/astros-digital-research/**'
       - 'supabase/astros-digital-research.deploy.ts'
-      - 'supabase/migrations/20261028_digital*.sql'
+      - 'supabase/migrations/*_digital*.sql'
       - 'scripts/*digital*'
       - 'tests/digital-preview/**'
       - '.github/workflows/digital-research-check.yml'
