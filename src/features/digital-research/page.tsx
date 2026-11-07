@@ -12,11 +12,12 @@ import {
   Bookmark,
   Trash2,
   Instagram,
+  Linkedin,
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { BalanceSummary } from "../payments/balance-summary";
-import { catalog, clientMessage, type Profile, type Research, type Tool } from "./model";
+import { catalog, clientMessage, networkOf, type Profile, type Research, type Tool } from "./model";
 import {
   digitalCollections,
   digitalConfig,
@@ -27,7 +28,11 @@ import {
   digitalStatus,
   digitalUnsave,
 } from "./actions";
-import { csv, criteria } from "../../../supabase/functions/astros-digital-research/core";
+import {
+  csv,
+  criteria,
+  linkedinIdentifiers,
+} from "../../../supabase/functions/astros-digital-research/core";
 import { useAutoProgress, autoProgressText, type AutoProgress } from "./use-auto-progress";
 import { QuickHelp } from "../workspace/help";
 import "./style.css";
@@ -66,6 +71,52 @@ export function ProfileCard({ row, action }: { row: Profile; action?: React.Reac
     } catch {
       setCopyStatus("Selecione o ID para copiá-lo manualmente.");
     }
+  }
+  if (row.linkedin) {
+    const info = row.linkedin;
+    return (
+      <article className="digital-profile">
+        <div className="digital-profile-title">
+          <span className="digital-avatar">
+            <Linkedin size={20} />
+          </span>
+          <div>
+            <h3>{row.name}</h3>
+            <a href={row.url} target="_blank" rel="noreferrer">
+              Abrir no LinkedIn <ExternalLink size={13} />
+            </a>
+          </div>
+        </div>
+        {info.headline && (
+          <p>
+            <strong>{info.headline}</strong>
+          </p>
+        )}
+        {info.location && <p className="digital-help">{info.location}</p>}
+        {row.biography && <p>{row.biography}</p>}
+        {info.experience.length > 0 && (
+          <details>
+            <summary>Experiência</summary>
+            <ul>
+              {info.experience.map((e, i) => (
+                <li key={i}>{[e.position, e.company].filter(Boolean).join(" · ")}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {info.education.length > 0 && (
+          <details>
+            <summary>Formação</summary>
+            <ul>
+              {info.education.map((e, i) => (
+                <li key={i}>{[e.degree, e.school].filter(Boolean).join(" · ")}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {action}
+      </article>
+    );
   }
   return (
     <article className="digital-profile">
@@ -359,17 +410,19 @@ export function ResearchDetails({
           {row.rows && row.rows.length > 0 && (
             <div className="digital-notice">
               <p>
-                {row.tool === "instagram_followers"
-                  ? "Esta lista mostra seguidores. Para obter mais detalhes de uma pessoa, use Consultar perfil e confira o preço."
-                  : "Dados públicos disponíveis nesta consulta. E-mail e telefone podem não estar disponíveis."}
+                {networkOf(row.tool) === "LinkedIn"
+                  ? "Informações profissionais disponíveis nesta consulta. E-mails e telefones não são pesquisados."
+                  : row.tool === "instagram_followers"
+                    ? "Esta lista mostra seguidores. Para obter mais detalhes de uma pessoa, use Consultar perfil e confira o preço."
+                    : "Dados públicos disponíveis nesta consulta. E-mail e telefone podem não estar disponíveis."}
               </p>
               <details className="digital-data-help">
                 <summary>Sobre os dados e a exportação</summary>
                 <p>
-                  A consulta não acessa e-mail ou telefone privados de cadastro. Os botões
-                  E-mail/Ligar do Instagram não têm retorno garantido. Na lista de seguidores,
-                  métricas e contatos de cada pessoa não são consultados automaticamente. Use
-                  Exportar CSV para baixar os resultados ou salve os perfis escolhidos em coleções.
+                  {networkOf(row.tool) === "Instagram" &&
+                    "A consulta não acessa contatos privados de cadastro. Na lista de seguidores, métricas e contatos não são consultados automaticamente. "}
+                  Use Exportar CSV para baixar os resultados ou salve os perfis escolhidos em
+                  coleções.
                 </p>
               </details>
             </div>
@@ -409,7 +462,7 @@ export function ResearchDetails({
           )}
           {row.state === "completed" && !row.rows?.length && (
             <p className="digital-empty">
-              {row.tool === "instagram_search"
+              {networkOf(row.tool) === "LinkedIn" || row.tool === "instagram_search"
                 ? "Nenhum perfil foi encontrado para esta busca."
                 : row.tool === "instagram_followers"
                   ? "Nenhum seguidor foi encontrado para o perfil informado. Confira o @; o perfil pode não existir ou não ter seguidores disponíveis nesta consulta."
@@ -451,6 +504,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
   const qc = useQueryClient(),
     lock = useRef(false);
   const [tab, setTab] = useState<"tools" | "history" | "collections">("tools"),
+    [network, setNetwork] = useState<"Instagram" | "LinkedIn">("Instagram"),
     [tool, setTool] = useState<Tool | null>(null),
     [query, setQuery] = useState(""),
     [quantity, setQuantity] = useState(10),
@@ -516,17 +570,33 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
     profileSettings.maxQuantity >= 1 &&
     !attempt
   );
+  const linkedinAvailable = !!(
+    config.data?.tools.linkedin_search || config.data?.tools.linkedin_profile
+  );
+  const selectedNetwork = linkedinAvailable ? network : "Instagram";
+  const isProfile = tool === "instagram_profile" || tool === "linkedin_profile";
+  let linkedinAmount = 0;
+  let linkedinInputError = "";
+  if (tool === "linkedin_profile" && query.trim()) {
+    try {
+      linkedinAmount = linkedinIdentifiers(query).length;
+    } catch {
+      linkedinInputError = "Informe links de perfis pessoais do LinkedIn ou seus identificadores.";
+    }
+  }
   const amount =
-    tool === "instagram_profile"
-      ? [
-          ...new Set(
-            query
-              .split(/[\s,;]+/)
-              .filter(Boolean)
-              .map((s) => s.toLowerCase()),
-          ),
-        ].length
-      : quantity;
+    tool === "linkedin_profile"
+      ? linkedinAmount
+      : tool === "instagram_profile"
+        ? [
+            ...new Set(
+              query
+                .split(/[\s,;]+/)
+                .filter(Boolean)
+                .map((s) => s.toLowerCase()),
+            ),
+          ].length
+        : quantity;
   const ready = !!(
     config.data?.installed &&
     config.data.enabled &&
@@ -631,7 +701,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
       <header className="digital-heading">
         <span className="eyebrow">ASTROS / PESQUISA DIGITAL</span>
         <h1>Pesquisa Digital</h1>
-        <p>Encontre perfis do Instagram, consulte os detalhes e salve o que interessa.</p>
+        <p>Encontre perfis, consulte os detalhes e salve o que interessa.</p>
       </header>
       <BalanceSummary />
       <QuickHelp module="digital" />
@@ -672,10 +742,33 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               <h2>Perfis e contatos</h2>
               <p>Escolha uma ferramenta para começar.</p>
             </div>
-            <span className="digital-network">
-              <Instagram size={16} />
-              Instagram
-            </span>
+            {linkedinAvailable ? (
+              <div role="group" aria-label="Rede da pesquisa" className="digital-network">
+                {(["Instagram", "LinkedIn"] as const).map((name) => (
+                  <Button
+                    key={name}
+                    type="button"
+                    variant={selectedNetwork === name ? "default" : "outline"}
+                    aria-pressed={selectedNetwork === name}
+                    disabled={busy || !!attempt}
+                    onClick={() => {
+                      setNetwork(name);
+                      setTool(null);
+                      setQuery("");
+                      setError("");
+                    }}
+                  >
+                    {name === "Instagram" ? <Instagram size={16} /> : <Linkedin size={16} />}
+                    {name}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <span className="digital-network">
+                <Instagram size={16} />
+                Instagram
+              </span>
+            )}
           </div>
           {config.isPending ? (
             <p role="status">Conferindo disponibilidade…</p>
@@ -693,41 +786,47 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
             )
           )}
           <div className="digital-tools">
-            {catalog.map((t) => {
-              const s = config.data?.tools[t.id],
-                active = config.data?.enabled && s?.enabled;
-              return (
-                <article key={t.id} className="digital-tool">
-                  <span className="digital-tool-icon">
-                    <Users size={22} />
-                  </span>
-                  <span className="digital-kicker">INSTAGRAM</span>
-                  <h3>{t.title}</h3>
-                  <p>{t.description}</p>
-                  <div className="digital-tool-bottom">
-                    <span>
-                      {active ? `${money(s.unitCents)} por perfil entregue` : "Em preparação"}
+            {catalog
+              .filter(
+                (t) =>
+                  networkOf(t.id) === selectedNetwork &&
+                  (selectedNetwork === "Instagram" || config.data?.tools[t.id]),
+              )
+              .map((t) => {
+                const s = config.data?.tools[t.id],
+                  active = config.data?.enabled && s?.enabled;
+                return (
+                  <article key={t.id} className="digital-tool">
+                    <span className="digital-tool-icon">
+                      <Users size={22} />
                     </span>
-                    <Button
-                      variant="outline"
-                      disabled={!active || busy || !!attempt}
-                      onClick={() => {
-                        setTool(t.id);
-                        setQuery("");
-                        requestAnimationFrame(() =>
-                          document.getElementById("digital-query")?.focus(),
-                        );
-                        setQuantity(Math.min(10, s?.maxQuantity ?? 10));
-                        setError("");
-                      }}
-                    >
-                      {tool === t.id ? "Selecionada" : "Usar ferramenta"}
-                      <ArrowRight size={15} />
-                    </Button>
-                  </div>
-                </article>
-              );
-            })}
+                    <span className="digital-kicker">{networkOf(t.id)}</span>
+                    <h3>{t.title}</h3>
+                    <p>{t.description}</p>
+                    <div className="digital-tool-bottom">
+                      <span>
+                        {active ? `${money(s.unitCents)} por perfil entregue` : "Em preparação"}
+                      </span>
+                      <Button
+                        variant="outline"
+                        disabled={!active || busy || !!attempt}
+                        onClick={() => {
+                          setTool(t.id);
+                          setQuery("");
+                          requestAnimationFrame(() =>
+                            document.getElementById("digital-query")?.focus(),
+                          );
+                          setQuantity(Math.min(10, s?.maxQuantity ?? 10));
+                          setError("");
+                        }}
+                      >
+                        {tool === t.id ? "Selecionada" : "Usar ferramenta"}
+                        <ArrowRight size={15} />
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
           </div>
           {selected && (
             <form className="digital-form" onSubmit={prepare}>
@@ -752,7 +851,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                   disabled={busy || !!attempt}
                 />
               </label>
-              {tool !== "instagram_profile" ? (
+              {!isProfile ? (
                 <label>
                   Máximo de resultados
                   <input
@@ -774,16 +873,15 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               {amount > (settings?.maxQuantity ?? selected.max) && (
                 <p role="alert" className="digital-error">
                   Escolha até {settings?.maxQuantity ?? selected.max}{" "}
-                  {tool === "instagram_profile" ? "perfis" : "resultados"} por pesquisa para
-                  continuar.
+                  {isProfile ? "perfis" : "resultados"} por pesquisa para continuar.
                 </p>
               )}
-              {tool !== "instagram_profile" && amount < 1 && (
+              {!isProfile && amount < 1 && (
                 <p role="alert" className="digital-error">
                   Informe pelo menos 1 resultado para continuar.
                 </p>
               )}
-              {tool !== "instagram_search" && (
+              {(tool === "instagram_profile" || tool === "instagram_followers") && (
                 <p className="digital-help">
                   {tool === "instagram_profile"
                     ? "Confira o @, o link ou o ID numérico antes de continuar."
@@ -792,10 +890,21 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                   confirmadas durante a consulta.
                 </p>
               )}
+              {tool === "linkedin_profile" && (
+                <p className="digital-help">
+                  Separe links ou identificadores por espaço. Limite: {settings?.maxQuantity ?? 10}{" "}
+                  perfis.
+                </p>
+              )}
+              {linkedinInputError && (
+                <p role="alert" className="digital-error">
+                  {linkedinInputError}
+                </p>
+              )}
               <p className="digital-help">
                 Reserva máxima: <strong>{money(amount * (settings?.unitCents ?? 0))}</strong>. A
-                cobrança final considera os perfis entregues nesta pesquisa; contatos podem estar
-                ausentes. O restante da reserva é devolvido após a conclusão confirmada.
+                cobrança final considera os perfis entregues nesta pesquisa. O restante da reserva é
+                devolvido após a conclusão confirmada.
               </p>
               {error && (
                 <p role="alert" className="digital-error">
@@ -976,12 +1085,11 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
               <Dialog.Title>Confirmar pesquisa</Dialog.Title>
               <Dialog.Description>
                 {selected?.title} · até {amount} perfil(is).
-                {tool === "instagram_profile" && <> Perfis informados: {query}.</>}
+                {isProfile && <> Perfis informados: {query}.</>}
               </Dialog.Description>
               <p>
                 Será reservado até <strong>{money(amount * (settings?.unitCents ?? 0))}</strong> da
-                sua carteira. O valor final será proporcional aos perfis entregues, mesmo quando não
-                houver telefone ou e-mail.
+                sua carteira. O valor final será proporcional aos perfis entregues.
               </p>
               {tool === "instagram_profile" && settings?.includeAboutSection && (
                 <p>
@@ -1019,6 +1127,7 @@ export function DigitalResearchPage({ userId }: { userId: string }) {
                   if (lock.current) return;
                   setDetail(null);
                   setError("");
+                  setNetwork("Instagram");
                   setTool("instagram_profile");
                   setQuery("@" + p.username);
                   setTab("tools");

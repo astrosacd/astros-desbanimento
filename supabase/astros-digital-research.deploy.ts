@@ -11,6 +11,16 @@ export const tools = {
     title: "Extrair seguidores",
     max: 100,
   },
+  linkedin_search: {
+    actor: "harvestapi~linkedin-profile-search",
+    title: "Buscar profissionais no LinkedIn",
+    max: 25,
+  },
+  linkedin_profile: {
+    actor: "harvestapi~linkedin-profile-scraper",
+    title: "Consultar perfis no LinkedIn",
+    max: 10,
+  },
 } as const;
 export type Tool = keyof typeof tools;
 export function toolKey(value: unknown): Tool {
@@ -63,10 +73,43 @@ export function username(v: unknown) {
     throw Error("Informe um perfil válido do Instagram.");
   return s;
 }
+export function linkedinIdentifier(value: string): string {
+  let identifier = value.trim();
+  if (/^https:\/\//i.test(identifier)) {
+    const url = new URL(identifier);
+    if (
+      !/^(?:[a-z]{2}\.|www\.)?linkedin\.com$/.test(url.hostname) ||
+      url.username ||
+      url.password ||
+      url.port ||
+      !/^\/in\/[^/]+\/?$/.test(url.pathname)
+    )
+      throw Error("Informe um perfil válido do LinkedIn.");
+    identifier = url.pathname.split("/")[2] ?? "";
+  }
+  if (!/^[a-z0-9][a-z0-9-]{2,99}$/i.test(identifier))
+    throw Error("Informe um perfil válido do LinkedIn.");
+  return identifier.toLowerCase();
+}
+export function linkedinIdentifiers(value: string) {
+  return [
+    ...new Set(
+      value
+        .split(/[\s,;]+/)
+        .filter(Boolean)
+        .map(linkedinIdentifier),
+    ),
+  ];
+}
 export function criteria(tool: Tool, value: unknown, quantity: unknown) {
   const count = integer(quantity, 1, tools[tool].max);
   if (typeof value !== "string" || value.length > 500) throw Error("Pesquisa inválida.");
-  if (tool === "instagram_search") {
+  if (tool === "linkedin_profile") {
+    const names = linkedinIdentifiers(value);
+    if (names.length !== count) throw Error("Confira a quantidade de perfis.");
+    return { query: names.join(","), quantity: count };
+  }
+  if (tool === "instagram_search" || tool === "linkedin_search") {
     const query = clean(value, 120);
     if (query.length < 2 || /[\n,]/.test(value))
       throw Error("Informe uma única palavra-chave ou expressão.");
@@ -101,6 +144,13 @@ export function actorInput(
   quantity: number,
   includeAboutSection = false,
 ) {
+  if (tool === "linkedin_search")
+    return { searchQuery: query, profileScraperMode: "Short", maxItems: quantity, takePages: 1 };
+  if (tool === "linkedin_profile")
+    return {
+      publicIdentifiers: query.split(","),
+      profileScraperMode: "Profile details no email ($4 per 1k)",
+    };
   if (tool === "instagram_search")
     return {
       search: query,
@@ -267,6 +317,13 @@ export type Profile = {
   joinedRecently?: boolean;
   hasChannel?: boolean;
   about?: Record<string, string | number | boolean>;
+  linkedin?: {
+    identifier: string;
+    headline: string;
+    location: string;
+    experience: { position: string; company: string }[];
+    education: { school: string; degree: string }[];
+  };
   projectionLimited?: boolean;
   recentPosts?: RecentPost[];
   relatedProfiles?: RelatedProfile[];
@@ -366,6 +423,64 @@ export function profiles(raw: unknown, limit: number, includeDetails = false): P
     })
     .slice(0, limit);
 }
+export const linkedinFields =
+  "linkedinUrl,publicIdentifier,firstName,lastName,headline,position,about,location,experience,education,followerCount,error,errorDescription,status,query";
+function linkedinProfiles(raw: unknown, limit: number, query?: string): Profile[] {
+  if (!Array.isArray(raw) || raw.length > limit) throw Error("Resultados não confirmados.");
+  const seen = new Set<string>();
+  const requested = query?.split(",");
+  return raw.flatMap((r) => {
+    if (
+      !r ||
+      typeof r !== "object" ||
+      r.error ||
+      r.errorDescription ||
+      (r.status != null && r.status !== 200) ||
+      typeof r.linkedinUrl !== "string" ||
+      !r.linkedinUrl.startsWith("https://")
+    )
+      throw Error("Resultados não confirmados.");
+    const identifier = linkedinIdentifier(r.linkedinUrl);
+    if (requested && !requested.includes(identifier)) throw Error("Resultados não confirmados.");
+    const name = [clean(r.firstName, 100), clean(r.lastName, 100)].filter(Boolean).join(" ");
+    if (!name) throw Error("Resultados não confirmados.");
+    if (seen.has(identifier)) return [];
+    seen.add(identifier);
+    return [
+      {
+        username: "linkedin:" + identifier,
+        name,
+        url: "https://www.linkedin.com/in/" + identifier,
+        biography: clean(r.about, 2000),
+        website: "",
+        email: "",
+        phone: "",
+        followers: countMetric(r.followerCount),
+        following: null,
+        posts: null,
+        private: false,
+        verified: false,
+        linkedin: {
+          identifier,
+          headline: clean(r.headline ?? r.position, 400),
+          location: clean(
+            typeof r.location === "string" ? r.location : r.location?.linkedinText,
+            200,
+          ),
+          experience: (Array.isArray(r.experience) ? r.experience.slice(0, 6) : [])
+            .map((e: any) => ({
+              position: clean(e?.position ?? e?.title, 200),
+              company: clean(e?.companyName, 200),
+            }))
+            .filter((e: any) => e.position || e.company),
+          education: (Array.isArray(r.education) ? r.education.slice(0, 6) : [])
+            .map((e: any) => ({ school: clean(e?.schoolName, 200), degree: clean(e?.degree, 200) }))
+            .filter((e: any) => e.school || e.degree),
+        },
+      },
+    ];
+  });
+}
 /** A confirmed successful followers run can emit a source-only or explicit not_found marker.
  * Match the complete observed shape and immutable source; never turn arbitrary errors into refunds.
  */
@@ -374,6 +489,12 @@ export function deliveredProfiles(
   limit: number,
   context: { tool: Tool; query: string },
 ): Profile[] {
+  if (context.tool === "linkedin_search" || context.tool === "linkedin_profile")
+    return linkedinProfiles(
+      raw,
+      limit,
+      context.tool === "linkedin_profile" ? context.query : undefined,
+    );
   if (context.tool === "instagram_followers" && Array.isArray(raw) && raw.length === 1) {
     const marker = raw[0];
     if (
@@ -401,6 +522,36 @@ export function csv(rows: Profile[]) {
       .replace(/^\s*[=+\-@]/, "'$&")
       .replaceAll('"', '""') +
     '"';
+  if (rows.length && rows.every((r) => r.linkedin))
+    return (
+      "\uFEFF" +
+      [
+        [
+          "Nome",
+          "Perfil do LinkedIn",
+          "Título profissional",
+          "Localização",
+          "Sobre",
+          "Experiências",
+          "Formação",
+        ],
+        ...rows.map((r) => [
+          r.name,
+          r.url,
+          r.linkedin?.headline,
+          r.linkedin?.location,
+          r.biography,
+          r.linkedin?.experience
+            .map((e) => [e.position, e.company].filter(Boolean).join(" — "))
+            .join(" | "),
+          r.linkedin?.education
+            .map((e) => [e.school, e.degree].filter(Boolean).join(" — "))
+            .join(" | "),
+        ]),
+      ]
+        .map((row) => row.map(cell).join(","))
+        .join("\r\n")
+    );
   return (
     "\uFEFF" +
     [
@@ -651,20 +802,23 @@ async function refresh(actor: string, id: string) {
     if (v?.id !== claim.runId || v?.defaultDatasetId !== claim.datasetId)
       throw Error("Conferência divergente.");
     if (v.status === "SUCCEEDED") {
+      const linkedin = claim.tool === "linkedin_search" || claim.tool === "linkedin_profile";
       const p = new URLSearchParams({
         // Followers markers must be inspected unprojected: a fields filter could hide error flags.
-        ...(claim.tool === "instagram_followers"
-          ? {}
-          : {
-              fields:
-                "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
-                (claim.tool === "instagram_profile"
-                  ? ",id,profilePicUrl,profilePicUrlHD,fbid,businessAddress,joinedRecently,hasChannel,about,latestPosts,relatedProfiles,latestIgtvVideos"
-                  : ""),
-            }),
+        ...(linkedin
+          ? { fields: linkedinFields }
+          : claim.tool === "instagram_followers"
+            ? {}
+            : {
+                fields:
+                  "username,userName,fullName,full_name,biography,externalUrl,businessEmail,publicEmail,businessPhoneNumber,publicPhoneNumber,followersCount,followsCount,followingCount,postsCount,isPrivate,isVerified,private,verified,businessCategoryName,categoryName,isBusinessAccount,highlightReelCount,igtvVideoCount,externalUrls,bioLinks,error,errorDescription" +
+                  (claim.tool === "instagram_profile"
+                    ? ",id,profilePicUrl,profilePicUrlHD,fbid,businessAddress,joinedRecently,hasChannel,about,latestPosts,relatedProfiles,latestIgtvVideos"
+                    : ""),
+              }),
         format: "json",
-        clean: claim.tool === "instagram_followers" ? "false" : "true",
-        limit: String(claim.quantity),
+        clean: linkedin || claim.tool === "instagram_followers" ? "false" : "true",
+        limit: String(claim.quantity + (linkedin ? 1 : 0)),
         offset: "0",
       });
       const readItems = async () => {
@@ -783,6 +937,7 @@ export async function handler(req: Request) {
       "Ferramenta inválida.",
       "Referência inválida.",
       "Informe um perfil válido do Instagram.",
+      "Informe um perfil válido do LinkedIn.",
       "Informe uma única palavra-chave ou expressão.",
       "Confira a quantidade de perfis.",
     ];

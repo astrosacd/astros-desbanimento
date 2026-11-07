@@ -274,3 +274,52 @@ it("projects available public about fields, approved media and larger lists with
   expect(row.recentPosts?.[0].views).toBe(0);
   expect(actorInput("instagram_profile", "example", 1, true).includeAboutSection).toBe(true);
 });
+
+it("bounds LinkedIn requests and returns only documented professional fields", async () => {
+  const { criteria, actorInput, deliveredProfiles, csv } =
+    await import("../../../supabase/functions/astros-digital-research/core");
+  const q = criteria("linkedin_profile", "https://br.linkedin.com/in/example/?trk=abc Example", 1);
+  expect(q).toEqual({ query: "example", quantity: 1 });
+  expect(actorInput("linkedin_profile", q.query, 1)).toEqual({
+    publicIdentifiers: ["example"],
+    profileScraperMode: "Profile details no email ($4 per 1k)",
+  });
+  expect(actorInput("linkedin_search", "gerente comercial", 10)).toMatchObject({
+    searchQuery: "gerente comercial",
+    profileScraperMode: "Short",
+    maxItems: 10,
+  });
+  expect(() =>
+    criteria("linkedin_profile", "https://linkedin.com.evil.test/in/example", 1),
+  ).toThrow();
+  expect(() => criteria("linkedin_profile", "https://linkedin.com/company/example", 1)).toThrow();
+  expect(() => criteria("linkedin_search", "cargo", 26)).toThrow();
+  const raw = {
+    linkedinUrl: "https://www.linkedin.com/in/example",
+    firstName: "Pessoa",
+    lastName: "Exemplo",
+    headline: "Gerente",
+    location: { linkedinText: "Fortaleza" },
+    status: 200,
+    experience: [{ position: "Gerente comercial", companyName: "Empresa Exemplo" }],
+    email: "private@example.com",
+    phone: "555",
+    rawData: { secret: true },
+  };
+  const context = { tool: "linkedin_profile", query: q.query } as const;
+  const result = deliveredProfiles([raw], 1, context);
+  expect(result[0]).toMatchObject({
+    username: "linkedin:example",
+    email: "",
+    phone: "",
+    linkedin: {
+      headline: "Gerente",
+      location: "Fortaleza",
+      experience: [{ position: "Gerente comercial", company: "Empresa Exemplo" }],
+    },
+  });
+  expect(csv(result)).toContain("Perfil do LinkedIn");
+  expect(JSON.stringify(result)).not.toContain("private@example.com");
+  expect(() => deliveredProfiles([{ ...raw, status: 404 }], 1, context)).toThrow();
+  expect(() => deliveredProfiles([raw], 1, { ...context, query: "different" })).toThrow();
+});

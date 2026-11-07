@@ -102,3 +102,26 @@ A consulta de detalhes aceita @, URL ou ID numérico (também no formato `id:123
 A atualização mostra a foto pública (carregada diretamente do CDN permitido, sem proxy ou download no servidor), campos de About disponíveis, endereço comercial, ID Facebook e indicadores de conta/canal. Amplia a atividade para até 12 posts e 12 vídeos IGTV e sugestões para até 50 perfis. Retém somente projeções públicas conhecidas; nunca payload bruto, comentários de pessoas ou campos internos. URLs de imagens podem expirar; a interface volta às iniciais se a foto falhar. O snapshot tem limite de 40 KB por perfil; o cliente é avisado se houver corte por volume. O CSV acompanha os novos detalhes textuais e URLs, sem baixar mídia.
 
 O ADM pode marcar **Incluir “Sobre esta conta”** apenas na consulta de perfis. A instalação preserva o modo atual (desligado): esse adicional exige plano pago da Apify. Antes de ativar, ajustar o preço total por perfil e os limites de execução. O cliente vê o preço total e a inclusão na confirmação; não existe taxa extra oculta ou ativação automática. A Edge lê o modo salvo antes da reserva e a RPC valida a mesma versão de configuração. Recuperações de UUID já aceitos continuam sem novo disparo. O booleano opcional fica no objeto de ferramentas já validado/salvo pelo ADM; não requer SQL novo. Publicar a Edge primeiro, depois o frontend. Histórico concluído não é reprocessado.
+
+### LinkedIn
+
+A aba LinkedIn oferece **Buscar profissionais** por nome, cargo ou palavra-chave e
+**Consultar perfis** por URL pessoal `linkedin.com/in/…` ou identificador. Os dados
+profissionais retornados podem ser salvos em coleções e exportados para CSV.
+Não há busca de e-mails, telefones ou extração de conexões. A integração é feita
+pelos Actors de terceiros na Apify, sem login ou cookies do LinkedIn.
+
+Actors fixos: [busca HarvestAPI](https://apify.com/harvestapi/linkedin-profile-search/input-schema)
+em modo Short, máximo 25 resultados e uma página; [consulta HarvestAPI](https://apify.com/harvestapi/linkedin-profile-scraper/input-schema)
+em modo sem e-mail, máximo 10 identificadores. A busca pode cobrar por página na Apify;
+o preço do cliente no Astros Mais continua por perfil entregue. Configure o preço e
+o teto por ferramenta conforme o seu plano na Apify. As cotas diárias, carteira,
+limite global em dólares e concorrência são compartilhados com Instagram.
+
+Ordem para atualizar uma instalação existente: aplique
+`supabase/migrations/20261107_digital_linkedin.sql`, atualize a Edge Function
+`astros-digital-research` com o standalone atualizado e publique o painel.
+Não reaplique a migração original da Pesquisa Digital depois desta atualização.
+Os dois novos controles começam desativados e preservam as configurações do
+Instagram. Habilite e precifique cada ferramenta no admin após validar a
+disponibilidade no plano da conta Apify. Não foi disparada consulta paga nos testes.

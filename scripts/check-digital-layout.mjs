@@ -10,6 +10,13 @@ try{
   await page.getByRole('button',{name:/Usar ferramenta/}).first().click();await page.getByLabel('Palavra-chave').fill('odontologia Fortaleza');await check();await page.getByRole('button',{name:'Conferir e continuar'}).click();await page.getByRole('dialog').waitFor();await check();await page.screenshot({path:`${folder}/confirmacao-${label}.png`,fullPage:true});
   await page.goto('http://127.0.0.1:4187/?admin');await page.getByRole('button',{name:'Salvar configuração'}).waitFor();await check();await page.screenshot({path:`${folder}/admin-${label}.png`,fullPage:true});
   await page.goto('http://127.0.0.1:4187/?results');await page.getByRole('dialog').waitFor();await page.getByText('Sobre o perfil',{exact:true}).click();await page.getByText('Atividade recente',{exact:true}).click();await page.getByText('Ver legenda',{exact:true}).first().click();await page.getByText('Perfis relacionados',{exact:true}).click();await check();await page.screenshot({path:`${folder}/resultados-${label}.png`,fullPage:true});
+  await page.goto('http://127.0.0.1:4187/');await page.getByRole('button',{name:'LinkedIn',exact:true}).click();
+  await page.getByRole('button',{name:'Usar ferramenta'}).nth(1).click();
+  await page.getByLabel('Perfis do LinkedIn').fill('https://www.linkedin.com/in/pessoa-exemplo');
+  await page.getByRole('button',{name:'Conferir e continuar'}).click();await page.getByRole('dialog').waitFor();await check();
+  await page.goto('http://127.0.0.1:4187/?linkedin');await page.getByRole('dialog').waitFor();
+  await page.getByText('Experiência',{exact:true}).click();await page.getByText('Formação',{exact:true}).click();await check();
+  await page.screenshot({path:`${folder}/linkedin-${label}.png`,fullPage:true});
  }
  if(errors.length)throw Error(errors.join('\n'));
  console.log('PASS: real module, catalog, price confirmation and profile results at 1440px/375px; no page errors or viewport overflow.');

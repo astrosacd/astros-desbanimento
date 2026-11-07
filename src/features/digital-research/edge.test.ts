@@ -66,6 +66,13 @@ beforeEach(() => {
       }
       if (path.startsWith("https://api.apify.com/v2/acts/")) {
         runs++;
+        if (scenario === "linkedin-profile") {
+          expect(new URL(path).pathname).toBe("/v2/acts/harvestapi~linkedin-profile-scraper/runs");
+          expect(JSON.parse(init.body)).toEqual({
+            publicIdentifiers: ["example"],
+            profileScraperMode: "Profile details no email ($4 per 1k)",
+          });
+        }
         if (scenario === "about-on" || scenario === "about-off")
           expect(JSON.parse(init.body).includeAboutSection).toBe(scenario === "about-on");
         expect(init.headers.Authorization).toBe("Bearer private-apify-key");
@@ -255,4 +262,18 @@ it("enables paid About only from the versioned saved config and never replays th
   await invoke("start", { ...data, tool: "instagram_profile", query: "example", quantity: 1 });
   expect(runs).toBe(0);
   expect(calls.some((call) => call.operation === "reject")).toBe(true);
+});
+
+it("dispatches the fixed LinkedIn Actor with canonical input and no email lookup", async () => {
+  scenario = "linkedin-profile";
+  const request = {
+    ...data,
+    tool: "linkedin_profile",
+    query: "https://www.linkedin.com/in/example/?trk=app",
+    quantity: 1,
+  };
+  expect((await invoke("start", request)).status).toBe(200);
+  expect((await invoke("start", request)).status).toBe(200);
+  expect(runs).toBe(1);
+  expect(calls[0].input).toMatchObject({ tool: "linkedin_profile", query: "example", quantity: 1 });
 });
